@@ -33,11 +33,10 @@ from sklearn import linear_model
 from scipy.stats import norm
 from scipy.stats import kstest
 
-
 from typing import Optional, List, Dict, Any
 
 import tm_solarshift.trnsys_utils as TRP
-import tm_solarshift.Profiles_utils as profiles
+import tm_solarshift.profiles_utils as profiles
 
 W2kJh = 3.6
 PROFILES_TYPES = profiles.PROFILES_TYPES

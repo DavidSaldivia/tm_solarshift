@@ -5,23 +5,12 @@ Created on Mon Jun 19 19:52:33 2023
 @author: z5158936
 """
 
-import subprocess           # to run the TRNSYS simulation
-import shutil               # to duplicate the output txt file
-import time                 # to measure the computation time
 import os
-import datetime
-import sys 
-import glob
 import copy
-import pickle
-
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
 
-import tm_solarshift.trnsys_utils as TRP
-import tm_solarshift.Profiles_utils as profiles
+import tm_solarshift.trnsys_utils as trnsys
+import tm_solarshift.profiles_utils as profiles
 
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
@@ -43,7 +32,7 @@ def parametric_run(
     runs_in,
     params_in,
     params_out,
-    Sim_base = TRP.General_Setup(),
+    Sim_base = trnsys.General_Setup(),
     case_template=None,
     case_vars=[],
     save_results_detailed  = False,
@@ -113,8 +102,8 @@ def parametric_run(
         
         if verbose:
             print("Executing TRNSYS simulation")
-        out_data = TRP.thermal_simulation_run(Sim, Profiles)
-        out_overall = TRP.postprocessing_annual_simulation(Sim, Profiles, out_data)
+        out_data = trnsys.thermal_simulation_run(Sim, Profiles)
+        out_overall = trnsys.postprocessing_annual_simulation(Sim, Profiles, out_data)
         values_out = [out_overall[lbl] for lbl in params_out]
         runs.loc[index, params_out] = values_out
         
@@ -149,7 +138,7 @@ def parametric_run(
         ############################################
         #Detailed plots?
         if gen_plots_detailed:
-            TRP.detailed_plots(
+            trnsys.detailed_plots(
                 Sim,
                 out_data,
                 fldr_results_detailed = fldr_results_detailed,
@@ -181,9 +170,9 @@ if __name__ == "__main__":
 #         'HWD_avg'        : list_HWD_avg,
 #         }
     
-#     runs = TRP.parametric_settings(params_in, PARAMS_OUT)
+#     runs = trnsys.parametric_settings(params_in, PARAMS_OUT)
     
-#     Sim_base = TRP.TRNSYS_Setup(
+#     Sim_base = trnsys.TRNSYS_Setup(
 #             profile_HWD     = 1,
 #             profile_control = 1
 #             )
@@ -224,7 +213,7 @@ if __name__ == "__main__":
     #             'm_HWD_avg', 'T_amb_avg', 'T_mains_avg',
     #             'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0']
     
-    # runs = TRP.Parametric_Settings(params_in, params_out)
+    # runs = trnsys.Parametric_Settings(params_in, params_out)
     
     # runs = Parametric_Run(
     #     runs, params_in, params_out,
@@ -259,7 +248,7 @@ if __name__ == "__main__":
     #     'profile_control'  : list_profile_control,
     #     }
     
-    # runs = TRP.parametric_settings(params_in, PARAMS_OUT)
+    # runs = trnsys.parametric_settings(params_in, PARAMS_OUT)
     
     # runs = parametric_run(
     #     runs, params_in, PARAMS_OUT,
@@ -293,9 +282,9 @@ if __name__ == "__main__":
         'location'         : list_location,
         }
     
-    runs = TRP.parametric_settings(params_in, PARAMS_OUT)
+    runs = trnsys.parametric_settings(params_in, PARAMS_OUT)
     
-    Sim_base = TRP.General_Setup(
+    Sim_base = trnsys.General_Setup(
         layout_DEWH   = 'HPF',
         Heater_NomCap = 5240,
         Heater_F_eta  = 6.02,
@@ -342,9 +331,9 @@ if __name__ == "__main__":
     
 #     # params_out = params_out + ['Total_Elec_Cost']
     
-#     runs = TRP.Parametric_Settings(params_in, params_out)
+#     runs = trnsys.Parametric_Settings(params_in, params_out)
     
-#     Sim_base = TRP.General_Setup(
+#     Sim_base = trnsys.General_Setup(
 #         layout_DEWH   = 'HPF',
 #         Heater_NomCap = 5240,
 #         Heater_F_eta  = 6.02,
@@ -356,7 +345,7 @@ if __name__ == "__main__":
 #         tariff_type='flat',
 #         # STOP=120,
 #         )
-#     # Sim_base = TRP.TRNSYS_Setup()
+#     # Sim_base = trnsys.TRNSYS_Setup()
     
 #     runs = Parametric_Run(
 #         runs, params_in, params_out,
@@ -393,9 +382,9 @@ if __name__ == "__main__":
     
 #     # params_out = params_out + ['Total_Elec_Cost']
     
-#     runs = TRP.Parametric_Settings(params_in, params_out)
+#     runs = trnsys.Parametric_Settings(params_in, params_out)
     
-#     # Sim_base = TRP.General_Setup(
+#     # Sim_base = trnsys.General_Setup(
 #     #     layout_DEWH   = 'HPF',
 #     #     Heater_NomCap = 5240,
 #     #     Heater_F_eta  = 6.02,
@@ -407,7 +396,7 @@ if __name__ == "__main__":
 #     #     tariff_type='flat',
 #     #     # STOP=120,
 #     #     )
-#     Sim_base = TRP.TRNSYS_Setup(
+#     Sim_base = trnsys.TRNSYS_Setup(
 #         layout_DEWH   = 'RS',
 #         profile_control = 0,
 #         DNSP = 'Ausgrid',
@@ -446,16 +435,16 @@ if __name__ == "__main__":
     #     'location'         : list_location,
     #     }
     
-    # runs = TRP.Parametric_Settings(params_in, params_out)
+    # runs = trnsys.Parametric_Settings(params_in, params_out)
     
-    # Sim_base = TRP.TRNSYS_Setup(
+    # Sim_base = trnsys.TRNSYS_Setup(
     #     layout_DEWH   = 'HPF',
     #     Heater_NomCap = 5240,
     #     Heater_F_eta  = 6.02,
     #     Tank_TempHigh = 63.,
     #     Tank_TempHighControl = 59.,
     #     )
-    # # Sim_base = TRP.TRNSYS_Setup()
+    # # Sim_base = trnsys.TRNSYS_Setup()
     
     # runs = Parametric_Run(
     #     runs, params_in, params_out,

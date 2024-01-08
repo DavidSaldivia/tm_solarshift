@@ -18,21 +18,10 @@ import matplotlib.pyplot as plt
 
 
 import tm_solarshift.trnsys_utils as TRP
-import tm_solarshift.Profiles_utils as profiles
+import tm_solarshift.profiles_utils as profiles
 
-PROFILES_TYPES = {
-    "HWDP": ["P_HWD", "m_HWD", "Events", "m_HWD_day"],
-    "weather": ["GHI", "Temp_Amb", "Temp_Mains"],
-    "control": ["CS"],
-    "electric": ["PV_Gen", "Import_Grid", "Import_CL"],
-    "economic": ["Tariff", "Wholesale_Market", "Emission_Index", "Emission_Marginal"],
-}
-
-PROFILES_COLUMNS = [
-    item
-    for sublist in [value for key, value in PROFILES_TYPES.items()]
-    for item in sublist
-]
+PROFILES_TYPES = profiles.PROFILES_TYPES
+PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
 
 ## The main object for the simulation
 class TRNSYS_Setup(object):
@@ -168,7 +157,6 @@ class TRNSYS_Setup(object):
 
 ###########################################
 
-
 class Profiles(object):
     def __init__(self, Sim):
         START, STOP, STEP, YEAR = Sim.START, Sim.STOP, Sim.STEP, Sim.YEAR
@@ -182,4 +170,4 @@ class Profiles(object):
 Sim = TRNSYS_Setup()
 profiles = Profiles(Sim)
 
-Sim2 = TRP.TRNSYS_Setup()
+Sim2 = TRP.General_Setup()

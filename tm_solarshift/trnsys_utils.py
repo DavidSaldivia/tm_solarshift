@@ -505,7 +505,7 @@ def creating_trnsys_files(
         engine: str = 'TRNSYS',
         ) -> None:
 
-    from tm_solarshift.Profiles_utils import PROFILES_TYPES
+    from tm_solarshift.profiles_utils import PROFILES_TYPES
     layoutDir = Sim.layoutDir
     layout_WF = Sim.layout_WF
     weather_source = Sim.weather_source
