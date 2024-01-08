@@ -1,0 +1,33 @@
+20	35	52  !T_water_in
+-7  -5  0   5   10  15  20  25  30  32  !T_air
+0.841571768	0.584572373	! Fraction change for F_Q_in and F_COP with T_air=-7 C and T_water_in=20 C
+0.841571768	0.613165586	! Fraction change for F_Q_in and F_COP with T_air=-5 C and T_water_in=20 C
+0.847828807	0.686237133	! Fraction change for F_Q_in and F_COP with T_air=0 C and T_water_in=20 C
+0.882242523	0.743423561	! Fraction change for F_Q_in and F_COP with T_air=5 C and T_water_in=20 C
+0.891628082	0.762485703	! Fraction change for F_Q_in and F_COP with T_air=10 C and T_water_in=20 C
+0.90101364	0.778370822	! Fraction change for F_Q_in and F_COP with T_air=15 C and T_water_in=20 C
+0.913527719	0.822849155	! Fraction change for F_Q_in and F_COP with T_air=20 C and T_water_in=20 C
+0.926041797	0.889566654	! Fraction change for F_Q_in and F_COP with T_air=25 C and T_water_in=20 C
+0.938555875	0.968992248	! Fraction change for F_Q_in and F_COP with T_air=30 C and T_water_in=20 C
+0.938555875	0.997585462	! Fraction change for F_Q_in and F_COP with T_air=32 C and T_water_in=20 C
+0.497434614	0.260515949	! Fraction change for F_Q_in and F_COP with T_air=-7 C and T_water_in=35 C
+0.513077212	0.285932139	! Fraction change for F_Q_in and F_COP with T_air=-5 C and T_water_in=35 C
+0.560005006	0.359003685	! Fraction change for F_Q_in and F_COP with T_air=0 C and T_water_in=35 C
+0.628832436	0.435252256	! Fraction change for F_Q_in and F_COP with T_air=5 C and T_water_in=35 C
+0.660117632	0.501969755	! Fraction change for F_Q_in and F_COP with T_air=10 C and T_water_in=35 C
+0.685145789	0.56551023	! Fraction change for F_Q_in and F_COP with T_air=15 C and T_water_in=35 C
+0.725816544	0.635404753	! Fraction change for F_Q_in and F_COP with T_air=20 C and T_water_in=35 C
+0.791515455	0.711653323	! Fraction change for F_Q_in and F_COP with T_air=25 C and T_water_in=35 C
+0.860342886	0.791078917	! Fraction change for F_Q_in and F_COP with T_air=30 C and T_water_in=35 C
+0.888499562	0.816495107	! Fraction change for F_Q_in and F_COP with T_air=32 C and T_water_in=35 C
+0.162683018	0.174736307	! Fraction change for F_Q_in and F_COP with T_air=-7 C and T_water_in=52 C
+0.197096734	0.19379845	! Fraction change for F_Q_in and F_COP with T_air=-5 C and T_water_in=52 C
+0.284695282	0.238276782	! Fraction change for F_Q_in and F_COP with T_air=0 C and T_water_in=52 C
+0.366036791	0.276401067	! Fraction change for F_Q_in and F_COP with T_air=5 C and T_water_in=52 C
+0.428607183	0.317702376	! Fraction change for F_Q_in and F_COP with T_air=10 C and T_water_in=52 C
+0.475534977	0.365357733	! Fraction change for F_Q_in and F_COP with T_air=15 C and T_water_in=52 C
+0.509948692	0.409836066	! Fraction change for F_Q_in and F_COP with T_air=20 C and T_water_in=52 C
+0.52871981	0.457491422	! Fraction change for F_Q_in and F_COP with T_air=25 C and T_water_in=52 C
+0.541233888	0.508323802	! Fraction change for F_Q_in and F_COP with T_air=30 C and T_water_in=52 C
+0.547490927	0.530562969	! Fraction change for F_Q_in and F_COP with T_air=32 C and T_water_in=52 C
+
