@@ -6,25 +6,20 @@ Created on Mon Jun 26 16:17:04 2023
 
 """
 
-import subprocess  # to run the TRNSYS simulation
+import subprocess
 import shutil  # to duplicate the output txt file
 import time  # to measure the computation time
 import os
-import datetime
 import sys
-import glob
-from typing import Optional, List, Dict, Any, Tuple
-
+import itertools
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
-from scipy.stats import truncnorm
-import itertools
+from typing import Optional, List, Dict, Any, Tuple
 
 W2kJh = 3.6
-TRNSYS_EXECUTABLE = r"C:\TRNSYS18\Exe\TRNExe64.exe"
-TRNSYS_TEMPDIR = "C:\SolarShift_TempDir"
+TRNSYS_EXECUTABLE = r"C:/TRNSYS18/Exe/TRNExe64.exe"
+TRNSYS_TEMPDIR = "C:/SolarShift_TempDir"
 
 FILES_TRNSYS_INPUT = {
     "PV_Gen": "0-Input_PVGen.csv",
@@ -36,12 +31,12 @@ FILES_TRNSYS_INPUT = {
     }
 
 FILES_TRNSYS_OUTPUT = {
-    "RESULTS_DETAILED" :  "TRNSYS_Out_Detailed.dat",
+    "RESULTS_DETAILED" : "TRNSYS_Out_Detailed.dat",
     "RESULTS_TANK": "TRNSYS_Out_TankTemps.dat",
     "RESULTS_SIGNAL": "TRNSYS_Out_Signals.dat",
     }
 
-METEONORM_FOLDER = "C:\TRNSYS18\Weather\Meteonorm\Australia-Oceania"
+METEONORM_FOLDER = r"C:/TRNSYS18/Weather/Meteonorm/Australia-Oceania"
 METEONORM_FILES = {
     "Adelaide": "AU-Adelaide-946720.tm2",
     "Alice_Spring": "AU-Alice-Springs-943260.tm2",
@@ -505,7 +500,7 @@ def creating_trnsys_files(
         engine: str = 'TRNSYS',
         ) -> None:
 
-    from Profiles_utils import PROFILES_TYPES
+    from tm_solarshift.utils.profiles import PROFILES_TYPES
     layoutDir = Sim.layoutDir
     layout_WF = Sim.layout_WF
     weather_source = Sim.weather_source
@@ -572,7 +567,7 @@ def postprocessing_detailed(
             Sim.tempDir, 
             FILES_TRNSYS_OUTPUT["RESULTS_DETAILED"]
         ), 
-        sep="\s+", 
+        sep=r"\s+", 
         index_col=0
     )
     out_tank = pd.read_table(

@@ -20,20 +20,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
-import TRNSPy_utils as TRP
-import Profiles_utils as profiles
+import tm_solarshift.trnsys_utils as TRP
+import tm_solarshift.Profiles_utils as profiles
 
 MJ_to_kWh = 1000./3600.
 
 # https://www.rheem.com.au/rheem/products/Residential/Gas-Continuous-Flow/Continuous-Flow-%2812---27L%29/Rheem-12L-Gas-Continuous-Flow-Water-Heater-%3A-50%C2%B0C-preset/p/876812PF#collapse-1-2-1
 # Data from model Rheim 20
-heater_gas_power = 157. # [MJ/hr]
-heater_water_flow = 20. # [L/min]
-deltaT_rise = 25.       #[dgrC]
+heater_gas_power = 157.                       # [MJ/hr]
+heater_water_flow = 20.                       # [L/min]
+deltaT_rise = 25.                             #[dgrC]
 
-gas_heat_value = 47     #[MJ/kg_gas]
-HW_daily_cons = 200.    #[L/day]
-HW_annual_energy = 2000. #[kWh/year]
+gas_heat_value = 47                           #[MJ/kg_gas]
+HW_daily_cons = 200.                          #[L/day]
+HW_annual_energy = 2000.                      #[kWh/year]
 #Assuming pure methane
 kgCO2_to_kgCH4 = 44. / 16.
 

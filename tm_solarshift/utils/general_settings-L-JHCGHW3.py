@@ -17,25 +17,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-import TRNSPy_utils as TRP
-import Profiles_utils as profiles
+import tm_solarshift.utils.trnsys as trnsys
+import tm_solarshift.utils.profiles as profiles
 
-PROFILES_TYPES = {
-    "HWDP": ["P_HWD", "m_HWD", "Events", "m_HWD_day"],
-    "weather": ["GHI", "Temp_Amb", "Temp_Mains"],
-    "control": ["CS"],
-    "electric": ["PV_Gen", "Import_Grid", "Import_CL"],
-    "economic": ["Tariff", "Wholesale_Market", "Emission_Index", "Emission_Marginal"],
-}
-
-PROFILES_COLUMNS = [
-    item
-    for sublist in [value for key, value in PROFILES_TYPES.items()]
-    for item in sublist
-]
+PROFILES_TYPES = profiles.PROFILES_TYPES
+PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
 
 ## The main object for the simulation
-class TRNSYS_Setup(object):
+class GeneralSetup(object):
     def __init__(self, **kwargs):
         # Directories
         self.fileDir = os.path.dirname(__file__)
@@ -168,7 +157,6 @@ class TRNSYS_Setup(object):
 
 ###########################################
 
-
 class Profiles(object):
     def __init__(self, Sim):
         START, STOP, STEP, YEAR = Sim.START, Sim.STOP, Sim.STEP, Sim.YEAR
@@ -177,10 +165,9 @@ class Profiles(object):
         start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
         idx = pd.date_range(start=start_time, periods=PERIODS, freq=f"{STEP}min")
         self.df = pd.DataFrame(index=idx, columns=PROFILES_COLUMNS)
-        # self.index = idx
 
 ########################################
-Sim = TRNSYS_Setup()
-Profile = Profiles(Sim)
+Sim = GeneralSetup()
+profiles = Profiles(Sim)
 
-Sim2 = TRP.TRNSYS_Setup()
+Sim2 = trnsys.General_Setup()

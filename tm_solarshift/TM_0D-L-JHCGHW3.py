@@ -57,7 +57,6 @@ A_mantle = tank.A_mantle
 A_top = tank.A_top
 A_bot = tank.A_bot
 
-
 #Initial values
 vol_C = 0.
 vol_H = tank.vol

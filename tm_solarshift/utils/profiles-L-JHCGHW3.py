@@ -12,21 +12,12 @@ Created on Sun Oct 15 22:07:49 2023
 @author: z5158936
 """
 
-#  Libraries Imported
-import subprocess  # to run the TRNSYS simulation
-import shutil  # to duplicate the output txt file
-import time  # to measure the computation time
 import os
-import datetime
 import sys
-import glob
-import copy
-import pickle
 from typing import Optional, List, Dict, Any, Union
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
@@ -50,7 +41,6 @@ PROFILES_COLUMNS = [
         [value for key, value in PROFILES_TYPES.items()]
     for item in sublist
 ]
-
 SEASON_DEFINITION = {
     "summer": [12, 1, 2],
     "autumn": [3, 4, 5],
@@ -88,11 +78,6 @@ DATA_DIR = {
     "tariffs" : os.path.join(dataDir,"energy_plans"),
     "emissions" : os.path.join(dataDir,"emissions"),
     }
-
-
-# weatherDir = os.path.join(fileDir,"data","weather")
-# HWDPDir = 
-
 FILE_SAMPLE_HWD_DAILY = "HWD_Daily_Sample_site.csv"
 
 ########################################
