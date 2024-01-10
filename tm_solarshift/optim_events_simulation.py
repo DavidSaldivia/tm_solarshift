@@ -14,12 +14,11 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from sklearn import linear_model
 from scipy.stats import norm
-from scipy.stats import kstest
 
 from typing import Optional, List, Dict, Any
 
-import tm_solarshift.utils_trnsys as trnsys
-import tm_solarshift.utils_profiles as profiles
+import tm_solarshift.utils.trnsys as trnsys
+import tm_solarshift.utils.profiles as profiles
 
 W2kJh = 3.6
 PROFILES_TYPES = profiles.PROFILES_TYPES
@@ -31,8 +30,9 @@ def plot_histogram_end_of_day(
         xlim = (0,1),
         xlbl = None,
         ylbl = None,
-        savefig = False,
         file_name = None,
+        fldr_rslt = None,
+        savefig = False,
         ):
     fs = 16
     fig, ax = plt.subplots(figsize=(9, 6))
@@ -66,9 +66,6 @@ def main():
     #    6: Selecting days randomnly from Sydney weather file
 
     # Cases = [5,1,2,3,4]
-
-    #########################################
-    #########################################
 
     load_profiles = True
     runsim = True
@@ -233,6 +230,7 @@ def main():
             xlbl = "State of Charge (-)",
             ylbl = "Frequency (-)",
             file_name = f"Case_{case}_hist_SOC.png",
+            fldr_rslt = fldr_rslt,
             savefig = savefig
             )
         
@@ -242,6 +240,7 @@ def main():
             xlbl = "State of Charge (-)",
             ylbl = "Frequency (-)",
             file_name = f"Case_{case}_hist_TempTh.png",
+            fldr_rslt = fldr_rslt,
             savefig = savefig
             )
         
@@ -251,6 +250,7 @@ def main():
             xlbl = "Daily Hot Water Draw (kWh)",
             ylbl = "Frequency (-)",
             file_name = f"Case_{case}_hist_HWD_Energy.png",
+            fldr_rslt = fldr_rslt,
             savefig = savefig
             )  
         
@@ -260,6 +260,7 @@ def main():
             xlbl = "Daily Hot Water Draw (L/day)",
             ylbl = "Frequency (-)",
             file_name = f"Case_{case}_hist_HWD_Flow.png",
+            fldr_rslt = fldr_rslt,
             savefig = savefig
             )      
         
