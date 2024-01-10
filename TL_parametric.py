@@ -9,8 +9,8 @@ import os
 import copy
 import pandas as pd
 
-import tm_solarshift.trnsys_utils as trnsys
-import tm_solarshift.profiles_utils as profiles
+import tm_solarshift.utils_trnsys as trnsys
+import tm_solarshift.utils_profiles as profiles
 
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
