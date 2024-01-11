@@ -1,28 +1,14 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Oct 23 15:20:46 2023
-
-@author: z5158936
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Oct 15 22:07:49 2023
-
-@author: z5158936
-"""
-
 import os
 import sys
-from typing import Optional, List, Dict, Any, Union
-
 import pandas as pd
 import numpy as np
-
+from typing import Optional, List, Dict, Any, Union
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
-# import statsmodels.api as sm
-# from sklearn import linear_model
+
+
+from tm_solarshift.utils.general import SEASON_DEFINITION
+from tm_solarshift.utils.general import LOCATIONS_NEM_REGION
 
 ###############################
 ### CONSTANTS AND LISTS
@@ -35,42 +21,14 @@ PROFILES_TYPES = {
     "economic": ["Tariff", "Wholesale_Market"],
     "emissions": ["Intensity_Index","Marginal_Emission"],
 }
-
 PROFILES_COLUMNS = [
     item for sublist in 
         [value for key, value in PROFILES_TYPES.items()]
     for item in sublist
 ]
-SEASON_DEFINITION = {
-    "summer": [12, 1, 2],
-    "autumn": [3, 4, 5],
-    "winter": [6, 7, 8],
-    "spring": [9, 10, 11],
-}
-DAYOFWEEK_DEFINITION = {
-    "weekday": [0, 1, 2, 3, 4],
-    "weekend": [5, 6]
-}
-CLIMATE_ZONE_DEFINITION = {
-    1: "Hot humid summer",
-    2: "Warm humid summer",
-    3: "Hot dry summer, mild winter",
-    4: "Hot dry summer, cold winter",
-    5: "Warm summer, cool winter",
-    6: "Mild warm summer, cold winter",
-}
-LOCATIONS_NEM_REGION = {
-    "Sydney": "NSW1",
-    "Melbourne": "VIC1",
-    "Brisbane": "QLD1",
-    "Adelaide": "SA1",
-    "Canberra": "NSW1",
-    "Townsville": "QLD1",
-}
 
 fileDir = os.path.dirname(os.path.abspath(__file__))
 dataDir = os.path.join(fileDir,"data")
-
 DATA_DIR = {
     "weather" : os.path.join(dataDir,"weather"),
     "HWDP" : os.path.join(dataDir,"HWD_Profiles"),
@@ -82,9 +40,9 @@ FILE_SAMPLE_HWD_DAILY = "HWD_Daily_Sample_site.csv"
 
 ########################################
 
-def profiles_new(
+def new_profile(
     Sim: Any,
-    PROFILES_COLUMNS: List[str] = PROFILES_COLUMNS,
+    profile_columns: List[str] = PROFILES_COLUMNS,
 ) -> pd.DataFrame:
 
     START, STOP, STEP, YEAR = Sim.START, Sim.STOP, Sim.STEP, Sim.YEAR
@@ -97,12 +55,11 @@ def profiles_new(
         periods=PERIODS, 
         freq=f"{STEP}min"
     )
-    Profiles = pd.DataFrame(index=idx, columns=PROFILES_COLUMNS)
+    Profiles = pd.DataFrame(index=idx, columns=profile_columns)
 
     return Profiles
 
-
-#############################################
+########################################
 #### BASIC FUNCTIONS FOR PROFILES
 
 def profile_gaussian(df, mu1, sig1, A1, base=0):
@@ -115,7 +72,6 @@ def profile_gaussian(df, mu1, sig1, A1, base=0):
     )
 
     return series
-
 
 def profile_step(df, t1, t2, A1, A0=0):
     aux = df.index.hour + df.index.minute / 60.0
@@ -142,8 +98,6 @@ def events_basic():
     }
 
     return event1
-
-###############################
 
 def events_file(file_name=None, sheet_name=None):
 
@@ -735,8 +689,8 @@ def add_randomization_delay(
     df.loc[df_starts["start_with_rand"], "Switch_rand"] = 1
     df.loc[df_stops["stop_with_rand"], "Switch_rand"] = -1
 
-    CS_ini = df.iloc[0]["CS"]  # Initial value of Control Signal
-    return df.Switch_rand.cumsum() + CS_ini
+    output = (df.iloc[0]["CS"] + df["Switch_rand"].cumsum())
+    return output
 
 #############################################
 

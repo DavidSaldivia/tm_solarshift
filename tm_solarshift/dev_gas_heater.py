@@ -1,64 +1,67 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Dec  6 07:56:23 2023
+from typing import Dict, Optional, List, Any
 
-@author: z5158936
-"""
+from tm_solarshift.utils.general import Variable
+from tm_solarshift.utils.general import CONV
+from tm_solarshift.utils.devices import GasHeaterInstantaneous
 
-import subprocess           # to run the TRNSYS simulation
-import shutil               # to duplicate the output txt file
-import time                 # to measure the computation time
-import os
-import datetime
-import sys 
-import glob
-import copy
-import pickle
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
+def tm_state_heater_gas(
+        heater_spec: Any = GasHeaterInstantaneous(),
+        HW_daily_cons: float = 200.,
+        HW_annual_energy: float = 2000.,
+) -> dict:
 
-import tm_solarshift.trnsys_utils as TRP
-import tm_solarshift.Profiles_utils as profiles
+    MJ_TO_kWh = CONV["MJ_to_kWh"]
+    MIN_TO_SEC = CONV["min_to_s"]
 
-MJ_to_kWh = 1000./3600.
+    nom_power = heater_spec.nom_power.get_value("MJ/hr")
+    deltaT_rise = heater_spec.deltaT_rise.get_value("dgrC")
+    flow_water = heater_spec.flow_water.get_value("L/min")
 
-# https://www.rheem.com.au/rheem/products/Residential/Gas-Continuous-Flow/Continuous-Flow-%2812---27L%29/Rheem-12L-Gas-Continuous-Flow-Water-Heater-%3A-50%C2%B0C-preset/p/876812PF#collapse-1-2-1
-# Data from model Rheim 20
-heater_gas_power = 157.                       # [MJ/hr]
-heater_water_flow = 20.                       # [L/min]
-deltaT_rise = 25.                             #[dgrC]
+    #Assuming pure methane for gas
+    heat_value = heater_spec.heat_value.get_value("MJ/kg_gas")
+    kgCO2_to_kgCH4 = 44. / 16.          
 
-gas_heat_value = 47                           #[MJ/kg_gas]
-HW_daily_cons = 200.                          #[L/day]
-HW_annual_energy = 2000.                      #[kWh/year]
-#Assuming pure methane
-kgCO2_to_kgCH4 = 44. / 16.
+    cp_water = heater_spec.cp.value
+    rho_water = heater_spec.rho.value
 
-heater_gas_flow = heater_gas_power / gas_heat_value #[kg/hr]
+    #Calculations
+    flow_gas = nom_power / heat_value         #[kg/hr]
+    HW_energy = ((flow_water * MIN_TO_SEC) 
+                 * rho_water * cp_water 
+                 * deltaT_rise
+                 / 1000.
+                 )  #[MJ/hr]
 
-cp_water = 4.18 #[kJ/kgK]
-rho_water = 1. #[kg/L]
+    eta = HW_energy / nom_power #[-]
+    specific_energy = nom_power / (flow_water*60.) * MJ_TO_kWh #[kWh/L]
 
-heater_HW_energy = ((heater_water_flow*60.) 
-                    * rho_water * cp_water 
-                    * deltaT_rise
-                    / 1000.)  #[MJ/hr]
+    emissions_CO2 = ( kgCO2_to_kgCH4 
+                     / (heat_value * MJ_TO_kWh)
+                     / eta
+                    ) #[kg_CO2/kWh_thermal]
 
-heater_eta = heater_HW_energy / heater_gas_power
-heater_sp_energy = heater_gas_power / (heater_water_flow*60.) * MJ_to_kWh #[kWh/L]
+    daily_energy = specific_energy * HW_daily_cons #[kWh]
+    annual_emissions = HW_annual_energy * emissions_CO2/1000. #[tonCO2/year]
 
-gas_CO2_emissions = ( kgCO2_to_kgCH4 
-                     / (gas_heat_value * MJ_to_kWh)
-                     / heater_eta
-                     )  #[kg_CO2/kWh_thermal]
+    output = {
+        "flow_gas" : flow_gas,
+        "HW_energy" : HW_energy,
+        "eta" : eta,
+        "specific_energy" : specific_energy,
+        "emissions_CO2" : emissions_CO2,
+        "daily_energy" : daily_energy,
+        "annual_emissions" : annual_emissions,
+    }
+    return output
 
-heater_daily_energy = heater_sp_energy * HW_daily_cons #[kWh]
-heater_annual_emissions = HW_annual_energy * gas_CO2_emissions/1000. #[tonCO2/year]
 
-print(heater_eta)
-print(heater_daily_energy)
-print(gas_CO2_emissions)
-print(heater_annual_emissions)
+if __name__=="__main__":
+    
+    heater = GasHeaterInstantaneous()
+    output = tm_state_heater_gas(heater)
+
+    print(output["eta"])
+    print(output["daily_energy"])
+    print(output["emissions_CO2"])
+    print(output["annual_emissions"])

@@ -1,38 +1,30 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun 20 12:01:13 2023
-
-@author: z5158936
-"""
-
-import subprocess           # to run the TRNSYS simulation
-import shutil               # to duplicate the output txt file
-import time                 # to measure the computation time
 import os
-import datetime
 import sys 
-import glob
 
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
 
 ##############################################################
 fs=16
+list_location = ['Adelaide', 'Brisbane', 'Canberra', 'Darwin',
+                'Melbourne', 'Perth', 'Sydney', 'Townsville']
 locations_few = ['Sydney','Brisbane','Melbourne','Townsville','Adelaide']
 mm = ['o','v','s','d','P','*','H']
-HWDP_names = {1:'Mor & Eve Only',
-              2:'Mor & Eve w daytime',
-              3:'Evenly',
-              4:'Morning',
-              5:'Evening',
-              6:'late Night'}
-CL_names = {0:'GS',
-            1:'CL1',
-            2:'CL2',
-            3:'CL3',
-            4:'SS'}
+HWDP_names = {
+    1:'Mor & Eve Only',
+    2:'Mor & Eve w daytime',
+    3:'Evenly',
+    4:'Morning',
+    5:'Evening',
+    6:'late Night',
+    }
+CL_names = {
+    0:'GS', 
+    1:'CL1',
+    2:'CL2',
+    3:'CL3',
+    4:'SS'
+    }
 colors = ['red','orange','green','darkblue','dodgerblue','maroon']
 
 ##########################################
@@ -41,9 +33,12 @@ colors = ['red','orange','green','darkblue','dodgerblue','maroon']
 def plot_storage_efficiency_bars(
         results,
         savefig=False,
+        fldr_fig=__file__,
         width=0.1,
         location_legend='Sydney',
-        locations=locations_few
+        locations=locations_few,
+        list_profile_HWD = [1,2,3,4,5,6],
+        list_profile_control = [0,1,2,3,4],
         ):
 
     widths = [-2.5*width, -1.5*width, -0.5*width, 0.5*width, 1.5*width, 2.5*width]
@@ -81,7 +76,7 @@ def plot_storage_efficiency_bars(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    fldr_rslt,'0-eta_stg_'+location+'.png'
+                    fldr_fig,'0-eta_stg_'+location+'.png'
                     ),
                 bbox_inches='tight')
         plt.show()
@@ -91,9 +86,12 @@ def plot_storage_efficiency_bars(
 def plot_heater_energy_bars(
         results,
         savefig=False,
+        fldr_fig=__file__,
         width=0.1,
         location_legend='Sydney',
-        locations=locations_few
+        locations=locations_few,
+        list_profile_HWD = [1,2,3,4,5,6],
+        list_profile_control = [0,1,2,3,4],
         ):
     
     widths = [-2.5*width, -1.5*width, -0.5*width, 0.5*width, 1.5*width, 2.5*width]
@@ -159,7 +157,7 @@ def plot_heater_energy_bars(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    fldr_rslt,'0-E_Heater_'+location+'.png'
+                    fldr_fig,'0-E_Heater_'+location+'.png'
                     ),
                 bbox_inches='tight')
         plt.show()
@@ -169,9 +167,11 @@ def plot_heater_energy_bars(
 def plot_SOC_minimum_scatter(
         results,
         savefig=False,
-        width=0.1,
+        fldr_fig=__file__,
         location_legend='Sydney',
-        locations=locations_few
+        locations=locations_few,
+        list_profile_HWD = [1,2,3,4,5,6],
+        list_profile_control = [0,1,2,3,4],
         ):
     
     for location in locations:
@@ -201,7 +201,7 @@ def plot_SOC_minimum_scatter(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    fldr_rslt,'0-SOC_min_'+location+'.png'
+                    fldr_fig,'0-SOC_min_'+location+'.png'
                     ),
                 bbox_inches='tight')
             
@@ -211,7 +211,10 @@ def plot_SOC_minimum_scatter(
 ##########################################
 def plot_annual_energy_in_out(
         results,
-        savefig=False
+        savefig=False,
+        fldr_fig=__file__,
+        list_profile_HWD = [1,2,3,4,5,6],
+        list_profile_control = [0,1,2,3,4],
         ):
     fig, ax = plt.subplots(figsize=(9,6))
     j=0
@@ -236,7 +239,7 @@ def plot_annual_energy_in_out(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Annual_Energy_HeaterVsHWD.png'
+                fldr_fig,'0-Annual_Energy_HeaterVsHWD.png'
                 ),
             bbox_inches='tight')
     plt.show()
@@ -246,6 +249,9 @@ def plot_annual_energy_in_out(
 def plot_etastg_vs_SOC(
         results,
         savefig=False,
+        fldr_fig=__file__,
+        list_profile_HWD = [1,2,3,4,5,6],
+        list_profile_control = [0,1,2,3,4],
         ):
     
     fig, ax = plt.subplots(figsize=(9,6))
@@ -282,7 +288,7 @@ def plot_etastg_vs_SOC(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Eta_stg_Vs_SOC_min.png'
+                fldr_fig,'0-Eta_stg_Vs_SOC_min.png'
                 ),
             bbox_inches='tight')
     plt.show()
@@ -292,7 +298,12 @@ def plot_etastg_vs_SOC(
 def plot_annual_energy_Tmains(
         results,
         savefig=False,
+        fldr_fig=__file__,
+        list_profile_HWD = [1,2,3,4,5,6],
+        list_profile_control = [0,1,2,3,4],
+        locations=list_location,
         ):
+    
     fig, ax = plt.subplots(figsize=(9,6))
     j=0
     for location in list_location:
@@ -320,7 +331,7 @@ def plot_annual_energy_Tmains(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Annual_Energy_eta_Tmains.png'
+                fldr_fig,'0-Annual_Energy_eta_Tmains.png'
                 ),
             bbox_inches='tight')
     plt.show()
@@ -330,7 +341,10 @@ def plot_annual_energy_Tmains(
 def plot_total_emissions_one_location(
         results,
         savefig=False,
+        fldr_fig=__file__,
         location='Sydney',
+        list_profile_HWD = [1,2,3,4,5,6],
+        list_profile_control = [0,1,2,3,4],
         width=0.1
         ):
     
@@ -363,7 +377,7 @@ def plot_total_emissions_one_location(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Emissions_'+location+'.png'
+                fldr_fig,'0-Emissions_'+location+'.png'
                 ),
             bbox_inches='tight')
     plt.show()
@@ -373,7 +387,9 @@ def plot_total_emissions_one_location(
 def plot_total_emissions_diff_locations(
         results,
         savefig=False,
+        fldr_fig=__file__,
         list_location=['Adelaide','Brisbane','Melbourne','Sydney'],
+        list_profile_control = [0,1,2,3,4],
         profile_HWD = 3,
         width=0.15
         ):
@@ -408,41 +424,65 @@ def plot_total_emissions_diff_locations(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Emissions_all.png'
+                fldr_fig,'0-Emissions_all.png'
                 ),
             bbox_inches='tight')
     plt.show()
 
 ########################################
 #### GENERATING PLOTS
+def main():
+    list_profile_HWD = [1,2,3,4,5,6]
+    list_profile_control = [0,1,2,3,4]
+    list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
 
+    fldr_rslt = 'Parametric_HWDP_CL_Resistive'
+    file_rslt = '0-Parametric_HWDP_CL_Resistive.csv'
 
-#Defining conditions for plots
-list_profile_HWD = [1,2,3,4,5,6]
-list_profile_control = [0,1,2,3,4]
-list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
+    results = pd.read_csv(
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "results",
+            fldr_rslt,
+            file_rslt,
+            ),
+        index_col=0
+        )
 
-fldr_rslt = 'Parametric_HWDP_CL_Resistive'
-file_rslts = '0-Parametric_HWDP_CL_Resistive.csv'
+    savefig = True
+    fldr_fig = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "results",
+            fldr_rslt,
+            )
 
-results = pd.read_csv(
-    os.path.join(
-        fldr_rslt,file_rslts),
-    index_col=0
-    )
+    plot_storage_efficiency_bars(
+        results, savefig=savefig, fldr_fig=fldr_fig
+        )
+    plot_heater_energy_bars(
+        results, savefig=savefig, fldr_fig=fldr_fig
+        )
+    plot_SOC_minimum_scatter(
+        results, savefig=savefig, fldr_fig=fldr_fig
+        )
+    plot_annual_energy_in_out(
+        results, savefig=savefig, fldr_fig=fldr_fig
+        )
+    plot_etastg_vs_SOC(
+        results, savefig=savefig, fldr_fig=fldr_fig
+        )
+    plot_annual_energy_Tmains(
+        results, savefig=savefig, fldr_fig=fldr_fig
+        )
+    plot_total_emissions_one_location(
+        results, savefig=savefig, fldr_fig=fldr_fig
+        )
+    plot_total_emissions_diff_locations(
+        results, savefig=savefig, fldr_fig=fldr_fig
+        )
 
-savefig = True
-
-plot_storage_efficiency_bars(results, savefig=savefig)
-plot_heater_energy_bars(results, savefig=savefig)
-plot_SOC_minimum_scatter(results, savefig=savefig)
-plot_annual_energy_in_out(results, savefig=savefig)
-plot_etastg_vs_SOC(results, savefig=savefig)
-plot_annual_energy_Tmains(results, savefig=savefig)
-plot_total_emissions_one_location(results, savefig=savefig)
-plot_total_emissions_diff_locations(results, savefig=savefig)
-
-sys.exit()
+if __name__=="__main__":
+    main()
 
 
 

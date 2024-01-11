@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Jun 26 16:17:04 2023
-
-@author: z5158936
-
-"""
-
 import subprocess
 import shutil  # to duplicate the output txt file
 import time  # to measure the computation time
@@ -123,7 +115,7 @@ METEONORM_FILES = {
 #### DEFINING THE PROBLEM AND SIMULATION
 
 ## The main object for the simulation
-class General_Setup(object):
+class GeneralSetup(object):
     def __init__(self, **kwargs):
         # Directories
         self.fileDir = os.path.dirname(__file__)
@@ -259,6 +251,14 @@ class General_Setup(object):
 
     def parameters(self):
         return self.__dict__.keys()
+
+class TrnsysSetup():
+    def __init__(self, **kwargs):
+        # Directories
+        self.fileDir = os.path.dirname(__file__)
+        self.layoutDir = "TRNSYS_layouts"
+        self.tempDir = None
+
 
 #######################################################
 #### EDITING DCK FILE FUNCTIONS
@@ -497,7 +497,6 @@ def editing_dck_file(Sim):
 def creating_trnsys_files(
         Sim,
         Profiles: pd.DataFrame,
-        engine: str = 'TRNSYS',
         ) -> None:
 
     from tm_solarshift.utils.profiles import PROFILES_TYPES
@@ -538,11 +537,10 @@ def creating_trnsys_files(
             os.path.join(tempDir, file_HP_data)
         )
 
-    #Adding the information for weather if it is TRNSYS native (W15)
-    if layout_WF == "W15" and weather_source == None:
-        weather_source = "Meteonorm"
+    if layout_WF == "W15":
+        if weather_source == None:
+            weather_source = "Meteonorm"
 
-    if Sim.layout_WF == "W15":
         if weather_source == "Meteonorm":
             Sim.weather_path = os.path.join(
                 METEONORM_FOLDER,
@@ -575,7 +573,7 @@ def postprocessing_detailed(
             tempDir, 
             FILES_TRNSYS_OUTPUT["RESULTS_TANK"]
         ), 
-        sep="\s+", 
+        sep=r"\s+", 
         index_col=0
     )
     out_sig = pd.read_table(
@@ -583,7 +581,7 @@ def postprocessing_detailed(
             tempDir, 
             FILES_TRNSYS_OUTPUT["RESULTS_SIGNAL"]
         ), 
-        sep="\s+", 
+        sep=r"\s+", 
         index_col=0
     )
     out_all = out_gen.join(out_tank, how="left")

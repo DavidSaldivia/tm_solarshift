@@ -25,6 +25,13 @@ PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
 fileDir = os.path.dirname(os.path.abspath(__file__))
 
+WEATHER_TS_TYPES = [
+    'day_constant', 
+    'meteonorm_random', 
+    'meteonorm_month', 
+    'meteonorm_date'
+    ]
+
 def plot_histogram_end_of_day(
         values,
         xlim = (0,1),
@@ -78,13 +85,6 @@ def main():
     profile_control = 10
     random_control = False
 
-    weather_types =[
-        'day_constant', 
-        'meteonorm_random', 
-        'meteonorm_month', 
-        'meteonorm_date'
-        ]
-
     #Which HWDP will be used 
     HWDP_dists = [1, 2, 3, 4, 5, 6, None]
     HWDP_dist = 2
@@ -98,7 +98,7 @@ def main():
     data = []
     for case in CASES:
         
-        weather_type = weather_types[case]
+        weather_type = WEATHER_TS_TYPES[case]
         Sim = trnsys.General_Setup(
             STOP = int(24 * DAYS),
             STEP = 3,

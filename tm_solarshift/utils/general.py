@@ -1,35 +1,87 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Dec  2 00:42:44 2023
-
-@author: z5158936
-"""
-
-import shutil  # to duplicate the output txt file
-import time  # to measure the computation time
 import os
-import datetime
 import sys
 from typing import Optional, List, Dict, Any, Tuple
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+
+fileDir = os.path.dirname(os.path.abspath(__file__))
+dataDir = os.path.join(
+    os.path.dirname(os.path.dirname(fileDir)),
+    "data",
+    )
+DATA_DIR = {
+    "weather" : os.path.join(dataDir,"weather"),
+    "HWDP" : os.path.join(dataDir,"HWD_Profiles"),
+    "SA_processed" : os.path.join(dataDir,"SA_processed"),
+    "tariffs" : os.path.join(dataDir,"energy_plans"),
+    "emissions" : os.path.join(dataDir,"emissions"),
+    }
+SEASON_DEFINITION = {
+    "summer": [12, 1, 2],
+    "autumn": [3, 4, 5],
+    "winter": [6, 7, 8],
+    "spring": [9, 10, 11],
+}
+DAYOFWEEK_DEFINITION = {
+    "weekday": [0, 1, 2, 3, 4],
+    "weekend": [5, 6]
+}
+CLIMATE_ZONE_DEFINITION = {
+    1: "Hot humid summer",
+    2: "Warm humid summer",
+    3: "Hot dry summer, mild winter",
+    4: "Hot dry summer, cold winter",
+    5: "Warm summer, cool winter",
+    6: "Mild warm summer, cold winter",
+}
+LOCATIONS_NEM_REGION = {
+    "Sydney": "NSW1",
+    "Melbourne": "VIC1",
+    "Brisbane": "QLD1",
+    "Adelaide": "SA1",
+    "Canberra": "NSW1",
+    "Townsville": "QLD1",
+}
+CONV = {
+    "MJ_to_kWh": 1000/3600.,
+    "W_to_kJh": 3.6,
+    "min_to_s": 60.,
+}
+
+class Variable():
+    def __init__(self, value: float, unit: str = None, type="scalar"):
+        self.value = value
+        self.unit = unit
+        self.type = type
+
+    def get_value(self, unit=None, check="strict"):
+        value = self.value
+        if self.unit != unit: #Check units
+            raise ValueError(
+                f"The variable used have different units: {unit} and {self.unit}"
+                )
+        return value
+
+######################################################
+######################################################
+# GeneralSetup
+# START, STOP, STEP, YEAR = Sim.START, Sim.STOP, Sim.STEP, Sim.YEAR
+
+# Profiles
+# HWD_avg = Sim.HWD_avg 
+# HWD_std = Sim.HWD_std 
+# HWD_min = Sim.HWD_min 
+# HWD_max = Sim.HWD_max 
+# HWD_daily_dist = Sim.HWD_daily_dist
+######################################################
+######################################################
 
 
-import tm_solarshift.utils.trnsys as trnsys
-import tm_solarshift.utils.profiles as profiles
-
-PROFILES_TYPES = profiles.PROFILES_TYPES
-PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
-
-## The main object for the simulation
+## The main object for the simulations and models
 class GeneralSetup(object):
     def __init__(self, **kwargs):
-        # Directories
-        self.fileDir = os.path.dirname(__file__)
-        self.layoutDir = "TRNSYS_layouts"
-        self.tempDir = None
+
 
         # General Simulation Parameters
         self.START = 0  # [hr]
@@ -40,6 +92,10 @@ class GeneralSetup(object):
         self.DNSP = "Ausgrid"
         self.tariff_type = "flat"
          
+        # Directories
+        self.fileDir = os.path.dirname(__file__)
+        self.layoutDir = "TRNSYS_layouts"
+        self.tempDir = None
         # Trnsys Layout configuration
         self.layout_v = 0
         self.layout_DEWH = "RS"  # See above for the meaning of these options
@@ -72,6 +128,7 @@ class GeneralSetup(object):
         self.HWD_daily_dist = (
             None  # [str] Type of variability in daily consumption. None for nothing
         )
+
         # Main components nominal capacities
         self.PV_NomPow = 4000.0  # [W]
         self.Heater_NomCap = 3600.0  # [W]
@@ -164,10 +221,15 @@ class Profiles(object):
         PERIODS = int(np.ceil((STOP - START) / STEP_h))
         start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
         idx = pd.date_range(start=start_time, periods=PERIODS, freq=f"{STEP}min")
+        
+        from tm_solarshift.utils.profiles import PROFILES_COLUMNS
         self.df = pd.DataFrame(index=idx, columns=PROFILES_COLUMNS)
 
 ########################################
-Sim = GeneralSetup()
-profiles = Profiles(Sim)
 
-Sim2 = trnsys.General_Setup()
+if __name__ == '__main__':
+    Sim = GeneralSetup()
+    profiles = Profiles(Sim)
+
+    import tm_solarshift.utils.trnsys as trnsys
+    Sim2 = trnsys.GeneralSetup()
