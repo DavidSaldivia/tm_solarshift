@@ -9,6 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Optional, List, Dict, Any, Tuple
 
+from tm_solarshift.utils.general import Variable
+from tm_solarshift.utils.general import DATA_DIR
+
 W2kJh = 3.6
 TRNSYS_EXECUTABLE = r"C:/TRNSYS18/Exe/TRNExe64.exe"
 TRNSYS_TEMPDIR = "C:/SolarShift_TempDir"
@@ -19,7 +22,7 @@ FILES_TRNSYS_INPUT = {
     "m_HWD": "0-Input_HWD.csv",
     "CS": "0-Input_Control_Signal.csv",
     "weather": "0-Input_Weather.csv",
-    "HP": "0-Reclaim_HP_Data.dat"
+    "HP": "0-HP_Data.dat"
     }
 
 FILES_TRNSYS_OUTPUT = {
@@ -130,21 +133,14 @@ class GeneralSetup(object):
         self.location = "Sydney"
         self.DNSP = "Ausgrid"
         self.tariff_type = "flat"
-         
-        # Trnsys Layout configuration
-        self.layout_v = 0
-        self.layout_DEWH = "RS"  # See above for the meaning of these options
-        self.layout_PV = "PVF"
-        self.layout_TC = "MX"
-        self.layout_WF = "W9a"
-        self.weather_source = None
+        self.DEWH = "resistive_single"
         
-        # Environmental parameters
-        # (These default values can change if a weather file is defined)
-        self.Temp_Amb = 20.0  # [C] Ambient Temperature
-        self.Temp_Mains = 20.0  # [C] Mains water temperature
-        self.Temp_Consump = 45.0  # [C] Same as TankTemp_Low
-        self.GHI_avg = 1000.0  # [W/m2] Global Horizontal Irradiation
+        # # Environmental parameters
+        # # (These default values can change if a weather file is defined)
+        # self.Temp_Amb = 20.0  # [C] Ambient Temperature
+        # self.Temp_Mains = 20.0  # [C] Mains water temperature
+        # self.Temp_Consump = 45.0  # [C] Same as TankTemp_Low
+        # self.GHI_avg = 1000.0  # [W/m2] Global Horizontal Irradiation
 
         # Profile/Behavioural Parameters
         self.profile_PV = 0  # See above for the meaning of these options
@@ -155,45 +151,24 @@ class GeneralSetup(object):
 
         # HWD statistics
         self.HWD_avg = 200.0  # [L/d]
-        self.HWD_std = (
-            self.HWD_avg / 3.0
-        )  # [L/d] (Measure for daily variability. If 0, no variability)
+        self.HWD_std = self.HWD_avg / 3.0
+        # [L/d] (Measure for daily variability. If 0, no variability)
         self.HWD_min = 0.0  # [L/d] Minimum HWD. Default 0
         self.HWD_max = 2 * self.HWD_avg  # [L/d] Maximum HWD. Default 2x HWD_avg
         self.HWD_daily_dist = (
             None  # [str] Type of variability in daily consumption. None for nothing
         )
-        self.HWD_daily_source = 'sample',
-        # Main components nominal capacities
-        self.PV_NomPow = 4000.0  # [W]
-        self.Heater_NomCap = 3600.0  # [W]
-        self.Heater_F_eta = (
-            1.0  # [-] Efficiency factor. 1 for resistive; 3-4 for heat pumps
-        )
-        # Tank parameters
-        self.Tank_nodes = (
-            10  # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
-        )
-        self.Tank_Vol = 0.315  # [m3]
-        self.Tank_Height = 1.3  # [m]
-        self.Tank_TempHigh = 65.0  # [C] Maximum temperature in the tank
-        self.Tank_TempDeadband = 10.0  # [C] Dead band for max temp control
-        self.Tank_TempLow = 45.0  # [C] Minimum temperature in the tank
-        self.Tank_U = 0.9  # [W/m2K] Overall heat loss coefficient
-        self.Tank_rho = 1000  # [kg/m3] density (water)
-        self.Tank_cp = 4180  # [J/kg-K] specific heat (water)
-        self.Tank_k = 0.6  # [W/m-K] thermal conductivity (water)
-        self.Tank_Temps_Ini = 3  # [-] Initial temperature of the tank. Check Editing_dck_tank() below for the options
+        self.HWD_daily_source = 'sample'
 
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def derived_parameters(self):
         self.DAYS = int(self.STOP / 24)
         self.STEP_h = self.STEP / 60.0
         self.PERIODS = int(np.ceil((self.STOP - self.START) / self.STEP_h))
         self.DAYS_i = int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
 
-        # Some derived parameters from defined values
         self.Tank_ThCap = (
             self.Tank_Vol
             * (self.Tank_rho * self.Tank_cp)
@@ -252,13 +227,85 @@ class GeneralSetup(object):
     def parameters(self):
         return self.__dict__.keys()
 
+
 class TrnsysSetup():
-    def __init__(self, **kwargs):
+    def __init__(self, Sim, **kwargs):
         # Directories
-        self.fileDir = os.path.dirname(__file__)
-        self.layoutDir = "TRNSYS_layouts"
         self.tempDir = None
 
+        self.START= Sim.START   # [hr]
+        self.STOP = Sim.STOP    # [hr]
+        self.STEP = Sim.STEP    # [min]
+        self.location = Sim.location
+
+        # Trnsys Layout configuration
+        if Sim.DEWH == "resistive_single":
+            layout_DEWH = "RS"
+        if Sim.DEWH == "heat_pump":
+            layout_DEWH = "HPF"
+
+        self.layout_DEWH = layout_DEWH
+        
+        self.layout_v = 0
+        self.layout_PV = "PVF"
+        self.layout_TC = "MX"
+        self.layout_WF = "W9a"
+        self.weather_source = None
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class SolarSystem():
+    def __init__(self, **kwargs):
+        self.nom_power = Variable(4000.0,"W")
+
+
+class Water():
+    def __init__(self, **kwargs):
+        self.rho = Variable(1000, "kg/m3")  # density (water)
+        self.cp = Variable(4180, "J/kg-K")  # specific heat (water)
+        self.k = Variable(0.6, "W/m-K")  # thermal conductivity (water)
+
+
+class ResistiveSingle():
+    def __init__(self, **kwargs):
+        self.nom_power = Variable(3600.0, "W")
+        self.eta = Variable(1.0, "-")
+        
+        self.vol = Variable(0.315,"m3")
+        self.height = Variable(1.3, "m")
+        self.U = Variable(0.9, "W/m2-K")
+
+        self.temp_max = Variable(65.0, "degC")  #Maximum temperature in the tank
+        self.temp_deadband = Variable(10.0,"degC") # Dead band for max temp control
+        self.temp_min = Variable(45.0,"degC")  # Minimum temperature in the tank
+        
+        self.fluid = Water()
+        
+        self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
+        self.temps_ini = 3  # [-] Initial temperature of the tank. Check Editing_dck_tank() below for the options
+
+
+class HeatPump():
+    def __init__(self, **kwargs):
+        self.nom_power_th = Variable(5240.0, "W")
+        self.nom_power_el = Variable(870.0, "W")
+        self.eta = Variable(6.02, "-")
+        self.nom_tamb = Variable(32.6, "degC")
+        self.nom_tw = Variable(21.1, "degC")
+
+        self.vol = Variable(0.315,"m3")
+        self.height = Variable(1.3, "m")
+        self.U = Variable(0.9, "W/m2-K")
+
+        self.temp_max = Variable(63.0, "degC")  #Maximum temperature in the tank
+        self.temp_min = Variable(45.0,"degC")  # Minimum temperature in the tank
+        self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
+        self.fluid = Water()
+        
+        self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
+        self.temps_ini = 3  # [-] Initial temperature of the tank. Check Editing_dck_tank() below for the options
 
 #######################################################
 #### EDITING DCK FILE FUNCTIONS
@@ -451,8 +498,6 @@ def editing_dck_file(Sim):
     layout_TC = Sim.layout_TC
     layout_WF = Sim.layout_WF
     layout_v = Sim.layout_v
-    fileDir = Sim.fileDir
-    layoutDir = Sim.layoutDir
     tempDir = Sim.tempDir
 
     if layout_v == 0:
@@ -463,9 +508,7 @@ def editing_dck_file(Sim):
         )
 
     # The original .dck file. It is in layoutDir
-    dck_path = os.path.join(fileDir, layoutDir, file_trnsys)
-    # The edited .dck file. It is in tempDir
-    Sim.trnsys_dck_path = os.path.join(tempDir, file_trnsys)
+    dck_path = os.path.join(DATA_DIR["layouts"], file_trnsys)
 
     # Loading the original TRNSYS (.dck) file
     with open(dck_path, "r") as file_in:
@@ -481,14 +524,11 @@ def editing_dck_file(Sim):
     dck_editing = editing_dck_tank(Sim, dck_editing)
 
     # Saving the edits into a new .dck file that will be read
-    with open(Sim.trnsys_dck_path, "w") as dckfile_out:
+    trnsys_dck_path = os.path.join(tempDir, file_trnsys)
+    with open(trnsys_dck_path, "w") as dckfile_out:
         for line in dck_editing:
             dckfile_out.write(f"{line}\n")
-
     return
-
-
-################################################
 
 ########################################################
 #### SETTING AND RUNNING SIMULATION
@@ -500,9 +540,9 @@ def creating_trnsys_files(
         ) -> None:
 
     from tm_solarshift.utils.profiles import PROFILES_TYPES
-    layoutDir = Sim.layoutDir
     layout_WF = Sim.layout_WF
     weather_source = Sim.weather_source
+    location = Sim.location
     
     # Creating temporary folder
     # This is done to assign a new temporal folder where the simulation will be run.
@@ -522,7 +562,7 @@ def creating_trnsys_files(
     lbls = ["PV_Gen","m_HWD","CS","Elec_Cons"]
     for lbl in lbls:
         Profiles[lbl].to_csv(
-            os.path.join(tempDir,  FILES_TRNSYS_INPUT[lbl]), index=False
+            os.path.join(tempDir, FILES_TRNSYS_INPUT[lbl]), index=False
         )
         
     Profiles[PROFILES_TYPES['weather']].to_csv(
@@ -533,7 +573,7 @@ def creating_trnsys_files(
     if Sim.layout_DEWH == "HPF":
         file_HP_data = FILES_TRNSYS_INPUT["HP"]
         shutil.copyfile(
-            os.path.join(layoutDir, file_HP_data),
+            os.path.join(DATA_DIR["samples"], file_HP_data),
             os.path.join(tempDir, file_HP_data)
         )
 
@@ -544,7 +584,7 @@ def creating_trnsys_files(
         if weather_source == "Meteonorm":
             Sim.weather_path = os.path.join(
                 METEONORM_FOLDER,
-                METEONORM_FILES[Sim.location]
+                METEONORM_FILES[location]
             )
 
     return
@@ -779,7 +819,7 @@ def postprocessing_events_simulation(
 ############################################
 
 def thermal_simulation_run(
-        Sim: Any,
+        General: Any,
         Profiles: pd.DataFrame,
         verbose: bool = False,
         engine: str = 'TRNSYS',
@@ -788,6 +828,8 @@ def thermal_simulation_run(
 
     if engine == 'TRNSYS':
         
+        Sim = TrnsysSetup(General)
+
         stime = time.time()
         if verbose:
             print("RUNNING TRNSYS SIMULATION")
@@ -796,11 +838,11 @@ def thermal_simulation_run(
         
         if verbose:
             print("Creating the trnsys source code (dck file)")
-        editing_dck_file(Sim)
+        trnsys_dck_path = editing_dck_file(Sim)
         
         if verbose:
             print("Calling TRNSYS executable")
-        subprocess.run([TRNSYS_EXECUTABLE, Sim.trnsys_dck_path, "/h"])
+        subprocess.run([TRNSYS_EXECUTABLE, trnsys_dck_path, "/h"])
         
         if verbose:
             print("TRNSYS simulation finished. Starting postprocessing.")

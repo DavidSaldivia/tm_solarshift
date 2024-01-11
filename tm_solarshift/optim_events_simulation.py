@@ -19,7 +19,7 @@ from typing import Optional, List, Dict, Any
 
 import tm_solarshift.utils.trnsys as trnsys
 import tm_solarshift.utils.profiles as profiles
-
+from tm_solarshift.utils.general import DATA_DIR
 W2kJh = 3.6
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
@@ -99,7 +99,7 @@ def main():
     for case in CASES:
         
         weather_type = WEATHER_TS_TYPES[case]
-        Sim = trnsys.General_Setup(
+        Sim = trnsys.GeneralSetup(
             STOP = int(24 * DAYS),
             STEP = 3,
             YEAR = 2022,
@@ -119,13 +119,16 @@ def main():
         s_time = time.time()
         
         # CREATING/LOADING PROFILES
-        Profiles = profiles.profiles_new(Sim)
+        Profiles = profiles.new_profile(Sim)
         
         #Hot water draw profiles
         HWD_daily_dist = profiles.HWD_daily_distribution(Sim, Profiles)
         if HWDG_method == 'events':
-            event_probs = profiles.events_file(file_name="data/HWD_events.xlsx", 
-                                            sheet_name="Custom")
+            event_probs = profiles.events_file(
+                file_name = os.path.join(
+                    DATA_DIR["samples"], "HWD_events.xlsx",
+                    ),
+                    sheet_name="Custom")
         else:
             event_probs = None
         Profiles = profiles.HWDP_generator(
@@ -152,8 +155,8 @@ def main():
                 (subset_random, subset_value) = ('date', pd.Timestamp("2022/02/07"))
                 
             file_weather = os.path.join(
-                Sim.fileDir,
-                "data\\weather\\meteonorm_processed",
+                DATA_DIR["weather"],
+                "meteonorm_processed",
                 f"meteonorm_{Sim.location}.csv",
             )
             Profiles = profiles.load_weather_from_file(

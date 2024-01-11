@@ -9,6 +9,7 @@ from scipy.stats import truncnorm
 
 from tm_solarshift.utils.general import SEASON_DEFINITION
 from tm_solarshift.utils.general import LOCATIONS_NEM_REGION
+from tm_solarshift.utils.general import DATA_DIR
 
 ###############################
 ### CONSTANTS AND LISTS
@@ -27,15 +28,6 @@ PROFILES_COLUMNS = [
     for item in sublist
 ]
 
-fileDir = os.path.dirname(os.path.abspath(__file__))
-dataDir = os.path.join(fileDir,"data")
-DATA_DIR = {
-    "weather" : os.path.join(dataDir,"weather"),
-    "HWDP" : os.path.join(dataDir,"HWD_Profiles"),
-    "SA_processed" : os.path.join(dataDir,"SA_processed"),
-    "tariffs" : os.path.join(dataDir,"energy_plans"),
-    "emissions" : os.path.join(dataDir,"emissions"),
-    }
 FILE_SAMPLE_HWD_DAILY = "HWD_Daily_Sample_site.csv"
 
 ########################################
@@ -170,13 +162,14 @@ def HWD_daily_distribution(
     
     elif HWD_daily_dist == "sample":
         sample = pd.read_csv(
-            os.path.join(fileDir, "data", FILE_SAMPLE_HWD_DAILY)
+            os.path.join(DATA_DIR["samples"], FILE_SAMPLE_HWD_DAILY)
             )['m_HWD_day']
         sample = sample[sample>0].to_list()
         m_HWD_day = np.random.choice(sample, size=DAYS)
         
     list_dates = pd.to_datetime(np.unique(Profiles.index.date))
     HWD_daily = pd.DataFrame(m_HWD_day, index=list_dates, columns=["HWD_day"])
+
     return HWD_daily
 
 

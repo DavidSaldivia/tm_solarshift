@@ -16,6 +16,8 @@ DATA_DIR = {
     "SA_processed" : os.path.join(dataDir,"SA_processed"),
     "tariffs" : os.path.join(dataDir,"energy_plans"),
     "emissions" : os.path.join(dataDir,"emissions"),
+    "samples" : os.path.join(dataDir,"samples"),
+    "layouts" : os.path.join(dataDir,"trnsys_layouts"),
     }
 SEASON_DEFINITION = {
     "summer": [12, 1, 2],
@@ -81,7 +83,6 @@ class Variable():
 ## The main object for the simulations and models
 class GeneralSetup(object):
     def __init__(self, **kwargs):
-
 
         # General Simulation Parameters
         self.START = 0  # [hr]
@@ -214,7 +215,7 @@ class GeneralSetup(object):
 
 ###########################################
 
-class Profiles(object):
+class Profiles():
     def __init__(self, Sim):
         START, STOP, STEP, YEAR = Sim.START, Sim.STOP, Sim.STEP, Sim.YEAR
         STEP_h = STEP / 60.0
