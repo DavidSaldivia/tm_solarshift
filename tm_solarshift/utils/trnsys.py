@@ -350,19 +350,19 @@ def creating_trnsys_files(
     layout_DEWH = Sim.layout_DEWH
     weather_source = Sim.weather_source
     location = Sim.location
+    tempDir = Sim.tempDir
     
     # Creating temporary folder
     # This is done to assign a new temporal folder where the simulation will be run.
-    temp_i = 1
-    while True:
-        tempDir = os.path.join(TRNSYS_TEMPDIR, f"temp{temp_i}")
-        if not os.path.isdir(tempDir):
-            os.makedirs(tempDir)
-            break
-        else:
-            temp_i += 1
-
-    Sim.tempDir = tempDir
+    # temp_i = 1
+    # while True:
+    #     tempDir = os.path.join(TRNSYS_TEMPDIR, f"temp{temp_i}")
+    #     if not os.path.isdir(tempDir):
+    #         os.makedirs(tempDir)
+    #         break
+    #     else:
+    #         temp_i += 1
+    # Sim.tempDir = tempDir
     
     # Creating files from Profiles
     #Saving Files
@@ -635,13 +635,16 @@ def thermal_simulation_run(
         keep_tempDir: bool = False,
         ):
 
-    if engine == 'TRNSYS':
-        
+    if verbose:
+        print("RUNNING TRNSYS SIMULATION")
+    from tempfile import TemporaryDirectory
+    with TemporaryDirectory(dir=TRNSYS_TEMPDIR) as tmpdir:
+    # if engine == 'TRNSYS':
         Sim = TrnsysSetup(general_setup)
+        Sim.tempDir = tmpdir
 
         stime = time.time()
         if verbose:
-            print("RUNNING TRNSYS SIMULATION")
             print("Creating the temporary folder with files")
         creating_trnsys_files(Sim, timeseries)
         
@@ -657,13 +660,13 @@ def thermal_simulation_run(
             print("TRNSYS simulation finished. Starting postprocessing.")
         out_all = postprocessing_detailed(Sim, timeseries)
         
-        if keep_tempDir:
-            if verbose:
-                print(f"End of simulation. The temporary folder {Sim.tempDir} was not deleted.")
-        else:
-            shutil.rmtree(Sim.tempDir)
-            if verbose:
-                print("End of simulation. The temporary folder is deleted.")
+        # if keep_tempDir:
+        #     if verbose:
+        #         print(f"End of simulation. The temporary folder {Sim.tempDir} was not deleted.")
+        # else:
+        #     shutil.rmtree(Sim.tempDir)
+        #     if verbose:
+        #         print("End of simulation. The temporary folder is deleted.")
             
         elapsed_time = time.time()-stime
         if verbose:
@@ -671,9 +674,8 @@ def thermal_simulation_run(
     
         return out_all
     
-    else:
-        print("Engine not valid. Thermal simulation was not executed.")
-        return None
+    print("Thermal simulation was not executed properly.")
+    return None
     
     
 ############################################
