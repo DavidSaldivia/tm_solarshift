@@ -31,6 +31,38 @@ PROFILES_COLUMNS = [
 FILE_SAMPLE_HWD_DAILY = "HWD_Daily_Sample_site.csv"
 
 ########################################
+# DEFINITION OF PROFILES
+# In each case 0 means not included (profile will be fill with 0 or 1 depending on the case)
+
+# profile_PV
+# Profile for the PV generation source
+#       0: No PV included (generation = 0 all the time)
+#       1: Gaussian shape with peak = PV_NomPow
+
+# profile_Elec
+# Profile for the electricity load (non-DEHW)
+#       0: No Electricity load included (load = 0 all the time)
+
+# profile_HWD
+# Profile for the HWD profile
+#       0: No water draw profile (HWD = 0 all the time)
+#       1: Morning and evening only
+#       2: Morning and evening with day time
+#       3: Evenly distributed
+#       4: Morning
+#       5: Evening
+#       6: Late night
+#       7: Step Profile
+
+# profile_control
+# Profile for the control strategy
+#   -1: General supply (24hrs)
+#   0: No load (to check thermal losses)
+#   1: Control load 1 (10pm-7am)
+#   2: Control load 2 (at all time, except peak period: 4pm-8pm)
+#   3: Ausgrid's Control load 3 (new solar soak) (roughly 10pm-7pm + 9am-3pm)
+#   4: Only solar soak (9am-3pm)
+#   5: Specific Control strategy (defined by file file_cs)
 
 def new_profile(
     Sim: Any,
@@ -1070,7 +1102,6 @@ def load_emission_index_year(
         columns: List[str] = PROFILES_TYPES["emissions"],
         ) -> pd.DataFrame:
 
-    
     STEP = Profiles.index.freq.n
     file_emissions = os.path.join(
         DATA_DIR["emissions"],

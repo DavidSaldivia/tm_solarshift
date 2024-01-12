@@ -1,16 +1,15 @@
 import subprocess
-import shutil  # to duplicate the output txt file
-import time  # to measure the computation time
+import shutil
+import time
 import os
-import sys
-import itertools
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Optional, List, Dict, Any, Tuple
 
-from tm_solarshift.utils.general import Variable
+from tm_solarshift.utils.general import GeneralSetup
 from tm_solarshift.utils.general import DATA_DIR
+from tm_solarshift.utils.devices import (ResistiveSingle, HeatPump)
 
 W2kJh = 3.6
 TRNSYS_EXECUTABLE = r"C:/TRNSYS18/Exe/TRNExe64.exe"
@@ -79,104 +78,8 @@ METEONORM_FILES = {
 # If set to -1, then the latest will be used.
 # If layour_verson>latest available version, then the latest is used.
 
-#######################################
-# DEFINITION OF PROFILES
-# In each case 0 means not included (profile will be fill with 0 or 1 depending on the case)
-
-# profile_PV
-# Profile for the PV generation source
-#       0: No PV included (generation = 0 all the time)
-#       1: Gaussian shape with peak = PV_NomPow
-
-# profile_Elec
-# Profile for the electricity load (non-DEHW)
-#       0: No Electricity load included (load = 0 all the time)
-
-# profile_HWD
-# Profile for the HWD profile
-#       0: No water draw profile (HWD = 0 all the time)
-#       1: Morning and evening only
-#       2: Morning and evening with day time
-#       3: Evenly distributed
-#       4: Morning
-#       5: Evening
-#       6: Late night
-#       7: Step Profile
-
-# profile_control
-# Profile for the control strategy
-#   -1: General supply (24hrs)
-#   0: No load (to check thermal losses)
-#   1: Control load 1 (10pm-7am)
-#   2: Control load 2 (at all time, except peak period: 4pm-8pm)
-#   3: Ausgrid's Control load 3 (new solar soak) (roughly 10pm-7pm + 9am-3pm)
-#   4: Only solar soak (9am-3pm)
-#   5: Specific Control strategy (defined by file file_cs)
-
-
 ########################################
-#### DEFINING THE PROBLEM AND SIMULATION
-
-## The main object for the simulation
-class GeneralSetup(object):
-    def __init__(self, **kwargs):
-        # Directories
-        self.fileDir = os.path.dirname(__file__)
-        self.tempDir = None
-
-        # General Simulation Parameters
-        self.START = 0  # [hr]
-        self.STOP = 8760  # [hr]
-        self.STEP = 3  # [min]
-        self.YEAR = 2022  # [-]
-        self.location = "Sydney"
-        self.DNSP = "Ausgrid"
-        self.tariff_type = "flat"
-        self.DEWH = ResistiveSingle()
-        self.solar_system = SolarSystem()
-
-        # Profile/Behavioural Parameters
-        self.profile_PV = 0  # See above for the meaning of these options
-        self.profile_Elec = 0
-        self.profile_HWD = 1
-        self.profile_control = 0
-        self.random_control = True
-
-        # HWD statistics
-        self.HWD_avg = 200.0  # [L/d]
-        self.HWD_std = self.HWD_avg / 3.0
-        # [L/d] (Measure for daily variability. If 0, no variability)
-        self.HWD_min = 0.0  # [L/d] Minimum HWD. Default 0
-        self.HWD_max = 2 * self.HWD_avg  # [L/d] Maximum HWD. Default 2x HWD_avg
-        
-        # [str] Type of variability in daily consumption. None for nothing
-        self.HWD_daily_dist = None
-        self.HWD_daily_source = 'sample'
-
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        
-        self.derived_parameters()
-
-    def derived_parameters(self):
-        self.DAYS = int(self.STOP / 24)
-        self.STEP_h = self.STEP / 60.0
-        self.PERIODS = int(np.ceil((self.STOP - self.START) / self.STEP_h))
-        self.DAYS_i = int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
-
-    ##########################################
-    def update_params(self, params):
-        for key, values in params.items():
-            if hasattr(self, key):  # Checking if the params are in Sim to update them
-                setattr(self, key, values)
-            else:
-                text_error = f"Parameter {key} not in Sim object. Simulation will finish now"
-                raise ValueError(text_error)
-
-    def parameters(self):
-        return self.__dict__.keys()
-
-
+#### DEFINING TRNSYS CLASSES
 class TrnsysSetup():
     def __init__(self, general_setup, **kwargs):
         # Directories
@@ -207,97 +110,10 @@ class TrnsysSetup():
             setattr(self, key, value)
 
 
-class SolarSystem():
-    def __init__(self, **kwargs):
-        self.nom_power = Variable(4000.0,"W")
-
-
-class Water():
-    def __init__(self, **kwargs):
-        self.rho = Variable(1000., "kg/m3")  # density (water)
-        self.cp = Variable(4180., "J/kg-K")  # specific heat (water)
-        self.k = Variable(0.6, "W/m-K")  # thermal conductivity (water)
-
-def derived_parameter_tanks(self):
-    rho = self.fluid.rho.get_value("kg/m3")
-    cp = self.fluid.cp.get_value("J/kg-K")
-
-    vol = self.vol.get_value("m3")
-    temp_max = self.temp_max.get_value("degC")
-    temp_min = self.temp_min.get_value("degC")
-    temp_deadband = self.temp_deadband.get_value("degC")
-    height = self.height.get_value("m")
-
-    self.thermal_cap = Variable(
-        vol * (rho * cp) * (temp_max - temp_min) / 3.6e6,
-        "kWh",
-        )
-    self.diam = Variable(
-        (4 * vol / np.pi / height) ** 0.5,
-        "m",
-        )
-    diam = self.diam.get_value("m")
-    self.area_loss = Variable(
-        np.pi * diam * (diam / 2 + height),
-        "m2",
-        ) 
-
-    self.temp_high_control = Variable(
-        temp_max - temp_deadband / 2.0,
-        "degC",
-        )
-    return
-
-class ResistiveSingle():
-    def __init__(self, **kwargs):
-        self.nom_power = Variable(3600.0, "W")
-        self.eta = Variable(1.0, "-")
-        
-        self.vol = Variable(0.315,"m3")
-        self.height = Variable(1.3, "m")
-        self.U = Variable(0.9, "W/m2-K")
-
-        self.temp_max = Variable(65.0, "degC")  #Maximum temperature in the tank
-        self.temp_deadband = Variable(10.0, "degC") # Dead band for max temp control
-        self.temp_min = Variable(45.0, "degC")  # Minimum temperature in the tank
-        self.temp_consump = Variable(45.0, "degC") #Consumption temperature
-        self.fluid = Water()
-        
-        self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
-        self.temps_ini = 3  # [-] Initial temperature of the tank. Check Editing_dck_tank() below for the options
-
-        self.derived_parameters_tank()
-
-    def derived_parameters_tank(self):
-        derived_parameter_tanks(self)
-        return
-
-class HeatPump():
-    def __init__(self, **kwargs):
-        self.nom_power_th = Variable(5240.0, "W")
-        self.nom_power_el = Variable(870.0, "W")
-        self.eta = Variable(6.02, "-")
-        self.nom_tamb = Variable(32.6, "degC")
-        self.nom_tw = Variable(21.1, "degC")
-
-        self.vol = Variable(0.315,"m3")
-        self.height = Variable(1.3, "m")
-        self.U = Variable(0.9, "W/m2-K")
-
-        self.temp_max = Variable(63.0, "degC")  #Maximum temperature in the tank
-        self.temp_min = Variable(45.0,"degC")  # Minimum temperature in the tank
-        self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
-        self.temp_consump = Variable(45.0, "degC") #Consumption temperature
-        self.fluid = Water()
-        
-        self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
-        self.temps_ini = 3  # [-] Initial temperature of the tank. Check Editing_dck_tank() below for the options
-
 #######################################################
 #### EDITING DCK FILE FUNCTIONS
-
 def editing_dck_general(
-        Sim: Any,
+        Sim: TrnsysSetup,
         dck_editing: List[str],
         ) -> List[str]:
 
@@ -345,9 +161,8 @@ def editing_dck_general(
     return dck_editing
 
 
-#######################################################
 def editing_dck_weather(
-        Sim: Any,
+        Sim: TrnsysSetup,
         dck_editing: List[str],
         ) -> List[str]:
 
@@ -391,10 +206,8 @@ def editing_dck_weather(
     return dck_editing
 
 
-##############################################
-# Editing .dck file: Tank parameters
 def editing_dck_tank(
-        Sim: Any,
+        Sim: TrnsysSetup,
         dck_editing: List[str],
         ) -> List[str]:
 
@@ -427,7 +240,6 @@ def editing_dck_tank(
 
     comp_lines = dck_editing[idx_start:idx_end]
 
-    #############
     # Finding the Initial Parameters to change
     tank_params = {
         "1 Tank volume": vol,
@@ -443,9 +255,7 @@ def editing_dck_tank(
                 new_line = "{:}   !  {:}".format(value, key)
                 comp_lines[idx] = new_line
 
-    ##############
     # Defining the Initial temperature (DERIVATIVE PARAMETERS)
-
     # Linear stratification
     if temps_ini == 1:
         tank_node_temps = np.linspace(temp_max, temp_min, nodes)
@@ -485,9 +295,8 @@ def editing_dck_tank(
 
     return dck_editing
 
-###############################################
 
-def editing_dck_file(Sim):
+def editing_dck_file(Sim: TrnsysSetup):
 
     layout_DEWH = Sim.layout_DEWH
     layout_PV = Sim.layout_PV
@@ -532,7 +341,7 @@ def editing_dck_file(Sim):
 ########################################################
 
 def creating_trnsys_files(
-        Sim,
+        Sim: TrnsysSetup,
         timeseries: pd.DataFrame,
         ) -> None:
 
@@ -589,7 +398,7 @@ def creating_trnsys_files(
 
 ###########################################
 def postprocessing_detailed(
-        Sim: Any,
+        Sim: TrnsysSetup,
         timeseries: pd.DataFrame,
         verbose: str=False
         ):
@@ -673,7 +482,7 @@ def postprocessing_detailed(
 
 
 def postprocessing_annual_simulation(
-        Sim: Any,
+        Sim: TrnsysSetup,
         Profiles: pd.DataFrame,
         out_all: pd.DataFrame
         ) -> Dict:
@@ -768,7 +577,9 @@ def postprocessing_annual_simulation(
 ############################################
 
 def postprocessing_events_simulation(
-        Sim, Profiles, out_data
+        Sim: TrnsysSetup, 
+        Profiles: pd.DataFrame,
+        out_data: pd.DataFrame,
     ) -> pd.DataFrame:
     
     STEP_h = Sim.STEP_h
@@ -817,8 +628,8 @@ def postprocessing_events_simulation(
 ############################################
 
 def thermal_simulation_run(
-        general_setup: Any,
-        Profiles: pd.DataFrame,
+        general_setup: GeneralSetup,
+        timeseries: pd.DataFrame,
         verbose: bool = False,
         engine: str = 'TRNSYS',
         keep_tempDir: bool = False,
@@ -832,7 +643,7 @@ def thermal_simulation_run(
         if verbose:
             print("RUNNING TRNSYS SIMULATION")
             print("Creating the temporary folder with files")
-        creating_trnsys_files(Sim, Profiles)
+        creating_trnsys_files(Sim, timeseries)
         
         if verbose:
             print("Creating the trnsys source code (dck file)")
@@ -844,7 +655,7 @@ def thermal_simulation_run(
         
         if verbose:
             print("TRNSYS simulation finished. Starting postprocessing.")
-        out_all = postprocessing_detailed(Sim, Profiles)
+        out_all = postprocessing_detailed(Sim, timeseries)
         
         if keep_tempDir:
             if verbose:
