@@ -65,6 +65,36 @@ class Variable():
                 )
         return value
 
+##################################################
+
+def parametric_settings(
+        params_in : Dict = {},
+        params_out: List = [],
+        ) -> pd.DataFrame:
+
+    """_summary_
+    This code creates a parametric run.
+    It creates a pandas dataframe with all the runs required.
+    The order of running is "first=outer".
+    It requires a dictionary with keys as Simulation attributes (to be changed)
+    and a list of strings with the desired outputs from out_overall.
+    Args:
+        params_in (Dict): Dict with (parameter : [values]) structure.
+        params_out (List): List with expected output from simulations.
+
+    Returns:
+        pd.DataFrame: Dataframe with all the runs
+    """
+    import itertools
+    cols_in = params_in.keys()
+    runs = pd.DataFrame(
+        list(itertools.product(*params_in.values())), 
+        columns=cols_in,
+        )
+    for col in params_out:
+        runs[col] = np.nan
+    return runs
+
 ######################################################
 ######################################################
 # GeneralSetup
@@ -78,8 +108,6 @@ class Variable():
 # HWD_daily_dist = Sim.HWD_daily_dist
 ######################################################
 ######################################################
-
-
 ## The main object for the simulations and models
 class GeneralSetup(object):
     def __init__(self, **kwargs):

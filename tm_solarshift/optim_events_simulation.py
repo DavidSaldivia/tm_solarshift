@@ -99,7 +99,7 @@ def main():
     for case in CASES:
         
         weather_type = WEATHER_TS_TYPES[case]
-        Sim = trnsys.GeneralSetup(
+        general_setup = trnsys.GeneralSetup(
             STOP = int(24 * DAYS),
             STEP = 3,
             YEAR = 2022,
@@ -115,14 +115,13 @@ def main():
         )
 
         #%%% Setting Profiles
-        
         s_time = time.time()
         
         # CREATING/LOADING PROFILES
-        Profiles = profiles.new_profile(Sim)
+        Profiles = profiles.new_profile(general_setup)
         
         #Hot water draw profiles
-        HWD_daily_dist = profiles.HWD_daily_distribution(Sim, Profiles)
+        HWD_daily_dist = profiles.HWD_daily_distribution(general_setup, Profiles)
         if HWDG_method == 'events':
             event_probs = profiles.events_file(
                 file_name = os.path.join(
@@ -157,7 +156,7 @@ def main():
             file_weather = os.path.join(
                 DATA_DIR["weather"],
                 "meteonorm_processed",
-                f"meteonorm_{Sim.location}.csv",
+                f"meteonorm_{general_setup.location}.csv",
             )
             Profiles = profiles.load_weather_from_file(
                 Profiles,
@@ -174,8 +173,8 @@ def main():
         #Control Load
         Profiles = profiles.load_control_load(
             Profiles, 
-            profile_control = Sim.profile_control, 
-            random_ON = Sim.random_control
+            profile_control = general_setup.profile_control, 
+            random_ON = general_setup.random_control
         )
         
         time_HWDG = time.time() - s_time
@@ -186,22 +185,31 @@ def main():
         s_time = time.time()
         if runsim:
             out_data = trnsys.thermal_simulation_run(
-                Sim, Profiles, engine="TRNSYS", verbose=True
+                general_setup, Profiles, engine="TRNSYS", verbose=True
             )
-            df = trnsys.postprocessing_events_simulation(Sim, Profiles, out_data)
+            df = trnsys.postprocessing_events_simulation(
+                general_setup, 
+                Profiles,
+                out_data,
+                )
             
         else:
             df = pd.read_csv(
-                os.path.join(fldr_rslt, f"0-Results_HWDP_dist_{HWDP_dist}.csv"),
-                index_col=0
+                os.path.join(
+                    fldr_rslt, 
+                    f"0-Results_HWDP_dist_{HWDP_dist}.csv"
+                    ),
+                index_col=0,
             )
             out_data = pd.read_csv(
-                os.path.join(fldr_rslt, f"0-Results_HWDP_dist_{HWDP_dist}_detailed.csv"),
+                os.path.join(
+                    fldr_rslt, 
+                    f"0-Results_HWDP_dist_{HWDP_dist}_detailed.csv",
+                    ),
                 index_col=0,
             )
             df.index = [pd.to_datetime(i).date() for i in df.index]
             out_data.index = pd.to_datetime(out_data.index)
-
 
         time_simulation = time.time() - s_time
         print(f"Time spent in thermal simulation={time_simulation}")
@@ -210,13 +218,21 @@ def main():
         if not os.path.exists(fldr_rslt):
             os.mkdir(fldr_rslt)
         if savefile:
-            df.to_csv(os.path.join(fldr_rslt, f"0-Results_HWDP_dist_{HWDP_dist}.csv"))
+            df.to_csv(
+                os.path.join(
+                    fldr_rslt,
+                    f"0-Results_HWDP_dist_{HWDP_dist}.csv",
+                    )
+                )
             out_data.to_csv(
-                os.path.join(fldr_rslt, f"0-Results_HWDP_dist_{HWDP_dist}_detailed.csv")
-            )
+                os.path.join(
+                    fldr_rslt,
+                    f"0-Results_HWDP_dist_{HWDP_dist}_detailed.csv",
+                    )
+                )
 
         trnsys.detailed_plots(
-                Sim,
+                general_setup,
                 out_data,
                 fldr_results_detailed = fldr_rslt,
                 case = 'simple_event',
@@ -410,7 +426,7 @@ def main():
         vmax = 0.25
         
         dx = (xmax-xmin)/Nx
-        F_bin = (60*dx/Sim.STEP)*DAYS
+        F_bin = (60*dx/general_setup.STEP)*DAYS
         
         out_data['hour'] = out_data.index.hour + out_data.index.minute/60.
         
@@ -470,10 +486,10 @@ def main():
         
             from scipy.stats import linregress
         
-            slope, intercept, R2, p_value, std_err = linregress(HWDP_template, HWDP_generated)
-            # regr = linear_model.LinearRegression()
-            # regr.fit(HWDP_template, HWDP_generated.values)
-            # R2 = regr.score(HWDP_template,HWDP_generated)
+            (slope, intercept, R2, p_value, std_err) = linregress(
+                HWDP_template, 
+                HWDP_generated,
+                )
             RSME = ((HWDP_template - HWDP_generated) ** 2).mean() ** 0.5
         
             fig, ax = plt.subplots(figsize=(9, 6))
