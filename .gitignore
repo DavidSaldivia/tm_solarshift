@@ -1,6 +1,3 @@
-# Internal results (large/lot of files)
-results/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
