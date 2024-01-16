@@ -121,6 +121,7 @@ def loading_timeseries(
     )
     return timeseries
 
+
 def run_or_load_simulation(
         general_setup: GeneralSetup,
         timeseries: pd.DataFrame,
@@ -173,8 +174,6 @@ def run_or_load_simulation(
             )
 
     return (out_data, df)
-
-
 
 def plot_histogram_end_of_day(
         values,
@@ -319,7 +318,7 @@ def main():
         
         fs = 16
         HWD_day = df["m_HWD_day"].copy()
-        HWD_day.sort_values(ascending=True,inplace=True)
+        HWD_day.sort_values(ascending=True, inplace=True)
         HWD_day = HWD_day.reset_index()
         if True:
             fig, ax = plt.subplots(figsize=(9, 6))

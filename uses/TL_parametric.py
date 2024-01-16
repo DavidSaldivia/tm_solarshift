@@ -9,13 +9,13 @@ import os
 import copy
 import pandas as pd
 
-import tm_solarshift.utils_trnsys as trnsys
-import tm_solarshift.utils_profiles as profiles
+import tm_solarshift.general as general
+import tm_solarshift.trnsys as trnsys
+import tm_solarshift.profiles as profiles
+import tm_solarshift.profiles as devices
 
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
-fileDir = os.path.dirname(os.path.abspath(__file__))
-pd.set_option('display.max_columns', None)
 
 PARAMS_OUT = ['heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
             'E_HWD_acum', 'eta_stg', 'cycles_day', 'SOC_avg',
@@ -23,16 +23,17 @@ PARAMS_OUT = ['heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
             'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
             'emissions_total','solar_ratio']
 
-print()
-print("NEW PARAMETRIC ANALYSIS")
-print()
+DATA_DIR = general.DATA_DIR
+DIR_RESULTS = "results"
+
+pd.set_option('display.max_columns', None)
 
 #################################################
 def parametric_run(
     runs_in,
     params_in,
     params_out,
-    Sim_base = trnsys.General_Setup(),
+    general_setup_base = general.GeneralSetup(),
     case_template=None,
     case_vars=[],
     save_results_detailed  = False,
@@ -51,7 +52,7 @@ def parametric_run(
     if append_results_general:
         runs_old = pd.read_csv(
             os.path.join(
-                fileDir, fldr_results_general, file_results_general
+                DIR_RESULTS, fldr_results_general, file_results_general
                 )
             ,index_col=0
             )
@@ -60,41 +61,47 @@ def parametric_run(
         
         print(f'RUNNING SIMULATION {index+1}/{len(runs)}')
         
-        Sim = copy.copy(Sim_base)
+        general_setup = copy.copy(general_setup_base)
         
         #Updating parameters
         cols_in = params_in.keys()
-        Sim.update_params(row[cols_in])
+        general_setup.update_params(row[cols_in])
         
+        location = general_setup.location
+        profile_HWD = general_setup.profile_HWD
+        profile_control = general_setup.profile_control
+        random_control = general_setup.random_control
+        YEAR = general_setup.YEAR
+
         if verbose:
             print("Creating Profiles for Simulation")
-        Profiles = profiles.profiles_new(Sim)
+        Profiles = profiles.profiles_new(general_setup)
         Profiles = profiles.HWDP_generator_standard(
             Profiles,
-            HWD_daily_dist = profiles.HWD_daily_distribution(Sim, Profiles),
-            HWD_hourly_dist = Sim.profile_HWD
+            HWD_daily_dist = profiles.HWD_daily_distribution(general_setup, Profiles),
+            HWD_hourly_dist = profile_HWD
         )
         
         file_weather = os.path.join(
-            Sim.fileDir, "data", "weather", "meteonorm_processed",
-            f"meteonorm_{Sim.location}.csv",
+            DATA_DIR["weather"], "meteonorm_processed",
+            f"meteonorm_{location}.csv",
         )
         Profiles = profiles.load_weather_from_file(Profiles, file_weather)
         
         Profiles = profiles.load_control_load(
             Profiles, 
-            profile_control = Sim.profile_control, 
-            random_ON = Sim.random_control
+            profile_control = profile_control, 
+            random_ON = random_control
         )
         
         file_emissions = os.path.join(
-            Sim.fileDir, "data", "emissions",
-            f"emissions_year_{Sim.YEAR}.csv"
+            DATA_DIR["emissions"],
+            f"emissions_year_{YEAR}.csv"
         )
         Profiles = profiles.load_emission_index(
             Profiles, 
             file_emissions = file_emissions,
-            location = Sim.location
+            location = location
         )
         
         Profiles = profiles.load_PV_generation(Profiles)
@@ -102,18 +109,20 @@ def parametric_run(
         
         if verbose:
             print("Executing TRNSYS simulation")
-        out_data = trnsys.thermal_simulation_run(Sim, Profiles)
-        out_overall = trnsys.postprocessing_annual_simulation(Sim, Profiles, out_data)
+        out_data = trnsys.thermal_simulation_run(general_setup, Profiles)
+        out_overall = trnsys.postprocessing_annual_simulation(
+            general_setup, Profiles, out_data
+        )
         values_out = [out_overall[lbl] for lbl in params_out]
         runs.loc[index, params_out] = values_out
         
-        aux = [getattr(Sim,x) for x in case_vars]
+        aux = [getattr(general_setup,x) for x in case_vars]
         case = case_template.format(*aux)
         
         ###########################################
         #General results?
         if save_results_general:
-            fldr = os.path.join(fileDir,fldr_results_general)
+            fldr = os.path.join(DIR_RESULTS,fldr_results_general)
             if not os.path.exists(fldr):
                 os.mkdir(fldr)
                 
@@ -130,7 +139,7 @@ def parametric_run(
         ###########################################
         #Detailed results?
         if save_results_detailed:
-            fldr = os.path.join(fileDir,fldr_results_detailed)
+            fldr = os.path.join(DIR_RESULTS,fldr_results_detailed)
             if not os.path.exists(fldr):
                 os.mkdir(fldr)
             out_data.to_csv(os.path.join(fldr,case+'_Results.csv'))
@@ -139,7 +148,7 @@ def parametric_run(
         #Detailed plots?
         if gen_plots_detailed:
             trnsys.detailed_plots(
-                Sim,
+                general_setup,
                 out_data,
                 fldr_results_detailed = fldr_results_detailed,
                 case = case,
@@ -150,7 +159,51 @@ def parametric_run(
         
     return runs
 
+
+def main():
+    print()
+    print("NEW PARAMETRIC ANALYSIS")
+    print()
+
+def parametric_run_HP():
+    list_profile_HWD = [1,2,3,4,5,6]
+    list_profile_control = [0,1,2,3,4]
+    list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne'] #, 'Canberra', 'Darwin', 'Perth', 'Townsville']
+    
+    case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
+    case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
+                  'location', 'profile_HWD', 'profile_control']
+    
+    params_in = {
+        'profile_HWD'      : list_profile_HWD,
+        'profile_control'  : list_profile_control,
+        'location'         : list_location,
+        }
+    
+    runs = general.parametric_settings(params_in, PARAMS_OUT)
+    
+    general_setup_base = general.GeneralSetup(
+        DEWH = devices.HeatPump()
+        )
+    
+    runs = parametric_run(
+        runs, params_in, PARAMS_OUT,
+        Sim_base = general_setup_base,
+        case_template = case_template,
+        case_vars = case_vars,
+        save_results_detailed = True,
+        gen_plots_detailed    = True,
+        save_plots_detailed   = True,
+        save_results_general  = True,
+        fldr_results_detailed = 'Parametric_HWDP_CL_HeatPump',
+        fldr_results_general  = 'Parametric_HWDP_CL_HeatPump',
+        file_results_general  = '0-Parametric_HWDP_CL_HeatPump.csv',
+        append_results_general = False      #If false, create new file
+        )
+
 if __name__ == "__main__":
+    # main()
+    parametric_run_HP()
 ################################################
 # #### Parametric Analysis: Tank
 #     list_heater_nom_cap = np.array([2400., 3600., 4800.])
@@ -268,45 +321,7 @@ if __name__ == "__main__":
 ###############################################
 #### HP SIMULATIONS
 
-    list_profile_HWD = [1,2,3,4,5,6]
-    list_profile_control = [0,1,2,3,4]
-    list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne'] #, 'Canberra', 'Darwin', 'Perth', 'Townsville']
-    
-    case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
-    case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
-                  'location', 'profile_HWD', 'profile_control']
-    
-    params_in = {
-        'profile_HWD'      : list_profile_HWD,
-        'profile_control'  : list_profile_control,
-        'location'         : list_location,
-        }
-    
-    runs = trnsys.parametric_settings(params_in, PARAMS_OUT)
-    
-    Sim_base = trnsys.General_Setup(
-        layout_DEWH   = 'HPF',
-        Heater_NomCap = 5240,
-        Heater_F_eta  = 6.02,
-        Tank_TempHigh = 63.,
-        Tank_TempHighControl = 59.,
-        layout_WF = 'W15',
-        )
-    
-    runs = parametric_run(
-        runs, params_in, PARAMS_OUT,
-        Sim_base = Sim_base,
-        case_template = case_template,
-        case_vars = case_vars,
-        save_results_detailed = True,
-        gen_plots_detailed    = True,
-        save_plots_detailed   = True,
-        save_results_general  = True,
-        fldr_results_detailed = 'Parametric_HWDP_CL_HeatPump',
-        fldr_results_general  = 'Parametric_HWDP_CL_HeatPump',
-        file_results_general  = '0-Parametric_HWDP_CL_HeatPump.csv',
-        append_results_general = False      #If false, create new file
-        )
+
 
 ################################################
 #### INCLUDING TARIFFS HP
@@ -460,5 +475,3 @@ if __name__ == "__main__":
     #     file_results_general  = '0-Testing.csv',
     #     append_results_general = False      #If false, create new file
     #     )
-    
-    print(runs)
