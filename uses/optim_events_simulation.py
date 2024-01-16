@@ -17,9 +17,9 @@ from scipy.stats import norm
 
 from typing import Optional, List, Dict, Any
 
-import tm_solarshift.utils.trnsys as trnsys
-import tm_solarshift.utils.profiles as profiles
-from tm_solarshift.utils.general import (
+import tm_solarshift.trnsys as trnsys
+import tm_solarshift.profiles as profiles
+from tm_solarshift.general import (
     DATA_DIR,
     GeneralSetup,
 )
@@ -27,7 +27,7 @@ from tm_solarshift.utils.general import (
 W2kJh = 3.6
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
-# fileDir = os.path.dirname(os.path.abspath(__file__))
+
 
 WEATHER_TYPES = [
     'day_constant', 

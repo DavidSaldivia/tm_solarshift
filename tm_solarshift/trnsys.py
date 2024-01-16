@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 from typing import Optional, List, Dict, Any, Tuple
 from tempfile import TemporaryDirectory
 
-from tm_solarshift.utils.general import (
+from tm_solarshift.general import (
     GeneralSetup,
     Household,
     DATA_DIR
 )
-from tm_solarshift.utils.devices import (
+from tm_solarshift.devices import (
     ResistiveSingle, 
     HeatPump,
     SolarSystem
@@ -354,7 +354,7 @@ def creating_trnsys_files(
         profiles: pd.DataFrame,
         ) -> None:
 
-    from tm_solarshift.utils.profiles import PROFILES_TYPES
+    from tm_solarshift.profiles import PROFILES_TYPES
     layout_WF = trnsys_setup.layout_WF
     layout_DEWH = trnsys_setup.layout_DEWH
     weather_source = trnsys_setup.weather_source
@@ -762,7 +762,7 @@ def thermal_simulation_run(
 
 def main():
     household = GeneralSetup()
-    from tm_solarshift.utils.profiles import new_profile
+    from tm_solarshift.profiles import new_profile
     profiles = new_profile(household)
     thermal_simulation_run(household, profiles, verbose=True)
 

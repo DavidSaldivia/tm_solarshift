@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, List, Dict, Any, Tuple
 
-from tm_solarshift.utils.devices import (
+from tm_solarshift.devices import (
     ResistiveSingle,
     HeatPump,
     SolarSystem,
@@ -12,8 +12,7 @@ from tm_solarshift.utils.devices import (
 
 fileDir = os.path.dirname(os.path.abspath(__file__))
 dataDir = os.path.join(
-    os.path.dirname(os.path.dirname(fileDir)),
-    "data",
+    os.path.dirname(fileDir), "data",
     )
 DATA_DIR = {
     "weather" : os.path.join(dataDir,"weather"),
@@ -188,7 +187,7 @@ class Profiles():
             periods=self.PERIODS,
             freq=f"{self.STEP}min"
         )
-        from tm_solarshift.utils.profiles import PROFILES_COLUMNS
+        from tm_solarshift.profiles import PROFILES_COLUMNS
         self.df = pd.DataFrame(index=idx, columns=PROFILES_COLUMNS)
 
 
@@ -226,5 +225,5 @@ if __name__ == '__main__':
     Sim = GeneralSetup()
     # profiles = Profiles(Sim)
 
-    import tm_solarshift.utils.trnsys as trnsys
+    import tm_solarshift.trnsys as trnsys
     Sim2 = trnsys.GeneralSetup()

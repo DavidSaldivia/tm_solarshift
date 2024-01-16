@@ -7,9 +7,9 @@ from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
 
 
-from tm_solarshift.utils.general import SEASON_DEFINITION
-from tm_solarshift.utils.general import LOCATIONS_NEM_REGION
-from tm_solarshift.utils.general import DATA_DIR
+from tm_solarshift.general import SEASON_DEFINITION
+from tm_solarshift.general import LOCATIONS_NEM_REGION
+from tm_solarshift.general import DATA_DIR
 
 ###############################
 ### CONSTANTS AND LISTS
