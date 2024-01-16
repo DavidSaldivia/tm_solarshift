@@ -1,6 +1,5 @@
 # Internal results (large/lot of files)
 results/
-data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
