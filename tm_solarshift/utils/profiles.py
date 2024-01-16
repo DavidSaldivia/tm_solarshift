@@ -64,14 +64,56 @@ FILE_SAMPLE_HWD_DAILY = "HWD_Daily_Sample_site.csv"
 #   4: Only solar soak (9am-3pm)
 #   5: Specific Control strategy (defined by file file_cs)
 
+class Profiles():
+    def __init__(self, START: int=0, STOP:int=8760, STEP:int=3, YEAR=2022):
+
+        self.START = START              # [hr]
+        self.STOP = STOP                # [hr]
+        self.STEP = STEP                # [min]
+        self.YEAR = YEAR                # [-]
+        
+        self.STEP_h = self.STEP / 60.0
+        self.PERIODS = int(
+            np.ceil((self.STOP - self.START) / self.STEP_h)
+        )
+        start_time = (
+            pd.to_datetime(f"{self.YEAR}-01-01 00:00:00") 
+            + pd.DateOffset(hours=self.START)
+        )
+        idx = pd.date_range(
+            start=start_time, 
+            periods=self.PERIODS,
+            freq=f"{self.STEP}min"
+        )
+        self.df = pd.DataFrame(index=idx, columns=PROFILES_COLUMNS)
+
+    def load_HWDP(
+            self,
+            method: str = 'standard',
+            HWD_daily_dist: pd.DataFrame = pd.DataFrame(),
+            HWD_hourly_dist: int = 0,
+            event_probs: pd.DataFrame = pd.DataFrame(),
+            columns: List[str] = PROFILES_TYPES['HWDP']):
+        
+        self.df = HWDP_generator(self,
+            method = method,
+            HWD_daily_dist = HWD_daily_dist,
+            HWD_hourly_dist = HWD_hourly_dist,
+            event_probs = event_probs,
+            columns = columns)
+        return
+
+
 def new_profile(
-    Sim: Any,
+    general_setup: Any,
     profile_columns: List[str] = PROFILES_COLUMNS,
 ) -> pd.DataFrame:
 
-    START, STOP, STEP, YEAR = Sim.START, Sim.STOP, Sim.STEP, Sim.YEAR
-    STEP_h = STEP / 60.0
-    PERIODS = int(np.ceil((STOP - START) / STEP_h))
+    START = general_setup.START
+    STEP = general_setup.STEP
+    YEAR = general_setup.YEAR
+    PERIODS = general_setup.PERIODS
+
     start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") \
         + pd.DateOffset(hours=START)
     idx = pd.date_range(
@@ -137,7 +179,7 @@ def events_file(file_name=None, sheet_name=None):
 
 
 def HWD_daily_distribution(
-    Sim: Any,
+    general_setup: Any,
     Profiles: pd.DataFrame
 ) -> pd.DataFrame:
     """
@@ -147,7 +189,7 @@ def HWD_daily_distribution(
 
     Parameters
     ----------
-    Sim : Any
+    general_setup : Any
         DESCRIPTION.
     Profiles : pd.DataFrame
         DESCRIPTION.
@@ -158,11 +200,11 @@ def HWD_daily_distribution(
 
     """
     
-    HWD_avg = Sim.HWD_avg 
-    HWD_std = Sim.HWD_std 
-    HWD_min = Sim.HWD_min 
-    HWD_max = Sim.HWD_max 
-    HWD_daily_dist = Sim.HWD_daily_dist
+    HWD_avg = general_setup.HWD_avg 
+    HWD_std = general_setup.HWD_std 
+    HWD_min = general_setup.HWD_min 
+    HWD_max = general_setup.HWD_max 
+    HWD_daily_dist = general_setup.HWD_daily_dist
 
     list_dates = np.unique(Profiles.index.date)
     DAYS = len(list_dates)
@@ -237,11 +279,13 @@ def HWDP_generator_standard(
 
     """
 
-    STEP_h = Profiles.index.freq.n / 60.0   # [hr] delta t in hours
-    PERIODS = len(Profiles)                 # [-] Number of periods to simulate
+    # timeseries = Profiles.df
+    timeseries = Profiles
+    STEP_h = timeseries.index.freq.n / 60.0   # [hr] delta t in hours
+    PERIODS = len(timeseries)                 # [-] Number of periods to simulate
 
     # Creating an auxiliar dataframe to populate the drawings
-    df_HWD = pd.DataFrame(index=Profiles.index, columns=columns)
+    df_HWD = pd.DataFrame(index=timeseries.index, columns=columns)
 
     if HWD_hourly_dist == 0:
         df_HWD["P_HWD"] = np.zeros(PERIODS)
@@ -277,12 +321,12 @@ def HWDP_generator_standard(
                                df_HWD["P_HWD"] / P_HWD_day, 
                                0.0)
     df_HWD["m_HWD_day"] = HWD_daily_dist.loc[
-        Profiles.index.date
+        timeseries.index.date
         ]["HWD_day"].values
     df_HWD["m_HWD"] = df_HWD["P_HWD"] * df_HWD["m_HWD_day"]
     
-    Profiles[columns] = df_HWD[columns]
-    return Profiles
+    timeseries[columns] = df_HWD[columns]
+    return timeseries
 
 
 ###################################
@@ -453,8 +497,8 @@ def HWDP_generator_events(
 
     # Calculating the daily HWD
     df_HWD = pd.DataFrame(index=Profiles.index, columns=columns)
-    df_HWD["Events"] = 0
-    df_HWD.loc[Events_final.index, "Events"] = Events_final.flow
+    df_HWD["Events"] = 0.0
+    df_HWD.loc[Events_final.index, "Events"] = Events_final["flow"]
     df_HWD["m_HWD"] = df_HWD.Events.cumsum()
     df_HWD["m_HWD"] = np.where(df_HWD["m_HWD"] < 1e-5, 0, df_HWD["m_HWD"])
     df_HWD["m_HWD_day"] = (
@@ -1073,15 +1117,14 @@ def load_PV_generation(
 
 def load_elec_consumption(
     Profiles: pd.DataFrame,
-    profile_Elec: int = 0,
-    PV_NomPow: float = 4000.,
-    columns: List[str] = ["Elec_Cons"],
+    profile_elec: int = 0,
+    columns: List[str] = ["Import_Grid"],
 ) -> pd.DataFrame:
 
     df_Elec = pd.DataFrame(index=Profiles.index, columns=columns)
     lbl = columns[0]
     ########################################
-    if profile_Elec == 0:
+    if profile_elec == 0:
         df_Elec[lbl] = 0.0  # 0 means no appliance load
     else:
         print("profile_Elec not valid. The simulation will finish.")
@@ -1121,3 +1164,13 @@ def load_emission_index_year(
     )
 
     return Profiles
+
+def main():
+    timeseries = Profiles()
+    timeseries.load_HWDP(
+
+    )
+    pass
+
+if __name__=="__main__":
+    main()

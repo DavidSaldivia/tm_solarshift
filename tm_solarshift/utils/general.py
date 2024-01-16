@@ -75,14 +75,14 @@ CONV = {
 class GeneralSetup(object):
     def __init__(self, **kwargs):
         # Directories
-        self.fileDir = os.path.dirname(__file__)
-        self.tempDir = None
+        # self.fileDir = os.path.dirname(__file__)
+        # self.tempDir = None
 
         # General Simulation Parameters
-        self.START = 0  # [hr]
-        self.STOP = 8760  # [hr]
-        self.STEP = 3  # [min]
-        self.YEAR = 2022  # [-]
+        self.START = 0                  # [hr]
+        self.STOP = 8760                # [hr]
+        self.STEP = 3                   # [min]
+        self.YEAR = 2022                # [-]
         self.location = "Sydney"
         self.DNSP = "Ausgrid"
         self.tariff_type = "flat"
@@ -102,10 +102,9 @@ class GeneralSetup(object):
         # [L/d] (Measure for daily variability. If 0, no variability)
         self.HWD_min = 0.0  # [L/d] Minimum HWD. Default 0
         self.HWD_max = 2 * self.HWD_avg  # [L/d] Maximum HWD. Default 2x HWD_avg
-        
-        # [str] Type of variability in daily consumption. None for nothing
+        # [str] Type of variability in daily consumption.
+        # Options: None, unif, truncnorm, sample
         self.HWD_daily_dist = None
-        self.HWD_daily_source = 'sample'
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -129,15 +128,66 @@ class GeneralSetup(object):
     def parameters(self):
         return self.__dict__.keys()
 
+class Household(object):
+    def __init__(self, **kwargs):
+
+        self.location = "Sydney"
+        self.tariff_type = "flat"
+        self.DNSP = "Ausgrid"
+        self.control_load = 0
+        self.control_random_on = True
+
+        self.DEWH = ResistiveSingle()
+        self.solar_system = SolarSystem()
+
+        # HWD statistics
+        self.profile_HWD = 1
+        self.HWD_avg = 200.0  # [L/d]
+        self.HWD_std = self.HWD_avg / 3.0
+        # [L/d] (Measure for daily variability. If 0, no variability)
+        self.HWD_min = 0.0  # [L/d] Minimum HWD. Default 0
+        self.HWD_max = 2 * self.HWD_avg  # [L/d] Maximum HWD. Default 2x HWD_avg
+        # [str] Type of variability in daily consumption.
+        # Options: None, unif, truncnorm, sample
+        self.HWD_daily_dist = None
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        
+    def update_params(self, params):
+        for key, values in params.items():
+            if hasattr(self, key):
+                setattr(self, key, values)
+            else:
+                text_error = f"Parameter {key} not in Sim object. Simulation will finish now"
+                raise ValueError(text_error)
+
+    def parameters(self):
+        return self.__dict__.keys()
+
+# General Simulation Parameters
 
 class Profiles():
-    def __init__(self, Sim):
-        START, STOP, STEP, YEAR = Sim.START, Sim.STOP, Sim.STEP, Sim.YEAR
-        STEP_h = STEP / 60.0
-        PERIODS = int(np.ceil((STOP - START) / STEP_h))
-        start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
-        idx = pd.date_range(start=start_time, periods=PERIODS, freq=f"{STEP}min")
+    def __init__(self):
+
+        self.START = 0                  # [hr]
+        self.STOP = 8760                # [hr]
+        self.STEP = 3                   # [min]
+        self.YEAR = 2022                # [-]
         
+        self.STEP_h = self.STEP / 60.0
+        self.PERIODS = int(
+            np.ceil((self.STOP - self.START) / self.STEP_h)
+        )
+        start_time = (
+            pd.to_datetime(f"{self.YEAR}-01-01 00:00:00") 
+            + pd.DateOffset(hours=self.START)
+        )
+        idx = pd.date_range(
+            start=start_time, 
+            periods=self.PERIODS,
+            freq=f"{self.STEP}min"
+        )
         from tm_solarshift.utils.profiles import PROFILES_COLUMNS
         self.df = pd.DataFrame(index=idx, columns=PROFILES_COLUMNS)
 
@@ -174,7 +224,7 @@ def parametric_settings(
 
 if __name__ == '__main__':
     Sim = GeneralSetup()
-    profiles = Profiles(Sim)
+    # profiles = Profiles(Sim)
 
     import tm_solarshift.utils.trnsys as trnsys
     Sim2 = trnsys.GeneralSetup()

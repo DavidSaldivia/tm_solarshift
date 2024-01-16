@@ -1,9 +1,7 @@
 from typing import Dict, Optional, List, Any
 
-from tm_solarshift.utils.general import Variable
 from tm_solarshift.utils.general import CONV
 from tm_solarshift.utils.devices import GasHeaterInstantaneous
-
 
 def tm_state_heater_gas(
         heater_spec: Any = GasHeaterInstantaneous(),
@@ -22,8 +20,8 @@ def tm_state_heater_gas(
     heat_value = heater_spec.heat_value.get_value("MJ/kg_gas")
     kgCO2_to_kgCH4 = 44. / 16.          
 
-    cp_water = heater_spec.cp.value
-    rho_water = heater_spec.rho.value
+    cp_water = heater_spec.fluid.cp.get_value("J/kg-K")
+    rho_water = heater_spec.fluid.rho.get_value("kg/m3")
 
     #Calculations
     flow_gas = nom_power / heat_value         #[kg/hr]
