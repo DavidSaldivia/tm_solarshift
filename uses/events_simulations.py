@@ -21,9 +21,10 @@ import tm_solarshift.trnsys as trnsys
 import tm_solarshift.profiles as profiles
 from tm_solarshift.general import (
     GeneralSetup,
-    DATA_DIR,
-    CONV
+    DATA_DIR
 )
+from tm_solarshift.devices import CONV
+
 
 W2kJh = CONV["W_to_kJh"]
 PROFILES_TYPES = profiles.PROFILES_TYPES

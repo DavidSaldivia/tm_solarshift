@@ -7,91 +7,133 @@ Created on Tue Dec 19 05:47:06 2023
 import numpy as np
 import pandas as pd
 
-# Properties of water
-PROP_WATER = {
-    'cp': 4180,  # [J/kg-K] specific heat (water)
-    'rho': 1000, # [kg/m3] density (water)
-    'k': 0.6, # [W/m-K] thermal conductivity (water)
-              }
-
-class Tank_0D():
-    def __init__(self, **kwargs):
-        self.model = "default"      #[str]
-        self.fluid = "water"      #[str]
-        self.vol = 0.315            #[m3]
-        self.height = 1.3           #[m]
-        self.temp_max = 65.         #[C]
-        self.temp_deadband = 10.    #[deltaC]
-        self.temp_cons = 45.        #[C]
-        
-        #Initiating the temperatures
-        self.temp_H = self.temp_max         #[C]
-        self.temp_C = self.temp_max         #[C]
-        self.temp_avg = self.temp_max       #[C]
-        
-        self.diam = (4 * self.vol / np.pi / self.height) ** 0.5
-        self.A_mantle = np.pi * self.diam * self.height
-        self.A_top = np.pi * self.diam **2 / 4.
-        self.A_bot = np.pi * self.diam **2 / 4.
-        
-
-#using T_hot and T_cold
-
-cp = PROP_WATER['cp']
-rho = PROP_WATER['rho']
-k = PROP_WATER['k']
-
-tank = Tank_0D()
-
-temp_amb = 25.       #[degC]
-temp_mains = 20.     #[degC]
-m_HWD = 10.          #[kg/min]
-
-temp_cons = 45.      #[degC]
-dt = 3. #[min]
+from tm_solarshift.devices import (ResistiveSingle, CONV)
 
 
-#Values from tank that are constant
-U_tank = tank.U
-A_mantle = tank.A_mantle
-A_top = tank.A_top
-A_bot = tank.A_bot
+def main():
+    #Inputs
+    heater = ResistiveSingle()
+    temp_amb = 25.       #[degC]
+    temp_mains = 20.     #[degC]
+    m_HWD = 200.         #[kg/hr]
+    STEP = 1            #[min]
+    t_sim_max = 1.       #[hr]
+
+    # Values from tank specifications
+    U_loss = heater.U.get_value("W/m2-K")
+    diam = heater.diam.get_value("m")
+    height = heater.height.get_value("m")
+    vol = heater.vol.get_value("m3")
+    temp_cons = heater.temp_consump.get_value("degC")
+    cp = heater.fluid.cp.get_value("J/kg-K")
+    rho = heater.fluid.rho.get_value("kg/m3")
+    k = heater.fluid.k.get_value("W/m-K")
 
 
-#Initial values
-vol_C = 0.
-vol_H = tank.vol
-r_vol_C = vol_C / (vol_H + vol_C)
+    #Constants
+    STEP_h = STEP * CONV["min_to_hr"]
+    STEP_s = STEP * CONV["min_to_s"]
 
-#Values from tank for this step (will change)
-temp_H   = tank.temp_H
-temp_C   = tank.temp_C
-temp_avg = tank.temp_avg
+    # Derived values for tank
+    A_mantle = np.pi * diam * height
+    A_top =  np.pi * diam **2 / 4.
+    A_bot = np.pi * diam **2 / 4.
 
-#Energy loss to environment
-q_loss_mantle = (U_tank * A_mantle * (temp_avg - temp_amb))   # [W]
-q_loss_top = (U_tank * A_top * (temp_H - temp_amb))           # [W] 
-q_loss_bot = (U_tank * A_top * (temp_H - temp_amb))           # [W]
-q_loss = q_loss_mantle + q_loss_top + q_loss_bot              # [W]
 
-Q_loss_H = (q_loss_mantle * (1 - r_vol_C) + q_loss_top) * dt     #[J]
-Q_loss_C = (q_loss_mantle * r_vol_C + q_loss_bot) * dt           #[J]
+    #Initial values
+    temp_ini = heater.temp_max.get_value("degC")
+    vol_H_0 = 0.9*vol
+    vol_C_0 = 0.1*vol
+    temp_H_0 = temp_ini
+    temp_C_0 = temp_mains
 
-#Energy loss due to HWD
-vol_HWD = (m_HWD * dt / rho)                        #[m3]
-Q_HWD = vol_HWD * cp * (temp_cons - temp_mains)     #[J]
-
-#Volume of water that enter the system and that changes top and bottom
-vol_in = vol_HWD * (temp_cons - temp_mains) / (temp_H - temp_mains)   #[m3]
-
-vol_C_new = vol_C + vol_in
-vol_H_new = vol_H - vol_in
-
-temp_C_new = (
-    (vol_C * temp_C + vol_in * temp_mains) / vol_C_new
-    - Q_loss_C / (vol_C_new * rho * cp)
+    (vol_H, vol_C, temp_H, temp_C) = (
+        vol_H_0, vol_C_0, temp_H_0, temp_C_0
     )
-temp_H_new = (
-    (vol_H * temp_H + vol_in * temp_H) / vol_H_new
-    - Q_loss_C / (vol_C_new * rho * cp)
-    )
+
+    N_it = 0
+    t_sim = 0
+    while t_sim <= t_sim_max:
+        
+        #Now the proper thermal model (iniside the loop)
+        temp_avg = (vol_C*temp_C + vol_H*temp_H) / vol
+        r_vol = vol_H / (vol_H + vol_C)
+
+        text = "\t".join(
+            f"{x:.2f}" for x in (
+                t_sim,vol_H, vol_C, r_vol,temp_H, temp_C, temp_avg,N_it
+                )
+            )
+        print(text)
+
+        conv = False
+        N_it_max = 100
+        N_it = 0
+        while not(conv):
+            
+            temp_C_new_prev = temp_C
+            temp_H_new_prev = temp_H
+            #Energy loss to environment
+            Q_loss_mantle = (U_loss * A_mantle * (temp_avg - temp_amb))   # [W]
+            Q_loss_top = (U_loss * A_top * (temp_H - temp_amb))           # [W] 
+            Q_loss_bot = (U_loss * A_bot * (temp_C - temp_amb))           # [W]
+            Q_loss_tot = Q_loss_mantle + Q_loss_top + Q_loss_bot          # [W]
+            
+            Q_loss_H = Q_loss_tot * r_vol      #[W]
+            Q_loss_C = Q_loss_tot * (1-r_vol)  #[W]
+
+            # Q_loss_H = (Q_loss_mantle * r_vol + Q_loss_top)      #[W]
+            # Q_loss_C = (Q_loss_mantle * (1-r_vol) + Q_loss_bot)  #[W]
+
+            #Volume of HW required
+            vol_HWD = (m_HWD * STEP_h / rho)                    #[m3]
+            #Volume of water that enters the system
+            vol_in = vol_HWD * (temp_cons - temp_mains) / (temp_H - temp_mains)   #[m3]
+
+            #Changes in cold and hot water fractions
+            vol_C_new = vol_C + vol_in
+            vol_H_new = vol_H - vol_in
+
+            #Energy loss due to HWD
+            Q_HWD = vol_in * cp * (temp_H - temp_mains) * STEP_s     #[J]
+
+            #Updating the temperatures
+            r_s = STEP_s / (rho*cp)                     #[K-m3/W]
+
+            vol_C_avg = (vol_C+vol_C_new)/2
+            temp_C_avg = temp_C
+            temp_C_new = (
+                temp_C * vol_C                     #Initial internal energy
+                + vol_in*(temp_mains - temp_C)     #Change by HWD
+                - Q_loss_C * r_s                   #Change by losses
+                ) / vol_C_new
+
+            vol_H_avg = (vol_H+vol_H_new)/2
+            temp_H_avg = temp_H        
+            temp_H_new = (
+                temp_H * vol_H                         #Initial internal energy
+                + vol_in*(temp_C - temp_H)             #Change by HWD
+                - Q_loss_H * r_s                       #Change by losses
+                ) / vol_H_new
+
+            if (((abs(temp_C_new-temp_C_new_prev)<1e-5 and
+                abs(temp_H_new-temp_H_new_prev)<1e-5)) or
+                N_it >=N_it_max):
+                break
+            else:
+                N_it += 1
+                temp_C_new_prev = temp_C_new
+                temp_H_new_prev = temp_H_new
+
+        #Updating values for next timestep
+        (vol_H, vol_C, temp_H, temp_C) = (
+            vol_H_new, vol_C_new, temp_H_new, temp_C_new
+        )
+        if t_sim >= t_sim_max:
+            break
+        else:
+            t_sim += STEP_h
+    return
+
+if __name__=="__main__":
+    main()

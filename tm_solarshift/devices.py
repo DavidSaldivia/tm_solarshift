@@ -1,4 +1,15 @@
 import numpy as np
+from typing import Optional, List, Dict, Any, Tuple
+# from tm_solarshift.general import CONV
+
+CONV = {
+    "MJ_to_kWh": 1000/3600.,
+    "W_to_kJh": 3.6,
+    "min_to_s": 60.,
+    "min_to_hr": 1/60.,
+    "L_to_m3": 1e-3,
+    "W_to_MJ/hr": 3.6e-3
+}
 
 #Utilities classes
 class Variable():
@@ -107,6 +118,9 @@ class GasHeaterInstantaneous():
 
         self.fluid = Water()
 
+    def run_simple_thermal_model(self, HW_flow: List = [200.,]):
+        return tm_heater_gas_instantaneuos(self, HW_flow) 
+
 
 def derived_parameter_tank(self):
     rho = self.fluid.rho.get_value("kg/m3")
@@ -130,9 +144,69 @@ def derived_parameter_tank(self):
         np.pi * diam * (diam / 2 + height),
         "m2",
         ) 
-
     self.temp_high_control = Variable(
         temp_max - temp_deadband / 2.0,
         "degC",
         )
     return
+
+def tm_heater_gas_instantaneuos(
+        heater: Any = GasHeaterInstantaneous(),
+        HW_flow: List = [200.,],
+) -> dict:
+
+    STEP_h = 3/60. #Replace it for a constant later
+
+    MJ_TO_kWh = CONV["MJ_to_kWh"]
+    min_TO_sec = CONV["min_to_s"]
+    min_TO_hr = CONV["min_to_hr"]
+    L_TO_m3 = CONV["L_to_m3"]
+    W_TO_MJ_hr = CONV["W_to_MJ/hr"]
+    kgCO2_TO_kgCH4 = 44. / 16.
+
+    nom_power = heater.nom_power.get_value("MJ/hr")
+    deltaT_rise = heater.deltaT_rise.get_value("dgrC")
+    flow_water = heater.flow_water.get_value("L/min")
+
+    #Assuming pure methane for gas
+    heat_value = heater.heat_value.get_value("MJ/kg_gas")
+            
+
+    cp_water = heater.fluid.cp.get_value("J/kg-K")
+    rho_water = heater.fluid.rho.get_value("kg/m3")
+
+    #Calculations
+    flow_gas = nom_power / heat_value         #[kg/hr]
+    HW_energy = ((flow_water / min_TO_sec * L_TO_m3)
+                 * rho_water * cp_water 
+                 * deltaT_rise
+                 * W_TO_MJ_hr
+                 )  #[MJ/hr]
+
+    eta = HW_energy / nom_power #[-]
+    specific_energy = (nom_power / flow_water
+                       * min_TO_hr * MJ_TO_kWh) #[kWh/L]
+
+    specific_emissions = (kgCO2_TO_kgCH4 
+                     / (heat_value * MJ_TO_kWh)
+                     / eta
+                    ) #[kg_CO2/kWh_thermal]
+
+    E_HWD = specific_energy * HW_flow * STEP_h   #[kWh]
+
+    annual_energy = E_HWD.sum()                  #[kWh]
+    emissions = E_HWD * specific_emissions/1000. #[tonCO2]
+    annual_emissions = emissions.sum()           #[tonCO2_annual]
+
+    output = {
+        "flow_gas" : flow_gas,
+        "HW_energy" : HW_energy,
+        "eta" : eta,
+        "specific_energy" : specific_energy,
+        "specific_emissions" : specific_emissions,
+        "annual_energy" : annual_energy,
+        "annual_emissions": annual_emissions,
+        "E_HWD" : E_HWD,
+        "emissions" : emissions,
+    }
+    return output

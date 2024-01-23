@@ -24,7 +24,7 @@ PROFILES_TYPES = {
 }
 PROFILES_COLUMNS = [
     item for sublist in 
-        [value for key, value in PROFILES_TYPES.items()]
+        [value for _, value in PROFILES_TYPES.items()]
     for item in sublist
 ]
 
