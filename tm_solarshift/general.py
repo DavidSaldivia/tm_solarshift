@@ -53,6 +53,9 @@ CONV = {
     "MJ_to_kWh": 1000/3600.,
     "W_to_kJh": 3.6,
     "min_to_s": 60.,
+    "min_to_hr": 1/60.,
+    "L_to_m3": 1e-3,
+    "W_to_MJ/hr": 3.6e-3
 }
 
 

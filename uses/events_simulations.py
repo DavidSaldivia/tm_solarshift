@@ -20,15 +20,14 @@ from typing import Optional, List, Dict, Any
 import tm_solarshift.trnsys as trnsys
 import tm_solarshift.profiles as profiles
 from tm_solarshift.general import (
-    DATA_DIR,
     GeneralSetup,
+    DATA_DIR,
+    CONV
 )
 
-W2kJh = 3.6
+W2kJh = CONV["W_to_kJh"]
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
-
-
 WEATHER_TYPES = [
     'day_constant', 
     'meteonorm_random', 
@@ -42,7 +41,7 @@ def loading_timeseries(
     HWD_generator_method: str = 'events',
     HWDP_dist: int = 0,
     weather_type: str = 'day_constant'
-    ):
+    ) -> pd.DataFrame:
 
     #Getting the required data from GeneralSetup
     location = general_setup.location
@@ -62,7 +61,8 @@ def loading_timeseries(
             file_name = os.path.join(
                 DATA_DIR["samples"], "HWD_events.xlsx",
                 ),
-                sheet_name="Custom")
+            sheet_name="Custom"
+            )
     else:
         event_probs = None
     timeseries = profiles.HWDP_generator(
@@ -82,14 +82,6 @@ def loading_timeseries(
         'day_constant': (None, None)
     }
     (subset_random, subset_value) = weather_subsets[weather_type]
-    # if weather_type == 'meteonorm_random':
-    #     (subset_random, subset_value) = ('all', None)
-    # if weather_type == 'meteonorm_season':
-    #     (subset_random, subset_value) = ('season', 'summer')
-    # if weather_type == 'meteonorm_month':
-    #     (subset_random, subset_value) = ('month', 1)
-    # if weather_type == 'meteonorm_date':
-    #     (subset_random, subset_value) = ('date', pd.Timestamp("2022/02/07"))
     
     if weather_type == 'day_constant':
         timeseries = profiles.load_weather_day_constant_random(
@@ -313,7 +305,7 @@ def main():
             file_name = f"Case_{case}_hist_HWD_Flow.png",
             savefig = savefig
             )      
-        x=1
+        
         #############################################
         
         fs = 16

@@ -102,7 +102,7 @@ class Profiles():
             event_probs = event_probs,
             columns = columns)
         return
-
+    
 
 def new_profile(
     general_setup: Any,
@@ -232,7 +232,9 @@ def HWD_daily_distribution(
         scale = HWD_std
         # This step is counterintuitive (See scipy's documentation for truncnorm)
         a, b = (myclip_a - loc) / scale, (myclip_b - loc) / scale
-        m_HWD_day = truncnorm.rvs(a, b, loc=loc, scale=scale, size=DAYS)
+        m_HWD_day = truncnorm.rvs(
+            a, b, loc=loc, scale=scale, size=DAYS
+            )
     
     elif HWD_daily_dist == "sample":
         sample = pd.read_csv(
@@ -242,7 +244,11 @@ def HWD_daily_distribution(
         m_HWD_day = np.random.choice(sample, size=DAYS)
         
     list_dates = pd.to_datetime(np.unique(Profiles.index.date))
-    HWD_daily = pd.DataFrame(m_HWD_day, index=list_dates, columns=["HWD_day"])
+    HWD_daily = pd.DataFrame(
+        m_HWD_day, 
+        index=list_dates, 
+        columns=["HWD_day"]
+        )
 
     return HWD_daily
 
@@ -279,8 +285,8 @@ def HWDP_generator_standard(
 
     """
 
-    # timeseries = Profiles.df
-    timeseries = Profiles
+    timeseries = Profiles.df
+    # timeseries = Profiles
     STEP_h = timeseries.index.freq.n / 60.0   # [hr] delta t in hours
     PERIODS = len(timeseries)                 # [-] Number of periods to simulate
 
@@ -332,7 +338,7 @@ def HWDP_generator_standard(
 ###################################
 
 def HWDP_generator_events(
-    Profiles: pd.DataFrame,
+    timeseries: pd.DataFrame,
     HWD_daily_dist: Optional[pd.DataFrame] = None,
     HWD_hourly_dist: int = 0,
     event_probs: pd.DataFrame = events_basic(),
@@ -361,7 +367,8 @@ def HWDP_generator_events(
         DESCRIPTION.
 
     """
-    
+    # Profiles = timeseries.df
+    Profiles = timeseries
     STEP = Profiles.index.freq.n
     STEP_h = STEP / 60.0
     list_dates = np.unique(Profiles.index.date)
@@ -523,7 +530,7 @@ def HWDP_generator(
                                            HWD_daily_dist, 
                                            HWD_hourly_dist, 
                                            columns,)
-    if (method == 'events'):
+    elif (method == 'events'):
         Profiles = HWDP_generator_events(Profiles,
                                          HWD_daily_dist, 
                                          HWD_hourly_dist,
@@ -566,7 +573,7 @@ def load_weather_day_constant_random(
 
     df_weather = df_weather_days.loc[Profiles.index.date]
     df_weather.index = Profiles.index
-    Profiles[columns] = df_weather
+    Profiles[columns] = df_weather[columns]
     return Profiles
 
 
@@ -679,13 +686,21 @@ def load_weather_from_file(
     if subset_random is None:
         pass
     elif subset_random == 'annual':
-        Set_Days = Set_Days[Set_Days.index.year==subset_value]
+        Set_Days = Set_Days[
+            Set_Days.index.year==subset_value
+            ]
     elif subset_random == 'season':
-        Set_Days = Set_Days[Set_Days.index.isin(SEASON_DEFINITION[subset_value])]
+        Set_Days = Set_Days[
+            Set_Days.index.isin(SEASON_DEFINITION[subset_value])
+            ]
     elif subset_random == 'month':
-        Set_Days = Set_Days[Set_Days.index.month==subset_value]  
+        Set_Days = Set_Days[
+            Set_Days.index.month==subset_value
+            ]  
     elif subset_random == 'date':
-        Set_Days = Set_Days[Set_Days.index.date==subset_value.date()]  
+        Set_Days = Set_Days[
+            Set_Days.index.date==subset_value.date()
+            ]  
     
     if subset_random is None:
         Profiles = load_weather_from_tmy(
@@ -1165,10 +1180,27 @@ def load_emission_index_year(
 
     return Profiles
 
-def main():
-    timeseries = Profiles()
-    timeseries.load_HWDP(
 
+def main():
+
+    from tm_solarshift.general import Household
+    household = Household()
+    timeseries = Profiles()
+
+    HWD_daily_dist = HWD_daily_distribution(
+        household, timeseries.df
+    )
+    event_probs = events_file(
+            file_name = os.path.join(
+                DATA_DIR["samples"], "HWD_events.xlsx",
+                ),
+                sheet_name="Custom")
+    
+    timeseries.load_HWDP(
+        method='events',
+        HWD_daily_dist=HWD_daily_dist,
+        HWD_hourly_dist=1,
+        event_probs=event_probs
     )
     pass
 
