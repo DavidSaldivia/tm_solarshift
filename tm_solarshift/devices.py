@@ -26,6 +26,9 @@ class Variable():
                 )
         return value
 
+    def __repr__(self) -> str:
+        return f"{self.value:} [{self.unit}]"
+
 class Water():
     def __init__(self):
         self.rho = Variable(1000., "kg/m3")  # density (water)
@@ -60,11 +63,18 @@ class ResistiveSingle():
             self.temp_min = Variable(45.0, "degC")  # Minimum temperature in the tank
             self.temp_consump = Variable(45.0, "degC") #Consumption temperature
 
-        self.derived_parameters()
-
-    def derived_parameters(self):
-        derived_parameter_tank(self)
-        return
+    @property
+    def thermal_cap(self):
+        return tank_thermal_capacity(self)
+    @property
+    def diam(self):
+        return tank_diameter(self)
+    @property
+    def area_loss(self):
+        return tank_area_loss(self)
+    @property
+    def temp_high_control(self):
+        return tank_temp_high_control(self)
 
 
 class HeatPump():
@@ -91,11 +101,45 @@ class HeatPump():
             self.temp_min = Variable(45.0,"degC")  # Minimum temperature in the tank
             self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
             self.temp_consump = Variable(45.0, "degC") #Consumption temperature
-        self.derived_parameters()
+            self.temp_deadband = Variable(10, "degC")
         
-    def derived_parameters(self):
-        derived_parameter_tank(self)
-        return
+    @property
+    def thermal_cap(self):
+        return tank_thermal_capacity(self)
+    @property
+    def diam(self):
+        return tank_diameter(self)
+    @property
+    def area_loss(self):
+        return tank_area_loss(self)
+
+
+def tank_thermal_capacity(tank):
+    vol = tank.vol.get_value("m3")
+    rho = tank.fluid.rho.get_value("kg/m3")
+    cp = tank.fluid.cp.get_value("J/kg-K")
+    temp_max = tank.temp_max.get_value("degC")
+    temp_min = tank.temp_min.get_value("degC")
+    thermal_cap = vol * (rho * cp) * (temp_max - temp_min) / 3.6e6
+    return Variable( thermal_cap, "kWh")
+
+def tank_diameter(tank):
+    vol = tank.vol.get_value("m3")
+    height = tank.height.get_value("m")
+    diam = (4 * vol / np.pi / height) ** 0.5
+    return Variable( diam , "m" )
+
+def tank_area_loss(tank):
+    diam = tank.diam.get_value("m")
+    height = tank.height.get_value("m")
+    area_loss = np.pi * diam * (diam / 2 + height)
+    return Variable( area_loss, "m2" ) 
+
+def tank_temp_high_control(tank):
+    temp_max = tank.temp_max.get_value("degC")
+    temp_deadband = tank.temp_deadband.get_value("degC")
+    temp_high_control = temp_max - temp_deadband / 2.0
+    return Variable(temp_high_control, "degC")
 
 class GasHeaterInstantaneous():
     def __init__(self, source: str="default"):
@@ -110,7 +154,7 @@ class GasHeaterInstantaneous():
             self.heat_value = Variable(47.,"MJ/kg_gas")
             
             #tank
-            self.vol = 0.
+            self.vol = Variable(0., "m3")
             self.fluid = Water()
 
             #control
@@ -121,34 +165,6 @@ class GasHeaterInstantaneous():
     def run_simple_thermal_model(self, HW_flow: List = [200.,]):
         return tm_heater_gas_instantaneuos(self, HW_flow) 
 
-
-def derived_parameter_tank(self):
-    rho = self.fluid.rho.get_value("kg/m3")
-    cp = self.fluid.cp.get_value("J/kg-K")
-    vol = self.vol.get_value("m3")
-    temp_max = self.temp_max.get_value("degC")
-    temp_min = self.temp_min.get_value("degC")
-    temp_deadband = self.temp_deadband.get_value("degC")
-    height = self.height.get_value("m")
-
-    self.thermal_cap = Variable(
-        vol * (rho * cp) * (temp_max - temp_min) / 3.6e6,
-        "kWh",
-        )
-    self.diam = Variable(
-        (4 * vol / np.pi / height) ** 0.5,
-        "m",
-        )
-    diam = self.diam.get_value("m")
-    self.area_loss = Variable(
-        np.pi * diam * (diam / 2 + height),
-        "m2",
-        ) 
-    self.temp_high_control = Variable(
-        temp_max - temp_deadband / 2.0,
-        "degC",
-        )
-    return
 
 def tm_heater_gas_instantaneuos(
         heater: Any = GasHeaterInstantaneous(),
@@ -210,3 +226,17 @@ def tm_heater_gas_instantaneuos(
         "emissions" : emissions,
     }
     return output
+
+
+def main():
+    heater = HeatPump()
+
+    print(heater.thermal_cap)
+    print(heater.diam)
+    print(heater.area_loss)
+    print(heater.temp_high_control)
+
+    return
+
+if __name__=="__main__":
+    main()

@@ -12,7 +12,7 @@ import pandas as pd
 import tm_solarshift.general as general
 import tm_solarshift.trnsys as trnsys
 import tm_solarshift.profiles as profiles
-import tm_solarshift.profiles as devices
+import tm_solarshift.devices as devices
 
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
@@ -160,10 +160,71 @@ def parametric_run(
     return runs
 
 
-def main():
-    print()
-    print("NEW PARAMETRIC ANALYSIS")
-    print()
+################################################
+def parametric_run_testing():
+    
+    params_in = {
+        'DEWH.nom_power' : [2400., 3600., 4800.],
+        'DEWH.temp_max'  : [55., 60., 65., 70.],
+        'DEWH.U'  : [0.5, 1.0, 2.0],
+        'DEWH.vol': [0.1, 0.2, 0.3, 0.4, 0.5]
+        }
+    
+    runs = general.parametric_settings(params_in, PARAMS_OUT)
+    general_setup_base = general.GeneralSetup()
+
+    case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
+    case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
+                  'location', 'profile_HWD', 'profile_control']
+
+    runs = parametric_run(
+        runs, params_in, PARAMS_OUT,
+        general_setup_base = general_setup_base,
+        case_template = case_template,
+        case_vars = case_vars,
+        save_results_detailed = True,
+        gen_plots_detailed    = True,
+        save_plots_detailed   = True,
+        save_results_general  = True,
+        fldr_results_detailed = 'parametric_testing',
+        fldr_results_general  = 'parametric_testing',
+        file_results_general  = '0-parametric_testing.csv',
+        append_results_general = False       #If false, create new file
+        )
+
+#################################    
+def parametric_run_RS():
+    list_profile_HWD = [1,2,3,4,5,6]
+    list_profile_control = [0,1,2,3,4]
+    list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
+    
+    case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
+    case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
+                  'location', 'profile_HWD', 'profile_control']
+    
+    params_in = {
+        'location'         : list_location,
+        'profile_HWD'      : list_profile_HWD,
+        'profile_control'  : list_profile_control,
+        }
+    
+    runs = trnsys.parametric_settings(params_in, PARAMS_OUT)
+    general_setup_base = general.GeneralSetup()
+
+    runs = parametric_run(
+        runs, params_in, PARAMS_OUT,
+        general_setup_base = general_setup_base,
+        case_template = case_template,
+        case_vars = case_vars,
+        save_results_detailed = True,
+        gen_plots_detailed    = True,
+        save_plots_detailed   = True,
+        save_results_general  = True,
+        fldr_results_detailed = 'Parametric_HWDP_CL_Resistive',
+        fldr_results_general  = 'Parametric_HWDP_CL_Resistive',
+        file_results_general  = '0-Parametric_HWDP_CL_Resistive.csv',
+        append_results_general = False       #If false, create new file
+        )
 
 def parametric_run_HP():
     list_profile_HWD = [1,2,3,4,5,6]
@@ -188,7 +249,7 @@ def parametric_run_HP():
     
     runs = parametric_run(
         runs, params_in, PARAMS_OUT,
-        Sim_base = general_setup_base,
+        general_setup_base = general_setup_base,
         case_template = case_template,
         case_vars = case_vars,
         save_results_detailed = True,
@@ -202,8 +263,7 @@ def parametric_run_HP():
         )
 
 if __name__ == "__main__":
-    # main()
-    parametric_run_HP()
+    parametric_run_testing()
 ################################################
 # #### Parametric Analysis: Tank
 #     list_heater_nom_cap = np.array([2400., 3600., 4800.])
@@ -284,38 +344,6 @@ if __name__ == "__main__":
 ################################################
 ################################################
 
-################################################
-#### Resistive Heater Simulation
-#### HWDP_CLs: Original set
-    # list_profile_HWD = [1,2,3,4,5,6]
-    # list_profile_control = [0,1,2,3,4]
-    # list_location = list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
-    
-    # case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
-    # case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
-    #               'location', 'profile_HWD', 'profile_control']
-    
-    # params_in = {
-    #     'location'         : list_location,
-    #     'profile_HWD'      : list_profile_HWD,
-    #     'profile_control'  : list_profile_control,
-    #     }
-    
-    # runs = trnsys.parametric_settings(params_in, PARAMS_OUT)
-    
-    # runs = parametric_run(
-    #     runs, params_in, PARAMS_OUT,
-    #     case_template = case_template,
-    #     case_vars = case_vars,
-    #     save_results_detailed = True,
-    #     gen_plots_detailed    = True,
-    #     save_plots_detailed   = True,
-    #     save_results_general  = True,
-    #     fldr_results_detailed = 'Parametric_HWDP_CL_Resistive',
-    #     fldr_results_general  = 'Parametric_HWDP_CL_Resistive',
-    #     file_results_general  = '0-Parametric_HWDP_CL_Resistive.csv',
-    #     append_results_general = False       #If false, create new file
-    #     )
 
 ###############################################
 ###############################################

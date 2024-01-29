@@ -66,13 +66,32 @@ LOCATIONS_NEM_REGION = {
 ######################################################
 ######################################################
 ## The main object for the simulation
+
+class Simulation():
+    def __init__(self):
+        self.START = 0                  # [hr]
+        self.STOP = 8760                # [hr]
+        self.STEP = 3                   # [min]
+        self.YEAR = 2022                # [-]
+
+    @property
+    def DAYS(self):
+        return int(self.STOP / 24)
+    @property
+    def STEP_h(self):
+        return self.STEP / 60.0
+    @property
+    def PERIODS(self):
+        return int(np.ceil((self.STOP - self.START) / self.STEP_h))
+    @property
+    def DAYS_i(self):
+        return int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
+
+
+
 class GeneralSetup(object):
     def __init__(self, **kwargs):
-        # Directories
-        # self.fileDir = os.path.dirname(__file__)
-        # self.tempDir = None
 
-        # General Simulation Parameters
         self.START = 0                  # [hr]
         self.STOP = 8760                # [hr]
         self.STEP = 3                   # [min]
@@ -80,6 +99,7 @@ class GeneralSetup(object):
         self.location = "Sydney"
         self.DNSP = "Ausgrid"
         self.tariff_type = "flat"
+
         self.DEWH = ResistiveSingle()
         self.solar_system = SolarSystem()
 
@@ -103,24 +123,37 @@ class GeneralSetup(object):
         for key, value in kwargs.items():
             setattr(self, key, value)
         
-        self.derived_parameters()
+    @property
+    def DAYS(self):
+        return int(self.STOP / 24)
+    @property
+    def STEP_h(self):
+        return self.STEP / 60.0
+    @property
+    def PERIODS(self):
+        return int(np.ceil((self.STOP - self.START) / self.STEP_h))
+    @property
+    def DAYS_i(self):
+        return int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
 
-    def derived_parameters(self):
-        self.DAYS = int(self.STOP / 24)
-        self.STEP_h = self.STEP / 60.0
-        self.PERIODS = int(np.ceil((self.STOP - self.START) / self.STEP_h))
-        self.DAYS_i = int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
+    # def derived_parameters(self):
+    #     self.DAYS = int(self.STOP / 24)
+    #     self.STEP_h = self.STEP / 60.0
+    #     self.PERIODS = int(np.ceil((self.STOP - self.START) / self.STEP_h))
+    #     self.DAYS_i = int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
 
     def update_params(self, params):
         for key, values in params.items():
             if hasattr(self, key):  # Checking if the params are in GeneralSetup to update them
                 setattr(self, key, values)
             else:
-                text_error = f"Parameter {key} not in Sim object. Simulation will finish now"
+                text_error = f"Parameter {key} not in GeneralSetup. Simulation will finish now"
                 raise ValueError(text_error)
 
     def parameters(self):
         return self.__dict__.keys()
+
+
 
 class Household(object):
     def __init__(self, **kwargs):
@@ -131,6 +164,7 @@ class Household(object):
         self.control_load = 0
         self.control_random_on = True
 
+        self.sim = Simulation()
         self.DEWH = ResistiveSingle()
         self.solar_system = SolarSystem()
 
@@ -138,7 +172,7 @@ class Household(object):
         self.profile_HWD = 1
         self.HWD_avg = 200.0  # [L/d]
         self.HWD_std = self.HWD_avg / 3.0
-        # [L/d] (Measure for daily variability. If 0, no variability)
+        # [L/d] (Measure for daily variability. No variability = 0)
         self.HWD_min = 0.0  # [L/d] Minimum HWD. Default 0
         self.HWD_max = 2 * self.HWD_avg  # [L/d] Maximum HWD. Default 2x HWD_avg
         # [str] Type of variability in daily consumption.
@@ -159,7 +193,7 @@ class Household(object):
     def parameters(self):
         return self.__dict__.keys()
 
-# General Simulation Parameters
+
 
 class Profiles():
     def __init__(self):
@@ -186,13 +220,14 @@ class Profiles():
         self.df = pd.DataFrame(index=idx, columns=PROFILES_COLUMNS)
 
 
+
 def parametric_settings(
         params_in : Dict = {},
         params_out: List = [],
         ) -> pd.DataFrame:
 
     """_summary_
-    This code creates a parametric run.
+    This function creates a parametric run.
     It creates a pandas dataframe with all the runs required.
     The order of running is "first=outer".
     It requires a dictionary with keys as Simulation attributes (to be changed)

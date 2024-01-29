@@ -73,17 +73,6 @@ def main():
             
             temp_C_new_prev = temp_C
             temp_H_new_prev = temp_H
-            #Energy loss to environment
-            Q_loss_mantle = (U_loss * A_mantle * (temp_avg - temp_amb))   # [W]
-            Q_loss_top = (U_loss * A_top * (temp_H - temp_amb))           # [W] 
-            Q_loss_bot = (U_loss * A_bot * (temp_C - temp_amb))           # [W]
-            Q_loss_tot = Q_loss_mantle + Q_loss_top + Q_loss_bot          # [W]
-            
-            Q_loss_H = Q_loss_tot * r_vol      #[W]
-            Q_loss_C = Q_loss_tot * (1-r_vol)  #[W]
-
-            # Q_loss_H = (Q_loss_mantle * r_vol + Q_loss_top)      #[W]
-            # Q_loss_C = (Q_loss_mantle * (1-r_vol) + Q_loss_bot)  #[W]
 
             #Volume of HW required
             vol_HWD = (m_HWD * STEP_h / rho)                    #[m3]
@@ -93,6 +82,19 @@ def main():
             #Changes in cold and hot water fractions
             vol_C_new = vol_C + vol_in
             vol_H_new = vol_H - vol_in
+            r_vol = (vol_H_new + vol_C_new)/vol
+
+            #Energy loss to environment
+            Q_loss_mantle = (U_loss * A_mantle * (temp_avg - temp_amb))   # [W]
+            Q_loss_top = (U_loss * A_top * (temp_H - temp_amb))           # [W] 
+            Q_loss_bot = (U_loss * A_bot * (temp_C - temp_amb))           # [W]
+            Q_loss_tot = Q_loss_mantle + Q_loss_top + Q_loss_bot          # [W]
+            
+            # Q_loss_H = Q_loss_tot * r_vol      #[W]
+            # Q_loss_C = Q_loss_tot * (1-r_vol)  #[W]
+
+            Q_loss_H = (Q_loss_mantle * r_vol + Q_loss_top)      #[W]
+            Q_loss_C = (Q_loss_mantle * (1-r_vol) + Q_loss_bot)  #[W]
 
             #Energy loss due to HWD
             Q_HWD = vol_in * cp * (temp_H - temp_mains) * STEP_s     #[J]
