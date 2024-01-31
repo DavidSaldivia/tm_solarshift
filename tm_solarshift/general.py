@@ -66,29 +66,6 @@ LOCATIONS_NEM_REGION = {
 ######################################################
 ######################################################
 ## The main object for the simulation
-
-class Simulation():
-    def __init__(self):
-        self.START = 0                  # [hr]
-        self.STOP = 8760                # [hr]
-        self.STEP = 3                   # [min]
-        self.YEAR = 2022                # [-]
-
-    @property
-    def DAYS(self):
-        return int(self.STOP / 24)
-    @property
-    def STEP_h(self):
-        return self.STEP / 60.0
-    @property
-    def PERIODS(self):
-        return int(np.ceil((self.STOP - self.START) / self.STEP_h))
-    @property
-    def DAYS_i(self):
-        return int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
-
-
-
 class GeneralSetup(object):
     def __init__(self, **kwargs):
 
@@ -155,6 +132,28 @@ class GeneralSetup(object):
 
 
 
+class Simulation():
+    def __init__(self):
+        self.START = 0                  # [hr]
+        self.STOP = 8760                # [hr]
+        self.STEP = 3                   # [min]
+        self.YEAR = 2022                # [-]
+
+    @property
+    def DAYS(self):
+        return int(self.STOP / 24)
+    @property
+    def STEP_h(self):
+        return self.STEP / 60.0
+    @property
+    def PERIODS(self):
+        return int(np.ceil((self.STOP - self.START) / self.STEP_h))
+    @property
+    def DAYS_i(self):
+        return int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
+    
+
+
 class Household(object):
     def __init__(self, **kwargs):
 
@@ -192,7 +191,6 @@ class Household(object):
 
     def parameters(self):
         return self.__dict__.keys()
-
 
 
 class Profiles():

@@ -722,7 +722,7 @@ def detailed_plots(
 
 ############################################
 
-def thermal_simulation_run(
+def run_trnsys_simulation(
         household: Household,
         profiles: pd.DataFrame,
         verbose: bool = False,
@@ -764,7 +764,7 @@ def main():
     household = GeneralSetup()
     from tm_solarshift.profiles import new_profile
     profiles = new_profile(household)
-    thermal_simulation_run(household, profiles, verbose=True)
+    run_trnsys_simulation(household, profiles, verbose=True)
 
 
 if __name__=="__main__":

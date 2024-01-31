@@ -15,7 +15,7 @@ from matplotlib import cm
 from sklearn import linear_model
 from scipy.stats import norm
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 import tm_solarshift.trnsys as trnsys
 import tm_solarshift.profiles as profiles
@@ -125,7 +125,7 @@ def run_or_load_simulation(
     HWDP_dist = general_setup.profile_HWD
 
     if runsim:
-        out_data = trnsys.thermal_simulation_run(
+        out_data = trnsys.run_trnsys_simulation(
             general_setup, timeseries, verbose=True
         )
         df = trnsys.postprocessing_events_simulation(
@@ -176,7 +176,7 @@ def plot_histogram_end_of_day(
         file_name = None,
         fldr_rslt = DIR_RESULTS,
         savefig = False,
-        ):
+):
     fs = 16
     fig, ax = plt.subplots(figsize=(9, 6))
     ax.hist(values, bins=10, range=xlim, density=True)
@@ -194,10 +194,319 @@ def plot_histogram_end_of_day(
     plt.show()
     return
 
+def plots_histogram_end_of_days(
+        df: pd.DataFrame,
+        include: List,
+        case: Union[int, str],
+        savefig: bool=False,
+):
+    for lbl in include:
+        if lbl == "SOC_end":
+            xlim = (0,1)
+            xlbl = "State of Charge (-)"
+            ylbl = "Frequency (-)"
+            file_name = f"Case_{case}_hist_SOC.png"
+        if lbl == "TempTh_end":
+            xlim = (20,65)
+            xlbl = "State of Charge (-)"
+            ylbl = "Frequency (-)"
+            file_name = f"Case_{case}_hist_TempTh.png"
+        if lbl=="E_HWD_day":
+            xlim = (0, 12)
+            xlbl = "Daily Hot Water Draw (kWh)"
+            ylbl = "Frequency (-)"
+            file_name = f"Case_{case}_hist_HWD_Energy.png"
+        if lbl=="m_HWD_day":
+            xlim = (0, 400)
+            xlbl = "Daily Hot Water Draw (L/day)"
+            ylbl = "Frequency (-)"
+            file_name = f"Case_{case}_hist_HWD_Flow.png"
+
+        plot_histogram_end_of_day(
+            df[lbl],
+            xlim = xlim,
+            xlbl = xlbl,
+            ylbl = ylbl,
+            file_name = file_name,
+            savefig = savefig
+            )
+    return
+
+
+def additional_plots(
+        df : pd.DataFrame,
+        case: Union[int, str] = None,
+        savefig: bool = False,
+):
+
+    #Plot of distribution function of daily HWD
+    fs = 16
+    HWD_day = df["m_HWD_day"].copy()
+    HWD_day.sort_values(ascending=True, inplace=True)
+    HWD_day = HWD_day.reset_index()
+    if True:
+        fig, ax = plt.subplots(figsize=(9, 6))
+        ax.plot(HWD_day.index, HWD_day["m_HWD_day"], lw=2.0)
+        ax.set_xlabel("Days of simulation", fontsize=fs)
+        ax.set_ylabel("Daily Hot Water Draw (L/day)", fontsize=fs)
+        ax.tick_params(axis="both", which="major", labelsize=fs)
+        # ax.set_xlim(0,12)
+        ax.grid()
+        if savefig:
+            fig.savefig(
+                os.path.join(DIR_RESULTS, f"Case_{case}_HWD_Flow_ascending.png"),
+                bbox_inches="tight",
+            )
+        plt.show()
+
+    # SOC as function of Daily HWD
+    fig, ax = plt.subplots(figsize=(9, 6))
+    ax.scatter(df["m_HWD_day"], df["SOC_end"], c=df["Temp_Amb"], s=10)
+    ax.set_xlabel("Daily HWD (L/day)", fontsize=fs)
+    ax.set_ylabel("SOC (-)", fontsize=fs)
+    ax.tick_params(axis="both", which="major", labelsize=fs)
+    ax.grid()
+    if savefig:
+        fig.savefig(
+            os.path.join(DIR_RESULTS, f"Case_{case}_HWD_SOC.png"),
+            bbox_inches="tight",
+        )
+    plt.show()
+
+    # SOC as function of Thermostat Temp
+    fig, ax = plt.subplots(figsize=(9, 6))
+    ax.scatter(df["TempTh_end"], df["SOC_end"], c=df["m_HWD_day"], s=10)
+    ax.set_xlabel("Thermostat temperature (C)", fontsize=fs)
+    ax.set_ylabel("SOC (-)", fontsize=fs)
+    ax.tick_params(axis="both", which="major", labelsize=fs)
+    ax.grid()
+    if savefig:
+        fig.savefig(
+            os.path.join(DIR_RESULTS, f"Case_{case}_TempTh_SOC.png"),
+            bbox_inches="tight",
+        )
+    plt.show()
+    return
+
+def plot_histogram_2D(
+    general_setup: GeneralSetup,
+    df : pd.DataFrame,
+    out_data: pd.DataFrame,
+    case: Union[int, str] = None,
+    savefig: bool = False,
+):
+    
+    STEP = general_setup.STEP
+    DAYS = general_setup.DAYS
+    
+    # Probabilities of SOC through the day
+    Nx = 24
+    Ny = 20
+    xmin = 0
+    xmax = 24
+    ymin = 0.0
+    ymax = 1.0
+    vmin = 0
+    vmax = 0.25
+    
+    dx = (xmax-xmin)/Nx
+    F_bin = (60*dx/STEP)*DAYS
+    out_data['hour'] = out_data.index.hour + out_data.index.minute/60.
+    SOC_2D, X, Y = np.histogram2d(
+        out_data['hour'], out_data['SOC'],
+        bins = [Nx,Ny], range = [[xmin, xmax],[ymin, ymax]], density=False
+    )
+    SOC_2D = SOC_2D/F_bin
+    fig = plt.figure(figsize=(14, 8))
+    fs = 16
+    ax = fig.add_subplot(111)
+    X, Y = np.meshgrid(X, Y)
+    surf = ax.pcolormesh(
+        X, Y, SOC_2D.transpose(),
+        cmap=cm.YlOrRd, vmin=vmin, vmax=vmax
+    )
+    ax.set_xlabel('time (hr)',fontsize=fs)
+    ax.set_ylabel('SOC (-)',fontsize=fs)
+    cb = fig.colorbar(surf, shrink=0.5, aspect=4)
+    cb.ax.tick_params(labelsize=fs-2)
+    ax.tick_params(axis="both", which="major", labelsize=fs)
+    if savefig:
+        fig.savefig(
+            os.path.join(DIR_RESULTS, f"Case_{case}_SOC_map.png"),
+            bbox_inches="tight",
+        )
+    plt.grid()
+    plt.show()
+    plt.close(fig)
+    return
+
+
+def plots_sample_simulations(
+    general_setup: GeneralSetup,
+    out_data : pd.DataFrame,
+    df: pd.DataFrame,
+    case: Union[int, str],
+    savefig: bool = False,
+    t_ini: float = 3
+):
+    DAYS = general_setup.DAYS
+
+    # Plot with a sample of 10% of days
+
+    #SOC
+    df_sample = df.sample(max(DAYS // 10, 10))
+    fig, ax = plt.subplots(figsize=(9, 6))
+    fs=16
+    for date in df_sample.index:
+        df_day = out_data[out_data.index.date == date]
+        time_day = df_day.index.hour + df_day.index.minute / 60.0
+        ax.plot(time_day, df_day.SOC, lw=0.5)
+
+    ax.set_xlabel("Time of the Day (hr)", fontsize=fs)
+    ax.set_ylabel("SOC (-)", fontsize=fs)
+    ax.tick_params(axis="both", which="major", labelsize=fs)
+    ax.grid()
+    ax.set_xlim(0, 24)
+    ax.set_xticks(np.arange(0, 25, 4))
+    if savefig:
+        fig.savefig(
+            os.path.join(DIR_RESULTS, f"Case_{case}_sample_SOC.png"),
+            bbox_inches="tight",
+        )
+    plt.show()
+
+    # Thermostat temperature
+    fig, ax = plt.subplots(figsize=(9, 6))
+    ax2 = ax.twinx()
+    ax2.plot(time_day, df_day["C_Load"], c="blue", lw=2, label="C_Load")
+
+    out_data_first = out_data[(out_data.C_Tmax < 1) & (out_data.index.hour >= t_ini)]
+    out_data_first = out_data_first.groupby(out_data_first.index.date).first()
+    out_data_first["C_Tmax_first"] = out_data_first["TIME"] - 24 * (
+        pd.to_datetime(out_data_first.index).dayofyear - 1
+    )
+    out_data_first.index = pd.to_datetime(out_data_first.index)
+
+    for date in df_sample.index:
+        df_day = out_data[out_data.index.date == date]
+        time_day = df_day.index.hour + df_day.index.minute / 60.0
+        ax.plot(time_day, df_day.TempBottom, lw=0.5)
+        aux2 = out_data_first[out_data_first.index.date == date]
+        ax.scatter(
+            aux2["C_Tmax_first"], aux2["TempBottom"],
+            s=50, marker="*",
+            label="C_Tmax" if (date == df_sample.index[0]) else None,
+        )
+    ax2.legend()
+    ax.set_xlabel("Time of the Day (hr)", fontsize=fs)
+    ax.set_ylabel("Thermostat Temperature (-)", fontsize=fs)
+    ax.tick_params(axis="both", which="major", labelsize=fs)
+    ax.grid()
+    ax.set_xlim(0, 24)
+    ax.set_xticks(np.arange(0, 25, 4))
+    if savefig:
+        fig.savefig(
+            os.path.join(DIR_RESULTS, f"Case_{case}_sample_TempTh.png"),
+            bbox_inches="tight",
+        )
+    plt.show()
+
+def regression_analysis_and_plots(
+    general_setup: GeneralSetup,
+    timeseries : pd.DataFrame,
+    df : pd.DataFrame,
+    case: Union[int, str] = None,
+    savefig: bool = False,
+):
+    
+    HWDP_dist = general_setup.profile_HWD
+    
+    # Histogram of generated HWDP
+    HWDP_generated = timeseries.groupby(
+        timeseries.index.hour
+        )["m_HWD"].sum()
+    HWDP_generated = HWDP_generated / HWDP_generated.sum()
+    list_hours = np.arange(0, 23 + 1)
+    if HWDP_dist is not None:
+        HWD_file = os.path.join(
+            DATA_DIR["HWDP"], f"HWDP_Generic_AU_{HWDP_dist}.csv"
+        )
+        HWDP_day = pd.read_csv(HWD_file)
+        probs = HWDP_day.loc[list_hours, "HWDP"].values
+        probs = probs / probs.sum()
+        HWDP_template = probs
+    
+        from scipy.stats import linregress
+        (slope, intercept, R2, p_value, std_err) = linregress(
+            HWDP_template, 
+            HWDP_generated,
+            )
+        RSME = ((HWDP_template - HWDP_generated) ** 2).mean() ** 0.5
+    
+        fig, ax = plt.subplots(figsize=(9, 6))
+        fs = 16
+        ax.scatter(HWDP_template, HWDP_generated, s=20)
+        Ymax = HWDP_template.max()
+        ax.plot([0, Ymax], [0, Ymax], c="k")
+        ax.set_xlim(0, Ymax * 1.05)
+        ax.set_ylim(0, Ymax * 1.05)
+        ax.grid()
+        ax.tick_params(axis="both", which="major", labelsize=fs)
+        if savefig:
+            fig.savefig(
+                os.path.join(DIR_RESULTS, f"Case_{case}_HWDP_methods_comparison.png"),
+                bbox_inches="tight",
+            )
+        plt.show()
+    
+        #############################
+        fig, ax = plt.subplots(figsize=(9, 6))
+        ax.bar(HWDP_generated.index, HWDP_template,
+                width=0.4, align="edge",)
+        ax.bar(HWDP_generated.index, HWDP_generated,
+                width=-0.4, align="edge",)
+        ax.grid()
+        ax.tick_params(axis="both", which="major", labelsize=fs)
+        plt.show()
+
+    #%%% REGRESSION
+    for lbl in ["SOC_end", "TempTh_end"]:
+        cols = ["SOC_ini", "Temp_Amb", "Temp_Mains", "m_HWD_day"]
+        df2 = df[cols + [lbl]].copy()
+        df2.dropna(inplace=True)
+        X = df2[cols]
+        Y = df2[lbl]
+        regr = linear_model.LinearRegression()
+        regr.fit(X, Y)
+        R2 = regr.score(X, Y)
+        print(R2)
+        if lbl == "SOC_end":
+            R2_SOC = R2
+        if lbl == "TempTh_end":
+            R2_TempTh = R2
+
+        Y_pred = regr.predict(X)
+
+        show_plot = True
+        if show_plot:
+            fig, ax = plt.subplots(figsize=(9, 6))
+            ax.scatter(Y, Y_pred, s=2)
+            Ymax = Y.max()
+            ax.plot([0, Ymax], [0, Ymax], c="k")
+
+            ax.set_xlim(0, Ymax * 1.05)
+            ax.set_ylim(0, Ymax * 1.05)
+            ax.grid()
+            ax.set_xlabel(f"Simulated {lbl}", fontsize=fs)
+            ax.set_ylabel(f"Predicted {lbl}", fontsize=fs)
+            # ax.set_title(f'CL={row.profile_control}. HWDP={row.profile_HWD}. Timestep={t}mins ahead',fontsize=fs)
+            ax.tick_params(axis="both", which="major", labelsize=fs)
+            plt.show()
+
+    return [R2_SOC, R2_TempTh]
+    
 
 def main():
-
-    s_time_total = time.time()
 
     ## DEFINING CASES
     # Cases are:
@@ -233,6 +542,8 @@ def main():
     data = []
     for case in CASES:
         
+        s_time = time.time()
+
         weather_type = WEATHER_TYPES[case]
         general_setup = GeneralSetup(
             STOP = int(24 * DAYS),
@@ -244,10 +555,6 @@ def main():
             weather_source = "local_file",
             HWD_daily_dist = HWD_daily_dist,
         )
-
-        # Setting Profiles
-        s_time = time.time()
-        
         timeseries = loading_timeseries(
             general_setup = general_setup,
             HWD_generator_method = HWD_generator_method,
@@ -265,328 +572,39 @@ def main():
                 save_plots_detailed = False,
                 tmax = 120.
                 )
-        
         time_simulation = time.time() - s_time
         print(f"Time spent in thermal simulation={time_simulation}")
 
-        #%%% HISTOGRAMS FOR FINAL SOC, FINAL EL, DAILY HWD
-
-        plot_histogram_end_of_day(
-            df["SOC_end"],
-            xlim = (0,1),
-            xlbl = "State of Charge (-)",
-            ylbl = "Frequency (-)",
-            file_name = f"Case_{case}_hist_SOC.png",
-            savefig = savefig
-            )
+        #Different plottings
+        plots_histogram_end_of_days(
+            df,
+            ["SOC_end", "TempTh_end", "E_HWD_day", "m_HWD_day"],
+            case, savefig
+        )        
+        additional_plots(df, case, savefig)
+        plot_histogram_2D(
+            general_setup, df, out_data, case, savefig
+        )
+        plots_sample_simulations(general_setup, out_data, df, case, savefig)
+        R2_SOC, R2_TempTh = regression_analysis_and_plots(
+            general_setup, timeseries, df, case, savefig
+        )
         
-        plot_histogram_end_of_day(
-            df["TempTh_end"],
-            xlim = (0,1),
-            xlbl = "State of Charge (-)",
-            ylbl = "Frequency (-)",
-            file_name = f"Case_{case}_hist_TempTh.png",
-            savefig = savefig
-            )
-        
-        plot_histogram_end_of_day(
-            df["E_HWD_day"],
-            xlim = (0, 12),
-            xlbl = "Daily Hot Water Draw (kWh)",
-            ylbl = "Frequency (-)",
-            file_name = f"Case_{case}_hist_HWD_Energy.png",
-            savefig = savefig
-            )  
-        
-        plot_histogram_end_of_day(
-            df["m_HWD_day"],
-            xlim = (0, 400),
-            xlbl = "Daily Hot Water Draw (L/day)",
-            ylbl = "Frequency (-)",
-            file_name = f"Case_{case}_hist_HWD_Flow.png",
-            savefig = savefig
-            )      
-        
-        #############################################
-        
-        fs = 16
-        HWD_day = df["m_HWD_day"].copy()
-        HWD_day.sort_values(ascending=True, inplace=True)
-        HWD_day = HWD_day.reset_index()
-        if True:
-            fig, ax = plt.subplots(figsize=(9, 6))
-            ax.plot(HWD_day.index, HWD_day["m_HWD_day"], lw=2.0)
-            ax.set_xlabel("Days of simulation", fontsize=fs)
-            ax.set_ylabel("Daily Hot Water Draw (L/day)", fontsize=fs)
-            ax.tick_params(axis="both", which="major", labelsize=fs)
-            # ax.set_xlim(0,12)
-            ax.grid()
-            if savefig:
-                fig.savefig(
-                    os.path.join(DIR_RESULTS, f"Case_{case}_HWD_Flow_ascending.png"),
-                    bbox_inches="tight",
-                )
-            plt.show()
-
         Risk_Shortage01 = len(df[df["SOC_end"] <= 0.1]) / len(df)
         print(f"Fraction with SOC<0.1 at the end of the day: {Risk_Shortage01*100}%")
         Risk_Shortage02 = len(df[df["SOC_end"] <= 0.2]) / len(df)
         print(f"Fraction with SOC<0.2 at the end of the day: {Risk_Shortage02*100}%")
 
-        ####################################
-        # PLOT SAMPLE
-        # Plot with a sample of 10% of days
-        # SOC PLOTTING!
-        df_sample = df.sample(max(DAYS // 10, 10))
-        fig, ax = plt.subplots(figsize=(9, 6))
-        for date in df_sample.index:
-            df_day = out_data[out_data.index.date == date]
-            time_day = df_day.index.hour + df_day.index.minute / 60.0
-            ax.plot(time_day, df_day.SOC, lw=0.5)
+        data_row = [HWDP_dist, Risk_Shortage01, Risk_Shortage02, R2_SOC, R2_TempTh]
+        data.append(data_row)
 
-        ax.set_xlabel("Time of the Day (hr)", fontsize=fs)
-        ax.set_ylabel("SOC (-)", fontsize=fs)
-        ax.tick_params(axis="both", which="major", labelsize=fs)
-        ax.grid()
-        ax.set_xlim(0, 24)
-        ax.set_xticks(np.arange(0, 25, 4))
-        if savefig:
-            fig.savefig(
-                os.path.join(DIR_RESULTS, f"Case_{case}_sample_SOC.png"),
-                bbox_inches="tight",
-            )
-        plt.show()
+    elapsed_time = time.time() - s_time
+    print(DAYS, elapsed_time)
+    columns = ["HWDP_dist", "Risk_Shortage01",
+                    "Risk_Shortage02", "R2_SOC", "R2_TempTh",]
+    df_data = pd.DataFrame(data, columns=columns,)
+    print(df_data)
 
-        ########################################
-        # Thermostat temperature!
-        fig, ax = plt.subplots(figsize=(9, 6))
-        ax2 = ax.twinx()
-
-        ax2.plot(time_day, df_day["C_Load"], c="blue", lw=2, label="C_Load")
-
-        out_data_first = out_data[(out_data.C_Tmax < 1) & (out_data.index.hour >= t_ini)]
-        out_data_first = out_data_first.groupby(out_data_first.index.date).first()
-        out_data_first["C_Tmax_first"] = out_data_first["TIME"] - 24 * (
-            pd.to_datetime(out_data_first.index).dayofyear - 1
-        )
-        out_data_first.index = pd.to_datetime(out_data_first.index)
-
-        for date in df_sample.index:
-            # for date in df.index:
-            df_day = out_data[out_data.index.date == date]
-            time_day = df_day.index.hour + df_day.index.minute / 60.0
-            ax.plot(time_day, df_day.TempBottom, lw=0.5)
-            aux2 = out_data_first[out_data_first.index.date == date]
-            ax.scatter(
-                aux2["C_Tmax_first"],
-                aux2["TempBottom"],
-                s=50,
-                marker="*",
-                label="C_Tmax" if (date == df_sample.index[0]) else None,
-            )
-
-        ax2.legend()
-        ax.set_xlabel("Time of the Day (hr)", fontsize=fs)
-        ax.set_ylabel("Thermostat Temperature (-)", fontsize=fs)
-        ax.tick_params(axis="both", which="major", labelsize=fs)
-        ax.grid()
-        ax.set_xlim(0, 24)
-        ax.set_xticks(np.arange(0, 25, 4))
-        if savefig:
-            fig.savefig(
-                os.path.join(DIR_RESULTS, f"Case_{case}_sample_TempTh.png"),
-                bbox_inches="tight",
-            )
-        plt.show()
-
-        # for i in range(10):
-        #     plt.scatter(out_data[f'Node{i+1}'],out_data.SOC,s=0.5)
-        #     plt.show()
-        plt.scatter(out_data["TempBottom"], out_data["SOC"], s=0.5)
-        plt.show()
-
-        ####################################
-        # SOC as function of Daily HWD
-        fig, ax = plt.subplots(figsize=(9, 6))
-        ax.scatter(df["m_HWD_day"], df["SOC_end"], c=df["Temp_Amb"], s=10)
-        ax.set_xlabel("Daily HWD (L/day)", fontsize=fs)
-        ax.set_ylabel("SOC (-)", fontsize=fs)
-        ax.tick_params(axis="both", which="major", labelsize=fs)
-        ax.grid()
-        if savefig:
-            fig.savefig(
-                os.path.join(DIR_RESULTS, f"Case_{case}_HWD_SOC.png"),
-                bbox_inches="tight",
-            )
-        plt.show()
-
-        # SOC as function of Thermostat Temp
-
-        fig, ax = plt.subplots(figsize=(9, 6))
-        ax.scatter(df["TempTh_end"], df["SOC_end"], c=df["m_HWD_day"], s=10)
-        ax.set_xlabel("Thermostat temperature (C)", fontsize=fs)
-        ax.set_ylabel("SOC (-)", fontsize=fs)
-        ax.tick_params(axis="both", which="major", labelsize=fs)
-        ax.grid()
-        if savefig:
-            fig.savefig(
-                os.path.join(DIR_RESULTS, f"Case_{case}_TempTh_SOC.png"),
-                bbox_inches="tight",
-            )
-        plt.show()
-
-        
-        # 2D HISTOGRAM
-        # PROBABILITIES OF SOC THROUGH THE DAY
-        Nx = 24
-        Ny = 20
-        xmin = 0
-        xmax = 24
-        ymin = 0.0
-        ymax = 1.0
-        vmin = 0
-        vmax = 0.25
-        
-        dx = (xmax-xmin)/Nx
-        F_bin = (60*dx/general_setup.STEP)*DAYS
-        
-        out_data['hour'] = out_data.index.hour + out_data.index.minute/60.
-        
-        SOC_2D, X, Y = np.histogram2d(
-            out_data['hour'],
-            out_data['SOC'],
-            bins=[Nx,Ny],
-            range=[[xmin, xmax],
-                [ymin, ymax]],
-            density=False)
-        
-        SOC_2D = SOC_2D/F_bin
-        
-        fig = plt.figure(figsize=(14, 8))
-        ax = fig.add_subplot(111)
-        X, Y = np.meshgrid(X, Y)
-
-        surf = ax.pcolormesh(
-            X, Y, SOC_2D.transpose(),
-            cmap=cm.YlOrRd,
-            vmin=vmin,
-            vmax=vmax
-        )
-        ax.set_xlabel('time (hr)',fontsize=fs)
-        ax.set_ylabel('SOC (-)',fontsize=fs)
-        # ax.set_xlim(4,24)
-        cb = fig.colorbar(surf, shrink=0.5, aspect=4)
-        cb.ax.tick_params(labelsize=fs-2)
-        ax.tick_params(axis="both", which="major", labelsize=fs)
-        
-        if savefig:
-            fig.savefig(
-                os.path.join(DIR_RESULTS, f"Case_{case}_SOC_map.png"),
-                bbox_inches="tight",
-            )
-        plt.grid()
-        plt.show()
-        plt.close(fig)
-        
-        ###############################################
-
-        #%%% HISTOGRAM GENERATOR
-        # Histogram of generated HWDP
-        HWDP_generated = timeseries.groupby(
-            timeseries.index.hour
-            )["m_HWD"].sum()
-        HWDP_generated = HWDP_generated / HWDP_generated.sum()
-
-        list_hours = np.arange(0, 23 + 1)
-        if HWDP_dist is not None:
-            HWD_file = os.path.join(
-                DATA_DIR["HWDP"], f"HWDP_Generic_AU_{HWDP_dist}.csv"
-            )
-            HWDP_day = pd.read_csv(HWD_file)
-            probs = HWDP_day.loc[list_hours, "HWDP"].values
-            probs = probs / probs.sum()
-            HWDP_template = probs
-        
-            from scipy.stats import linregress
-        
-            (slope, intercept, R2, p_value, std_err) = linregress(
-                HWDP_template, 
-                HWDP_generated,
-                )
-            RSME = ((HWDP_template - HWDP_generated) ** 2).mean() ** 0.5
-        
-            fig, ax = plt.subplots(figsize=(9, 6))
-            ax.scatter(HWDP_template, HWDP_generated, s=20)
-            Ymax = HWDP_template.max()
-            ax.plot([0, Ymax], [0, Ymax], c="k")
-        
-            ax.set_xlim(0, Ymax * 1.05)
-            ax.set_ylim(0, Ymax * 1.05)
-            ax.grid()
-            ax.tick_params(axis="both", which="major", labelsize=fs)
-            plt.show()
-        
-            #############################
-            fig, ax = plt.subplots(figsize=(9, 6))
-            ax.bar(
-                HWDP_generated.index,
-                HWDP_template,
-                width=0.4,
-                align="edge",
-            )
-            ax.bar(
-                HWDP_generated.index,
-                HWDP_generated,
-                width=-0.4,
-                align="edge",
-            )
-            ax.grid()
-            ax.tick_params(axis="both", which="major", labelsize=fs)
-            plt.show()
-
-        #%%% REGRESSION
-        lbl = "SOC_end"
-        for lbl in ["SOC_end", "TempTh_end"]:
-            cols = ["SOC_ini", "Temp_Amb", "Temp_Mains", "m_HWD_day"]
-            df2 = df[cols + [lbl]].copy()
-            df2.dropna(inplace=True)
-            X = df2[cols]
-            Y = df2[lbl]
-            regr = linear_model.LinearRegression()
-            regr.fit(X, Y)
-            R2 = regr.score(X, Y)
-            print(R2)
-            if lbl == "SOC_end":
-                R2_SOC = R2
-            if lbl == "TempTh_end":
-                R2_TempTh = R2
-
-            Y_pred = regr.predict(X)
-
-            show_plot = True
-            if show_plot:
-                fig, ax = plt.subplots(figsize=(9, 6))
-                ax.scatter(Y, Y_pred, s=2)
-                Ymax = Y.max()
-                ax.plot([0, Ymax], [0, Ymax], c="k")
-
-                ax.set_xlim(0, Ymax * 1.05)
-                ax.set_ylim(0, Ymax * 1.05)
-                ax.grid()
-                ax.set_xlabel(f"Simulated {lbl}", fontsize=fs)
-                ax.set_ylabel(f"Predicted {lbl}", fontsize=fs)
-                # ax.set_title(f'CL={row.profile_control}. HWDP={row.profile_HWD}. Timestep={t}mins ahead',fontsize=fs)
-                ax.tick_params(axis="both", which="major", labelsize=fs)
-                plt.show()
-
-        data.append([HWDP_dist, Risk_Shortage01, Risk_Shortage02, R2_SOC, R2_TempTh])
-
-        elapsed_time = time.time() - s_time
-        print(DAYS, elapsed_time)
-        columns = ["HWDP_dist", "Risk_Shortage01",
-                     "Risk_Shortage02", "R2_SOC", "R2_TempTh",]
-        df_data = pd.DataFrame(data, columns=columns,)
-        print(df_data)
 
 if __name__ == '__main__':
     main()
