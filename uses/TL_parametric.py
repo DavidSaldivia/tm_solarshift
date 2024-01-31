@@ -1,18 +1,14 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Jun 19 19:52:33 2023
-
-@author: z5158936
-"""
 
 import os
 import copy
 import pandas as pd
+from typing import Any, Dict, List
 
 import tm_solarshift.general as general
 import tm_solarshift.trnsys as trnsys
 import tm_solarshift.profiles as profiles
-import tm_solarshift.devices as devices
+from tm_solarshift.devices import (Variable, VariableList, HeatPump, ResistiveSingle)
 
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
@@ -25,26 +21,86 @@ PARAMS_OUT = ['heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
 
 DATA_DIR = general.DATA_DIR
 DIR_RESULTS = "results"
+showfig = False
 
 pd.set_option('display.max_columns', None)
 
-#################################################
+def updating_parameters(
+        general_setup: general.GeneralSetup,
+        row: pd.Series,
+        params_in: Dict,
+):
+    params_row = row[params_in.keys()].to_dict()
+
+    for parameter in params_row:
+        if 'DEWH.' in parameter:
+            setattr(general_setup.DEWH,
+                    parameter.split('.')[1],
+                    Variable(params_row[parameter],params_in[parameter].unit))
+        elif 'solar_system.' in parameter:
+            setattr(general_setup.solar_system,
+                    parameter.split('.')[1],
+                    Variable(params_row[parameter],params_in[parameter].unit))
+        else:
+            setattr(general_setup, parameter, params_row[parameter])
+
+    return
+
+def load_profiles_all(
+        general_setup: general.GeneralSetup,
+) -> pd.DataFrame:
+    
+    location = general_setup.location
+    profile_HWD = general_setup.profile_HWD
+    profile_control = general_setup.profile_control
+    random_control = general_setup.random_control
+    YEAR = general_setup.YEAR
+
+    Profiles = profiles.new_profile(general_setup)
+    Profiles = profiles.HWDP_generator_standard(
+        Profiles,
+        HWD_daily_dist = profiles.HWD_daily_distribution(general_setup, Profiles),
+        HWD_hourly_dist = profile_HWD
+    )
+    file_weather = os.path.join(
+        DATA_DIR["weather"], "meteonorm_processed",
+        f"meteonorm_{location}.csv",
+    )
+    Profiles = profiles.load_weather_from_file(
+        Profiles, file_weather
+    )
+    Profiles = profiles.load_controlled_load(
+        Profiles, 
+        profile_control = profile_control, 
+        random_ON = random_control
+    )
+    Profiles = profiles.load_emission_index_year(
+        Profiles, 
+        index_type= 'total',
+        location = location,
+        year=YEAR,
+    )
+    Profiles = profiles.load_PV_generation(Profiles)
+    Profiles = profiles.load_elec_consumption(Profiles)
+    return Profiles
+
+
 def parametric_run(
-    runs_in,
-    params_in,
-    params_out,
+    runs_in: pd.DataFrame,
+    params_in: Dict,
+    params_out: List,
     general_setup_base = general.GeneralSetup(),
-    case_template=None,
-    case_vars=[],
-    save_results_detailed  = False,
-    fldr_results_detailed  = None,
-    gen_plots_detailed     = False,
-    save_plots_detailed    = False,
-    save_results_general   = False,
-    file_results_general   = None,
-    fldr_results_general   = None,
-    append_results_general = False,       #If false, create new file
-    verbose = True,
+    case_template: str = None,
+    case_vars: List = [],
+    save_results_detailed: bool = False,
+    fldr_results_detailed: bool = None,
+    gen_plots_detailed: bool = False,
+    save_plots_detailed: bool = False,
+    save_results_general: bool = False,
+    file_results_general: bool = None,
+    fldr_results_general: bool = None,
+    append_results_general: bool = False,       #If false, create new file
+    verbose: bool = True,
     ):
     
     runs = runs_in.copy()
@@ -59,65 +115,27 @@ def parametric_run(
       
     for index, row in runs.iterrows():
         
-        print(f'RUNNING SIMULATION {index+1}/{len(runs)}')
-        
+        if verbose:
+            print(f'RUNNING SIMULATION {index+1}/{len(runs)}')
         general_setup = copy.copy(general_setup_base)
+        updating_parameters( general_setup, row, params_in )
         
-        #Updating parameters
-        cols_in = params_in.keys()
-        general_setup.update_params(row[cols_in])
-        
-        location = general_setup.location
-        profile_HWD = general_setup.profile_HWD
-        profile_control = general_setup.profile_control
-        random_control = general_setup.random_control
-        YEAR = general_setup.YEAR
-
         if verbose:
             print("Creating Profiles for Simulation")
-        Profiles = profiles.profiles_new(general_setup)
-        Profiles = profiles.HWDP_generator_standard(
-            Profiles,
-            HWD_daily_dist = profiles.HWD_daily_distribution(general_setup, Profiles),
-            HWD_hourly_dist = profile_HWD
-        )
-        
-        file_weather = os.path.join(
-            DATA_DIR["weather"], "meteonorm_processed",
-            f"meteonorm_{location}.csv",
-        )
-        Profiles = profiles.load_weather_from_file(Profiles, file_weather)
-        
-        Profiles = profiles.load_control_load(
-            Profiles, 
-            profile_control = profile_control, 
-            random_ON = random_control
-        )
-        
-        file_emissions = os.path.join(
-            DATA_DIR["emissions"],
-            f"emissions_year_{YEAR}.csv"
-        )
-        Profiles = profiles.load_emission_index(
-            Profiles, 
-            file_emissions = file_emissions,
-            location = location
-        )
-        
-        Profiles = profiles.load_PV_generation(Profiles)
-        Profiles = profiles.load_elec_consumption(Profiles)
-        
+        Profiles = load_profiles_all(general_setup)
+
         if verbose:
             print("Executing TRNSYS simulation")
-        out_data = trnsys.thermal_simulation_run(general_setup, Profiles)
+        out_data = trnsys.run_trnsys_simulation(general_setup, Profiles)
         out_overall = trnsys.postprocessing_annual_simulation(
             general_setup, Profiles, out_data
         )
         values_out = [out_overall[lbl] for lbl in params_out]
         runs.loc[index, params_out] = values_out
         
-        aux = [getattr(general_setup,x) for x in case_vars]
-        case = case_template.format(*aux)
+        # aux = [getattr(general_setup,x) for x in case_vars]
+        # case = case_template.format(*aux)
+        case = f'case_{index}'
         
         ###########################################
         #General results?
@@ -142,57 +160,58 @@ def parametric_run(
             fldr = os.path.join(DIR_RESULTS,fldr_results_detailed)
             if not os.path.exists(fldr):
                 os.mkdir(fldr)
-            out_data.to_csv(os.path.join(fldr,case+'_Results.csv'))
+            out_data.to_csv(os.path.join(fldr,case+'_results.csv'))
     
         ############################################
         #Detailed plots?
         if gen_plots_detailed:
             trnsys.detailed_plots(
-                general_setup,
-                out_data,
-                fldr_results_detailed = fldr_results_detailed,
+                general_setup, out_data,
+                fldr_results_detailed = os.path.join(
+                    DIR_RESULTS,
+                    fldr_results_detailed
+                ),
+                save_plots_detailed = save_plots_detailed,
                 case = case,
-                save_plots_detailed = save_plots_detailed
+                showfig = showfig
                 )
             
         print(runs.loc[index])
         
     return runs
 
-
 ################################################
-def parametric_run_testing():
+def parametric_run_tank():
     
     params_in = {
-        'DEWH.nom_power' : [2400., 3600., 4800.],
-        'DEWH.temp_max'  : [55., 60., 65., 70.],
-        'DEWH.U'  : [0.5, 1.0, 2.0],
-        'DEWH.vol': [0.1, 0.2, 0.3, 0.4, 0.5]
+        'DEWH.nom_power' : VariableList([2400., 3600., 4800.],"W"),
+        'DEWH.temp_max'  : VariableList([55., 65., 75.],'degC'),
+        'DEWH.U'  : VariableList([0.5, 1.0, 2.0],'W/m2-K'),
+        'DEWH.vol': VariableList([0.2, 0.3, 0.4], "m3")
         }
     
     runs = general.parametric_settings(params_in, PARAMS_OUT)
     general_setup_base = general.GeneralSetup()
 
-    case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
-    case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
-                  'location', 'profile_HWD', 'profile_control']
+    # case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
+    # case_vars = ['location', 'profile_HWD', 'profile_control']
 
     runs = parametric_run(
         runs, params_in, PARAMS_OUT,
         general_setup_base = general_setup_base,
-        case_template = case_template,
-        case_vars = case_vars,
+        # case_template = case_template,
+        # case_vars = case_vars,
         save_results_detailed = True,
         gen_plots_detailed    = True,
         save_plots_detailed   = True,
         save_results_general  = True,
-        fldr_results_detailed = 'parametric_testing',
-        fldr_results_general  = 'parametric_testing',
-        file_results_general  = '0-parametric_testing.csv',
+        fldr_results_detailed = 'parametric_tank',
+        fldr_results_general  = 'parametric_tank',
+        file_results_general  = '0-parametric_tank.csv',
         append_results_general = False       #If false, create new file
         )
 
-#################################    
+#################################
 def parametric_run_RS():
     list_profile_HWD = [1,2,3,4,5,6]
     list_profile_control = [0,1,2,3,4]
@@ -209,7 +228,7 @@ def parametric_run_RS():
         }
     
     runs = trnsys.parametric_settings(params_in, PARAMS_OUT)
-    general_setup_base = general.GeneralSetup()
+    general_setup_base = general.GeneralSetup(DEWH=ResistiveSingle())
 
     runs = parametric_run(
         runs, params_in, PARAMS_OUT,
@@ -226,6 +245,7 @@ def parametric_run_RS():
         append_results_general = False       #If false, create new file
         )
 
+#################################
 def parametric_run_HP():
     list_profile_HWD = [1,2,3,4,5,6]
     list_profile_control = [0,1,2,3,4]
@@ -244,7 +264,7 @@ def parametric_run_HP():
     runs = general.parametric_settings(params_in, PARAMS_OUT)
     
     general_setup_base = general.GeneralSetup(
-        DEWH = devices.HeatPump()
+        DEWH = HeatPump()
         )
     
     runs = parametric_run(
@@ -263,7 +283,14 @@ def parametric_run_HP():
         )
 
 if __name__ == "__main__":
-    parametric_run_testing()
+    
+    parametric_run_tank()
+    
+    # parametric_run_RS()
+
+    # parametric_run_HP()
+
+
 ################################################
 # #### Parametric Analysis: Tank
 #     list_heater_nom_cap = np.array([2400., 3600., 4800.])

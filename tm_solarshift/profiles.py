@@ -285,8 +285,8 @@ def HWDP_generator_standard(
 
     """
 
-    timeseries = Profiles.df
-    # timeseries = Profiles
+    # timeseries = Profiles.df
+    timeseries = Profiles
     STEP_h = timeseries.index.freq.n / 60.0   # [hr] delta t in hours
     PERIODS = len(timeseries)                 # [-] Number of periods to simulate
 
@@ -1080,7 +1080,7 @@ def loading_periods_control_load(profile_control):
     return Periods
 
 ############################################################
-def load_control_load(
+def load_controlled_load(
     Profiles: pd.DataFrame,
     profile_control: int = 0,
     columns: List[str] = PROFILES_TYPES["control"],
@@ -1098,7 +1098,7 @@ def load_control_load(
     if profile_control in [-1,0,10]:
         random_ON = False
     
-    df_cs["CS_norand"], df_cs["CS"] = defining_control_signals(
+    (df_cs["CS_norand"], df_cs["CS"]) = defining_control_signals(
         df_cs, Periods, random_ON=random_ON, STEP=STEP
     )
     Profiles[columns] = df_cs[columns]
@@ -1150,37 +1150,63 @@ def load_elec_consumption(
 
 
 ###########################################
-#### EMISSIONS
+# EMISSIONS
 
 def load_emission_index_year(
         Profiles: pd.DataFrame,
         location: str = "Sydney",
         index_type: str = "total",
         year: int = 2022,
-        columns: List[str] = PROFILES_TYPES["emissions"],
         ) -> pd.DataFrame:
-
+    
+    columns = {
+        "total": "Intensity_Index",
+        "marginal": "Marginal_Emission",
+        "both": PROFILES_TYPES["emissions"]
+        }[index_type]
+    
     STEP = Profiles.index.freq.n
     file_emissions = os.path.join(
         DATA_DIR["emissions"],
         f"emissions_year_{year}_{index_type}.csv"
     )
-
     emissions = pd.read_csv(file_emissions, index_col=0)
     emissions.index = pd.to_datetime(emissions.index)
-
     emi_type = emissions[
         emissions.Region == LOCATIONS_NEM_REGION[location]
     ]
-    Profiles[columns] = (
-        emi_type.resample(f"{STEP}T")
-        .interpolate('linear')
-        [columns]
-    )
+    Profiles[columns] = emi_type[columns].resample(f"{STEP}T").interpolate('linear')
 
     return Profiles
 
+def load_emission_index_year2(
+        Profiles: pd.DataFrame,
+        location: str = "Sydney",
+        index_type: str = "total",
+        year: int = 2022,
+        ) -> pd.DataFrame:
+    
+    columns = {
+        "total": "Intensity_Index",
+        "marginal": "Marginal_Emission",
+        "both": PROFILES_COLUMNS["emissions"]
+        }[index_type]
+    
+    STEP = Profiles.index.freq.n
+    file_emissions = os.path.join(
+        DATA_DIR["emissions"],
+        f"emissions_year_{year}_{index_type}.csv"
+    )
+    emissions = pd.read_csv(file_emissions, index_col=0)
+    emissions.index = pd.to_datetime(emissions.index)
+    emi_type = emissions[
+        emissions.Region == LOCATIONS_NEM_REGION[location]
+    ]
+    Profiles[columns] = emi_type[columns].resample(f"{STEP}T").interpolate('linear')
 
+    return
+
+##################################################
 def main():
 
     from tm_solarshift.general import Household

@@ -29,6 +29,25 @@ class Variable():
     def __repr__(self) -> str:
         return f"{self.value:} [{self.unit}]"
 
+
+class VariableList():
+    def __init__(self, values: List, unit: str = None, type="scalar"):
+        self.values = values
+        self.unit = unit
+        self.type = type
+
+    def get_values(self, unit=None):
+        values = self.values
+        if self.unit != unit: #Check units
+            raise ValueError(
+                f"The variable used have different units: {unit} and {self.unit}"
+                )
+        return values
+
+    def __repr__(self) -> str:
+        return f"{self.values:} [{self.unit}]"
+
+
 class Water():
     def __init__(self):
         self.rho = Variable(1000., "kg/m3")  # density (water)

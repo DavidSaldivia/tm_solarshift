@@ -5,6 +5,7 @@ import numpy as np
 from typing import Optional, List, Dict, Any, Tuple
 
 from tm_solarshift.devices import (
+    VariableList,
     ResistiveSingle,
     HeatPump,
     SolarSystem,
@@ -163,7 +164,7 @@ class Household(object):
         self.control_load = 0
         self.control_random_on = True
 
-        self.sim = Simulation()
+        self.simulation = Simulation()
         self.DEWH = ResistiveSingle()
         self.solar_system = SolarSystem()
 
@@ -239,8 +240,15 @@ def parametric_settings(
     """
     import itertools
     cols_in = params_in.keys()
+    params_values = []
+    for lbl in params_in:
+        values = params_in[lbl]
+        if type(values)==VariableList:
+            values = values.get_values(values.unit)
+        params_values.append(values)
+
     runs = pd.DataFrame(
-        list(itertools.product(*params_in.values())), 
+        list(itertools.product(*params_values)), 
         columns=cols_in,
         )
     for col in params_out:

@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 from tm_solarshift.general import (
     GeneralSetup,
     Household,
-    DATA_DIR
+    DATA_DIR,
 )
 from tm_solarshift.devices import (
     ResistiveSingle, 
@@ -22,7 +22,6 @@ from tm_solarshift.devices import (
 W2kJh = 3.6
 TRNSYS_EXECUTABLE = r"C:/TRNSYS18/Exe/TRNExe64.exe"
 TRNSYS_TEMPDIR = "C:/SolarShift_TempDir"
-
 FILES_TRNSYS_INPUT = {
     "PV_Gen": "0-Input_PVGen.csv",
     "Import_Grid": "0-Input_Elec.csv",
@@ -642,7 +641,7 @@ def detailed_plots(
     case=None,
     save_plots_detailed=False,
     tmax=72.0,
-    show = True,
+    showfig: bool = True,
 ):
 
     ### PLOTTING TEMPERATURES AND SOC
@@ -675,14 +674,13 @@ def detailed_plots(
     ax2.tick_params(axis="both", which="major", labelsize=fs - 2)
 
     if save_plots_detailed:
-        fldr = os.path.join(trnsys_setup.fileDir, fldr_results_detailed)
-        if not os.path.exists(fldr):
-            os.mkdir(fldr)
+        if not os.path.exists(fldr_results_detailed):
+            os.mkdir(fldr_results_detailed)
         fig.savefig(
             os.path.join(fldr_results_detailed, case + "_Temps_SOC.png"),
             bbox_inches="tight",
         )
-    if show:
+    if showfig:
         plt.show()
 
     ####################################
@@ -716,7 +714,7 @@ def detailed_plots(
             os.path.join(fldr_results_detailed, case + "_Energy.png"),
             bbox_inches="tight",
         )
-    if show:
+    if showfig:
         plt.show()
     return
 
