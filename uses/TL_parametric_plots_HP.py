@@ -1,63 +1,59 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun 20 12:01:13 2023
-
-@author: z5158936
-"""
-
-import subprocess           # to run the TRNSYS simulation
-import shutil               # to duplicate the output txt file
-import time                 # to measure the computation time
 import os
-import datetime
 import sys 
-import glob
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
-
+from typing import List
 ##############################################################
 fs=16
-locations_few = ['Sydney','Brisbane','Melbourne','Adelaide']
+LIST_PROFILE_HWD = [1,2,3,4,5,6]
+LIST_PROFILE_CONTROL = [0,1,2,3,4]
+LOCATIONS_FEW = ['Sydney','Brisbane','Melbourne','Adelaide']
 mm = ['o','v','s','d','P','*','H']
-HWDP_names = {1:'Mor & Eve Only',
-              2:'Mor & Eve w daytime',
-              3:'Evenly',
-              4:'Morning',
-              5:'Evening',
-              6:'late Night'}
-CL_names = {0:'GS',
-            1:'CL1',
-            2:'CL2',
-            3:'CL3',
-            4:'SS'}
+HWDP_NAMES = {
+    1:'Mor & Eve Only',
+    2:'Mor & Eve w daytime',
+    3:'Evenly',
+    4:'Morning',
+    5:'Evening',
+    6:'late Night'
+}
+CL_NAMES = {
+    0:'GS',
+    1:'CL1',
+    2:'CL2',
+    3:'CL3',
+    4:'SS'
+}
 colors = ['red','orange','green','darkblue','dodgerblue','maroon']
+
+RESULTS_FLDR = 'parametric_HeatPump'
+RESULTS_FILE = '0-parametric_HeatPump.csv'
 
 ##########################################
 # STORAGE EFFICIENCY: BARS PLOT
 
 def plot_storage_efficiency_bars(
-        results,
-        savefig=False,
-        width=0.1,
-        location_legend='Sydney',
-        locations=locations_few
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
+        width: float = 0.1,
+        location_legend: str ='Sydney',
+        locations: List = LOCATIONS_FEW
         ):
 
     widths = [-2.5*width, -1.5*width, -0.5*width, 0.5*width, 1.5*width, 2.5*width]
     for location in locations:
         fig, ax = plt.subplots(figsize=(9,6))
         i=0
-        for profile_HWD in list_profile_HWD:
+        for profile_HWD in LIST_PROFILE_HWD:
             aux = results[
                 (results.location==location)&
                 (results.profile_HWD==profile_HWD)
                 ]
             ax.bar(aux.profile_control + widths[i], aux.eta_stg,
                    width, color=f'C{i}', alpha=0.8,
-                   label=HWDP_names[profile_HWD])
+                   label=HWDP_NAMES[profile_HWD])
             i+=1
         
         ax.set_title(location,fontsize=fs+2)
@@ -72,8 +68,8 @@ def plot_storage_efficiency_bars(
                 ncols=3)
                 
         ax.set_ylim(0.5,0.8)
-        ax.set_xticks(list_profile_control)
-        ax.set_xticklabels(CL_names.values(), rotation=45)
+        ax.set_xticks(LIST_PROFILE_CONTROL)
+        ax.set_xticklabels(CL_NAMES.values(), rotation=45)
         ax.set_xlabel( 'Type of Control Load', fontsize=fs)
         ax.set_ylabel( 'Storage efficiency', fontsize=fs)
         ax.tick_params(axis='both', which='major', labelsize=fs)
@@ -81,43 +77,41 @@ def plot_storage_efficiency_bars(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    fldr_rslt,'0-eta_stg_'+location+'.png'
+                    RESULTS_FLDR,'0-eta_stg_'+location+'.png'
                     ),
                 bbox_inches='tight')
-        plt.show()
+        if showfig:
+            plt.show()
     return
 
 ########################################
 def plot_heater_energy_bars(
-        results,
-        savefig=False,
-        width=0.1,
-        location_legend='Sydney',
-        locations=locations_few
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
+        width: float = 0.1,
+        location_legend: str ='Sydney',
+        locations: List = LOCATIONS_FEW,
         ):
     
     widths = [-2.5*width, -1.5*width, -0.5*width, 0.5*width, 1.5*width, 2.5*width]
-    N_CSs = len(list_profile_control)
+    N_CSs = len(LIST_PROFILE_CONTROL)
     
     for location in locations:
         fig, ax = plt.subplots(figsize=(9,6))
         i=0
-        for profile_HWD in list_profile_HWD:
+        for profile_HWD in LIST_PROFILE_HWD:
             aux = results[
                 (results.location==location)&
                 (results.profile_HWD==profile_HWD)
                 ]
             ax.bar(aux.profile_control + widths[i], aux.heater_heat_acum,
                    width, color=f'C{i}', alpha=0.8, 
-                   label=HWDP_names[profile_HWD])
+                   label=HWDP_NAMES[profile_HWD])
             
             ax.bar(aux.profile_control + widths[i], aux.heater_power_acum,
                    width, hatch='//', color=f'C{i}', alpha=0.8,
                    label=None)
-            
-            # ax.scatter(aux.profile_control + widths[i], aux.heater_power_acum,
-                   # s=20, c='k', #color=f'C{i}', 
-                   # label=None)
             i+=1
         
         E_Heater_baseline = results[
@@ -149,8 +143,6 @@ def plot_heater_energy_bars(
                 label=r'$E_{HWD}$')
         
         ax.bar(np.NaN, np.NaN, color='none', hatch='//', label='HP Power')
-        
-        # ax.set_title(location,fontsize=fs+4)
         ax.grid()
         
         if location==location_legend:
@@ -160,8 +152,8 @@ def plot_heater_energy_bars(
                 fontsize=fs-2,
                 ncols=3)
         
-        ax.set_xticks(list_profile_control)
-        ax.set_xticklabels(CL_names.values(), rotation=45)
+        ax.set_xticks(LIST_PROFILE_CONTROL)
+        ax.set_xticklabels(CL_NAMES.values(), rotation=45)
         ax.set_xlabel( 'Type of Control Load', fontsize=fs)
         ax.set_ylabel( 'Annual energy delivered by HP (kWh/yr)', fontsize=fs)
         ax.tick_params(axis='both', which='major', labelsize=fs)
@@ -169,32 +161,34 @@ def plot_heater_energy_bars(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    fldr_rslt,'0-E_Heater_'+location+'.png'
+                    RESULTS_FLDR,'0-E_Heater_'+location+'.png'
                     ),
                 bbox_inches='tight')
-        plt.show()
+        if showfig:
+            plt.show()
     return
 
 ########################################
 def plot_SOC_minimum_scatter(
-        results,
-        savefig=False,
-        width=0.1,
-        location_legend='Sydney',
-        locations=locations_few
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
+        width: float = 0.1,
+        location_legend: str ='Sydney',
+        locations: List = LOCATIONS_FEW,
         ):
     
     for location in locations:
         fig, ax = plt.subplots(figsize=(9,6))
         i=0
-        for profile_HWD in list_profile_HWD:
+        for profile_HWD in LIST_PROFILE_HWD:
             aux = results[
                 (results.location==location)&
                 (results.profile_HWD==profile_HWD)
                 ]
             ax.scatter(aux.profile_control, aux.SOC_min,
                        s=100,marker=mm[profile_HWD],
-                       label=HWDP_names[profile_HWD])
+                       label=HWDP_NAMES[profile_HWD])
             i+=1
         ax.set_title(location,fontsize=fs+2)
         ax.grid()
@@ -202,8 +196,8 @@ def plot_SOC_minimum_scatter(
             ax.legend(bbox_to_anchor=(1.01, 0.8),fontsize=fs-2)
         
         ax.set_ylim(0.0,1.0)
-        ax.set_xticks(list_profile_control)
-        ax.set_xticklabels(CL_names.values(), rotation=45)
+        ax.set_xticks(LIST_PROFILE_CONTROL)
+        ax.set_xticklabels(CL_NAMES.values(), rotation=45)
         ax.set_xlabel( 'Type of Control Load', fontsize=fs)
         ax.set_ylabel( 'Minimum SOC', fontsize=fs)
         ax.tick_params(axis='both', which='major', labelsize=fs)
@@ -211,33 +205,35 @@ def plot_SOC_minimum_scatter(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    fldr_rslt,'0-SOC_min_'+location+'.png'
+                    RESULTS_FLDR,'0-SOC_min_'+location+'.png'
                     ),
                 bbox_inches='tight')
             
-        plt.show()
+        if showfig:
+            plt.show()
     return
 
 
 def plot_COP_avg_scatter(
-        results,
-        savefig=False,
-        width=0.1,
-        location_legend='Sydney',
-        locations=locations_few
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
+        width: float = 0.1,
+        location_legend: str ='Sydney',
+        locations: List = LOCATIONS_FEW,
         ):
     
     for location in locations:
         fig, ax = plt.subplots(figsize=(9,6))
         i=0
-        for profile_HWD in list_profile_HWD:
+        for profile_HWD in LIST_PROFILE_HWD:
             aux = results[
                 (results.location==location)&
                 (results.profile_HWD==profile_HWD)
                 ]
             ax.scatter(aux.profile_control, aux.heater_perf_avg,
                        s=100,marker=mm[profile_HWD],
-                       label=HWDP_names[profile_HWD])
+                       label=HWDP_NAMES[profile_HWD])
             i+=1
         # ax.set_title(location,fontsize=fs+2)
         ax.grid()
@@ -250,8 +246,8 @@ def plot_COP_avg_scatter(
                 ncols=3)
         
         ax.set_ylim(2.0,4.0)
-        ax.set_xticks(list_profile_control)
-        ax.set_xticklabels(CL_names.values(), rotation=45)
+        ax.set_xticks(LIST_PROFILE_CONTROL)
+        ax.set_xticklabels(CL_NAMES.values(), rotation=45)
         ax.set_xlabel( 'Type of Control Load', fontsize=fs)
         ax.set_ylabel( 'Annual Average COP', fontsize=fs)
         ax.tick_params(axis='both', which='major', labelsize=fs)
@@ -259,22 +255,24 @@ def plot_COP_avg_scatter(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    fldr_rslt,'0-COP_avg_'+location+'.png'
+                    RESULTS_FLDR,'0-COP_avg_'+location+'.png'
                     ),
                 bbox_inches='tight')
-        plt.show()
+        if showfig:
+            plt.show()
     return
 
 ##########################################
 def plot_Annual_Energy_InOut(
-        results,
-        savefig=False
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
         ):
     fig, ax = plt.subplots(figsize=(9,6))
     j=0
-    for location in list_location:
+    for location in LOCATIONS_FEW:
         i=0
-        for profile_HWD in list_profile_HWD:
+        for profile_HWD in LIST_PROFILE_HWD:
             aux = results[
                 (results.location==location)&
                 (results.profile_HWD==profile_HWD)
@@ -293,23 +291,25 @@ def plot_Annual_Energy_InOut(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Annual_Energy_HeaterVsHWD.png'
+                RESULTS_FLDR,'0-Annual_Energy_HeaterVsHWD.png'
                 ),
             bbox_inches='tight')
-    plt.show()
+    if showfig:
+            plt.show()
     return
 
 ########################################
 def plot_etastg_vs_SOC(
-        results,
-        savefig=False,
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
         ):
     
     fig, ax = plt.subplots(figsize=(9,6))
     j=0
-    for location in locations_few:
+    for location in LOCATIONS_FEW:
         i=0
-        for profile_HWD in list_profile_HWD:
+        for profile_HWD in LIST_PROFILE_HWD:
             aux = results[
                 (results.location==location)&
                 (results.profile_HWD==profile_HWD)
@@ -326,8 +326,8 @@ def plot_etastg_vs_SOC(
     
     ax2 = ax.twinx()
     i=0
-    for HWDP in HWDP_names:
-        ax2.scatter([],[],c='gray',marker=mm[i],label=HWDP_names[i+1])
+    for HWDP in HWDP_NAMES:
+        ax2.scatter([],[],c='gray',marker=mm[i],label=HWDP_NAMES[i+1])
         i+=1
     ax2.legend(bbox_to_anchor=(1.45, 1.0),fontsize=fs-2)
     ax2.set_yticks([])
@@ -339,22 +339,24 @@ def plot_etastg_vs_SOC(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Eta_stg_Vs_SOC_min.png'
+                RESULTS_FLDR,'0-Eta_stg_Vs_SOC_min.png'
                 ),
             bbox_inches='tight')
-    plt.show()
+    if showfig:
+            plt.show()
     return
 
 ##################################################
 def plot_AnnualEnergy_Tmains(
-        results,
-        savefig=False,
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
         ):
     fig, ax = plt.subplots(figsize=(9,6))
     j=0
-    for location in list_location:
+    for location in LOCATIONS_FEW:
         i=0
-        for profile_HWD in list_profile_HWD:
+        for profile_HWD in LIST_PROFILE_HWD:
             aux = results[
                 (results.location==location)&
                 (results.profile_HWD==profile_HWD)
@@ -377,22 +379,24 @@ def plot_AnnualEnergy_Tmains(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Annual_Energy_Tmains.png'
+                RESULTS_FLDR,'0-Annual_Energy_Tmains.png'
                 ),
             bbox_inches='tight')
-    plt.show()
+    if showfig:
+            plt.show()
     return
 
 
 def plot_AnnualEnergy_Tamb(
-        results,
-        savefig=False,
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
         ):
     fig, ax = plt.subplots(figsize=(9,6))
     j=0
-    for location in list_location:
+    for location in LOCATIONS_FEW:
         i=0
-        for profile_HWD in list_profile_HWD:
+        for profile_HWD in LIST_PROFILE_HWD:
             aux = results[
                 (results.location==location)&
                 (results.profile_HWD==profile_HWD)
@@ -415,21 +419,23 @@ def plot_AnnualEnergy_Tamb(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Annual_Energy_Tamb'+location+'.png'
+                RESULTS_FLDR,'0-Annual_Energy_Tamb'+location+'.png'
                 ),
             bbox_inches='tight')
-    plt.show()
+    if showfig:
+            plt.show()
     return
 
 def plot_AnnualEnergy_COP(
-        results,
-        savefig=False,
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
         ):
     fig, ax = plt.subplots(figsize=(9,6))
     j=0
-    for location in list_location:
+    for location in LOCATIONS_FEW:
         i=0
-        for profile_HWD in list_profile_HWD:
+        for profile_HWD in LIST_PROFILE_HWD:
             aux = results[
                 (results.location==location)&
                 (results.profile_HWD==profile_HWD)
@@ -452,31 +458,33 @@ def plot_AnnualEnergy_COP(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Annual_COP_Tamb'+location+'.png'
+                RESULTS_FLDR,'0-Annual_COP_Tamb'+location+'.png'
                 ),
             bbox_inches='tight')
-    plt.show()
+    if showfig:
+            plt.show()
     return
 
 def plot_Total_Emissions_one_location(
-        results,
-        savefig=False,
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
         location='Sydney',
-        width=0.1
+        width: float = 0.1,
         ):
     
     widths = [-2.5*width, -1.5*width, -0.5*width, 0.5*width, 1.5*width, 2.5*width]
     
     fig, ax = plt.subplots(figsize=(9,6))
     i=0
-    for profile_HWD in list_profile_HWD:
+    for profile_HWD in LIST_PROFILE_HWD:
         aux = results[
             (results.location==location)&
             (results.profile_HWD==profile_HWD)
             ]
         ax.bar(aux.profile_control + widths[i], aux.emissions_total,
                width, color=f'C{i}', alpha=0.8,
-               label=HWDP_names[profile_HWD])
+               label=HWDP_NAMES[profile_HWD])
         i+=1
     
     ax.set_title(location,fontsize=fs+2)
@@ -485,8 +493,8 @@ def plot_Total_Emissions_one_location(
         ax.legend(bbox_to_anchor=(1.01, 0.8),fontsize=fs-2)
     
     # ax.set_ylim(1.0,2.5)
-    ax.set_xticks(list_profile_control)
-    ax.set_xticklabels(CL_names.values(), rotation=45)
+    ax.set_xticks(LIST_PROFILE_CONTROL)
+    ax.set_xticklabels(CL_NAMES.values(), rotation=45)
     ax.set_xlabel( 'Type of Control Load', fontsize=fs)
     ax.set_ylabel( r'Anual accumulated Emissions (t-$CO_2$-e)', fontsize=fs)
     ax.tick_params(axis='both', which='major', labelsize=fs)
@@ -494,16 +502,18 @@ def plot_Total_Emissions_one_location(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Emissions_'+location+'.png'
+                RESULTS_FLDR,'0-Emissions_'+location+'.png'
                 ),
             bbox_inches='tight')
-    plt.show()
+    if showfig:
+            plt.show()
     return
 
 def plot_COP_diff_locations(
-        results,
-        savefig=False,
-        list_location=['Adelaide','Brisbane','Melbourne','Sydney'],
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
+        list_location: List = LOCATIONS_FEW,
         profile_HWD = 3,
         width=0.15
         ):
@@ -528,8 +538,8 @@ def plot_COP_diff_locations(
     ax.legend(bbox_to_anchor=(1.01, 0.8),fontsize=fs-2)
     
     # ax.set_ylim(0.0,3.0)
-    ax.set_xticks(list_profile_control)
-    ax.set_xticklabels(CL_names.values(), rotation=45)
+    ax.set_xticks(LIST_PROFILE_CONTROL)
+    ax.set_xticklabels(CL_NAMES.values(), rotation=45)
     ax.set_xlabel( 'Type of Control Load', fontsize=fs)
     ax.set_ylabel( r'Annual average COP', fontsize=fs)
     ax.tick_params(axis='both', which='major', labelsize=fs)
@@ -537,17 +547,19 @@ def plot_COP_diff_locations(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-COP_all.png'
+                RESULTS_FLDR,'0-COP_all.png'
                 ),
             bbox_inches='tight')
-    plt.show()
+    if showfig:
+            plt.show()
 
 ####################################################
 
 def plot_Total_Emissions_diff_locations(
-        results,
-        savefig=False,
-        list_location=['Adelaide','Brisbane','Melbourne','Sydney'],
+        results: pd.DataFrame,
+        savefig: bool = False,
+        showfig: bool = False,
+        list_location: List = LOCATIONS_FEW,
         profile_HWD = 3,
         width = 0.15,
         ):
@@ -574,8 +586,8 @@ def plot_Total_Emissions_diff_locations(
     ax.legend(bbox_to_anchor=(1.01, 0.8),fontsize=fs-2)
     
     ax.set_ylim(0.0,3.0)
-    ax.set_xticks(list_profile_control)
-    ax.set_xticklabels(CL_names.values(), rotation=45)
+    ax.set_xticks(LIST_PROFILE_CONTROL)
+    ax.set_xticklabels(CL_NAMES.values(), rotation=45)
     ax.set_xlabel( 'Type of Control Load', fontsize=fs)
     ax.set_ylabel( r'Annual accumulated Emissions (t-$CO_2$-e)', fontsize=fs)
     ax.tick_params(axis='both', which='major', labelsize=fs)
@@ -583,41 +595,39 @@ def plot_Total_Emissions_diff_locations(
     if savefig:
         fig.savefig(
             os.path.join(
-                fldr_rslt,'0-Emissions_all.png'
+                RESULTS_FLDR,'0-Emissions_all.png'
                 ),
             bbox_inches='tight')
-    plt.show()
+    if showfig:
+            plt.show()
 
 
 ########################################
-########################################
-#%% GENERATING PLOTS
-list_profile_HWD = [1,2,3,4,5,6]
-list_profile_control = [0,1,2,3,4]
-# list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
-list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne'] 
-fldr_rslt = 'Parametric_HWDP_CL_HeatPump'
-file_rslts = '0-Parametric_HWDP_CL_HeatPump.csv'
+def main():
 
-results = pd.read_csv(
-    os.path.join(
-        fldr_rslt,file_rslts),
-    index_col=0
-    )
+    results = pd.read_csv(
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "results", RESULTS_FLDR, RESULTS_FILE,
+            ),
+        index_col=0
+        )
 
-savefig = True
+    savefig = True
+    showfig = False
+    plot_storage_efficiency_bars(results, savefig=savefig,showfig=showfig)
+    plot_heater_energy_bars(results, savefig=savefig, showfig=showfig)
+    plot_AnnualEnergy_Tamb(results, savefig=savefig, showfig=showfig)
+    plot_AnnualEnergy_COP(results, savefig=savefig, showfig=showfig)
+    plot_SOC_minimum_scatter(results, savefig=savefig, showfig=showfig)
+    plot_COP_avg_scatter(results, savefig=savefig, showfig=showfig)
+    plot_Annual_Energy_InOut(results, savefig=savefig, showfig=showfig)
+    plot_etastg_vs_SOC(results, savefig=savefig, showfig=showfig)
+    plot_AnnualEnergy_Tmains(results, savefig=savefig, showfig=showfig)
+    plot_Total_Emissions_one_location(results, savefig=savefig, showfig=showfig)
+    plot_Total_Emissions_diff_locations(results, savefig=savefig, showfig=showfig)
+    plot_COP_diff_locations(results, savefig=savefig, showfig=showfig)
 
-plot_storage_efficiency_bars(results, savefig=savefig)
-plot_heater_energy_bars(results, savefig=savefig)
-plot_AnnualEnergy_Tamb(results, savefig=savefig)
-plot_AnnualEnergy_COP(results, savefig=savefig)
-plot_SOC_minimum_scatter(results, savefig=savefig)
-plot_COP_avg_scatter(results, savefig=savefig)
-plot_Annual_Energy_InOut(results, savefig=savefig)
-plot_etastg_vs_SOC(results, savefig=savefig)
-plot_AnnualEnergy_Tmains(results, savefig=savefig)
-plot_Total_Emissions_one_location(results, savefig=savefig)
-plot_Total_Emissions_diff_locations(results, savefig=savefig)
-plot_COP_diff_locations(results, savefig=savefig)
 
-sys.exit()
+if __name__ == '__main__':
+    main()
