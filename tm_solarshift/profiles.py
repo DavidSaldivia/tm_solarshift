@@ -6,13 +6,12 @@ from typing import Optional, List, Dict, Any, Union
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
 
+from tm_solarshift.general import (SEASON_DEFINITION,
+                                   LOCATIONS_NEM_REGION,
+                                   DATA_DIR,
+                                   )
 
-from tm_solarshift.general import SEASON_DEFINITION
-from tm_solarshift.general import LOCATIONS_NEM_REGION
-from tm_solarshift.general import DATA_DIR
-
-###############################
-### CONSTANTS AND LISTS
+#---------------------------------
 W2kJh = 3.6
 PROFILES_TYPES = {
     "HWDP": ["P_HWD", "m_HWD", "Events", "m_HWD_day"],
@@ -30,7 +29,7 @@ PROFILES_COLUMNS = [
 
 FILE_SAMPLE_HWD_DAILY = "HWD_Daily_Sample_site.csv"
 
-########################################
+#---------------------------------
 # DEFINITION OF PROFILES
 # In each case 0 means not included (profile will be fill with 0 or 1 depending on the case)
 
@@ -93,7 +92,8 @@ class Profiles():
             HWD_daily_dist: pd.DataFrame = pd.DataFrame(),
             HWD_hourly_dist: int = 0,
             event_probs: pd.DataFrame = pd.DataFrame(),
-            columns: List[str] = PROFILES_TYPES['HWDP']):
+            columns: List[str] = PROFILES_TYPES['HWDP']
+            ):
         
         self.df = HWDP_generator(self,
             method = method,
@@ -102,8 +102,8 @@ class Profiles():
             event_probs = event_probs,
             columns = columns)
         return
-    
 
+#---------------------------------
 def new_profile(
     general_setup: Any,
     profile_columns: List[str] = PROFILES_COLUMNS,
@@ -125,8 +125,8 @@ def new_profile(
 
     return Profiles
 
-########################################
-#### BASIC FUNCTIONS FOR PROFILES
+#---------------------------------
+#### Basic functions for profiles
 
 def profile_gaussian(df, mu1, sig1, A1, base=0):
 
@@ -144,8 +144,8 @@ def profile_step(df, t1, t2, A1, A0=0):
     series = np.where((aux >= t1) & (aux < t2), A1, A0)
     return series
 
-########################################
-#### HOT WATER DRAW PROFILE GENERATION
+#---------------------------------
+#### Hot Water Profile Generation
 def events_basic():
 
     event1 = {
@@ -165,6 +165,7 @@ def events_basic():
 
     return event1
 
+#---------------------------------
 def events_file(file_name=None, sheet_name=None):
 
     events = pd.read_excel(
@@ -174,9 +175,7 @@ def events_file(file_name=None, sheet_name=None):
 
     return events
 
-
-###################################
-
+#---------------------------------
 
 def HWD_daily_distribution(
     general_setup: Any,
@@ -253,8 +252,7 @@ def HWD_daily_distribution(
     return HWD_daily
 
 
-#######################################################
-
+#---------------------------------
 
 def HWDP_generator_standard(
     Profiles: pd.DataFrame,
@@ -335,7 +333,7 @@ def HWDP_generator_standard(
     return timeseries
 
 
-###################################
+#---------------------------------
 
 def HWDP_generator_events(
     timeseries: pd.DataFrame,
@@ -516,6 +514,7 @@ def HWDP_generator_events(
     return Profiles
 
     
+#---------------------------------
 def HWDP_generator(
     Profiles: pd.DataFrame,
     method: str = 'standard',
@@ -541,8 +540,8 @@ def HWDP_generator(
     
     return Profiles
 
-###################################
-#### WEATHER FUNCTIONS
+#---------------------------------
+# Weather Functions
 
 def load_weather_day_constant_random(
     Profiles: pd.DataFrame,
@@ -577,7 +576,7 @@ def load_weather_day_constant_random(
     return Profiles
 
 
-###################################
+#---------------------------------
 
 def weather_random_days_from_dataframe(
     Profiles: pd.DataFrame,
@@ -607,8 +606,7 @@ def weather_random_days_from_dataframe(
     dates = np.unique(Set_Days.index.date)
     DAYS = len(np.unique(Profiles.index.date))
     picked_dates = np.random.choice(
-        dates,
-        size=DAYS
+        dates, size=DAYS
     )
     Set_Days["date"] = Set_Days.index.date
     Days_All = [
@@ -620,6 +618,7 @@ def weather_random_days_from_dataframe(
     
     return Profiles
 
+#---------------------------------
 def load_weather_from_tmy(
         Profiles: pd.DataFrame,
         TMY: pd.DataFrame,
@@ -639,7 +638,7 @@ def load_weather_from_tmy(
     Profiles[columns] = TMY_final[columns]
     return Profiles
 
-########################################
+#---------------------------------
 def load_weather_from_file(
     Profiles: pd.DataFrame,
     file_path: str,
@@ -716,10 +715,8 @@ def load_weather_from_file(
         )
     return Profiles
 
-#######################################################
-#### CONTROL STRATEGIES
-
-# Creating Random starting points
+#---------------------------------
+# Controlled Loads
 def add_randomization_delay(
     df_in: pd.DataFrame,
     random_delay_on: int = 0,
@@ -776,7 +773,7 @@ def add_randomization_delay(
     output = (df.iloc[0]["CS"] + df["Switch_rand"].cumsum())
     return output
 
-#############################################
+#---------------------------------
 
 def defining_control_signals(
     df_cs_original: pd.DataFrame,
@@ -881,7 +878,7 @@ def defining_control_signals(
 
     return [df_cs["CS"], df_cs["CS2"]]
 
-####################################################
+#---------------------------------
 def loading_periods_control_load(profile_control):
     if profile_control == -1:
         # No Connection at all (useful for tests)
@@ -1079,7 +1076,7 @@ def loading_periods_control_load(profile_control):
         
     return Periods
 
-############################################################
+#---------------------------------
 def load_controlled_load(
     Profiles: pd.DataFrame,
     profile_control: int = 0,
@@ -1104,8 +1101,8 @@ def load_controlled_load(
     Profiles[columns] = df_cs[columns]
     return Profiles
 
-#######################################################
-#### ELECTRIC PROFILES
+#---------------------------------
+# Electric Profiles
 
 def load_PV_generation(
         Profiles: pd.DataFrame,
@@ -1128,8 +1125,8 @@ def load_PV_generation(
     Profiles[columns] = df_PV[columns]
     return Profiles
 
-#######################################################
 
+#---------------------------------
 def load_elec_consumption(
     Profiles: pd.DataFrame,
     profile_elec: int = 0,
@@ -1149,9 +1146,8 @@ def load_elec_consumption(
     return Profiles
 
 
-###########################################
-# EMISSIONS
-
+#---------------------------------
+# Emissions
 def load_emission_index_year(
         Profiles: pd.DataFrame,
         location: str = "Sydney",
@@ -1179,34 +1175,7 @@ def load_emission_index_year(
 
     return Profiles
 
-def load_emission_index_year2(
-        Profiles: pd.DataFrame,
-        location: str = "Sydney",
-        index_type: str = "total",
-        year: int = 2022,
-        ) -> pd.DataFrame:
-    
-    columns = {
-        "total": "Intensity_Index",
-        "marginal": "Marginal_Emission",
-        "both": PROFILES_COLUMNS["emissions"]
-        }[index_type]
-    
-    STEP = Profiles.index.freq.n
-    file_emissions = os.path.join(
-        DATA_DIR["emissions"],
-        f"emissions_year_{year}_{index_type}.csv"
-    )
-    emissions = pd.read_csv(file_emissions, index_col=0)
-    emissions.index = pd.to_datetime(emissions.index)
-    emi_type = emissions[
-        emissions.Region == LOCATIONS_NEM_REGION[location]
-    ]
-    Profiles[columns] = emi_type[columns].resample(f"{STEP}T").interpolate('linear')
-
-    return
-
-##################################################
+#---------------------------------
 def main():
 
     from tm_solarshift.general import Household
@@ -1230,5 +1199,6 @@ def main():
     )
     pass
 
+#---------------------------------
 if __name__=="__main__":
     main()

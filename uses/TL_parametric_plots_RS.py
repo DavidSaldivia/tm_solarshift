@@ -2,32 +2,21 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-##############################################################
+from tm_solarshift.general import (HWDP_NAMES, CL_NAMES, MAIN_DIR)
+
+#---------------------------------------
 fs=16
 LIST_LOCATIONS = ['Adelaide', 'Brisbane', 'Canberra', 'Darwin',
                 'Melbourne', 'Perth', 'Sydney', 'Townsville']
-LOCATIONS_FEW = ['Sydney','Brisbane','Melbourne','Townsville','Adelaide']
+LIST_PROFILE_HWD = [1,2,3,4,5,6]
+LIST_PROFILE_CONTROL = [0,1,2,3,4]
+LOCATIONS_FEW = ['Sydney','Brisbane','Melbourne','Adelaide']
 mm = ['o','v','s','d','P','*','H']
-HWDP_NAMES = {
-    1:'Mor & Eve Only',
-    2:'Mor & Eve w daytime',
-    3:'Evenly',
-    4:'Morning',
-    5:'Evening',
-    6:'late Night',
-    }
-CL_NAMES = {
-    0:'GS', 
-    1:'CL1',
-    2:'CL2',
-    3:'CL3',
-    4:'SS'
-    }
+
+mm = ['o','v','s','d','P','*','H']
 COLORS = ['red','orange','green','darkblue','dodgerblue','maroon']
 
-##########################################
-# STORAGE EFFICIENCY: BARS PLOT
-
+#---------------------------------------
 def plot_storage_efficiency_bars(
         results,
         savefig=False,
@@ -78,9 +67,10 @@ def plot_storage_efficiency_bars(
                 bbox_inches='tight')
         if showfig:
             plt.show()
+        plt.close()
     return
 
-########################################
+#---------------------------------------
 def plot_heater_energy_bars(
         results,
         savefig=False,
@@ -159,10 +149,11 @@ def plot_heater_energy_bars(
                 bbox_inches='tight')
         if showfig:
             plt.show()
+        plt.close()
 
     return
 
-########################################
+#---------------------------------------
 def plot_SOC_minimum_scatter(
         results,
         savefig=False,
@@ -205,9 +196,10 @@ def plot_SOC_minimum_scatter(
             
         if showfig:
             plt.show()
+        plt.close()
     return
 
-##########################################
+#---------------------------------------
 def plot_annual_energy_in_out(
         results,
         savefig=False,
@@ -241,9 +233,10 @@ def plot_annual_energy_in_out(
             bbox_inches='tight')
     if showfig:
         plt.show()
+    plt.close()
     return
 
-########################################
+#---------------------------------------
 def plot_etastg_vs_SOC(
         results,
         savefig=False,
@@ -290,9 +283,10 @@ def plot_etastg_vs_SOC(
             bbox_inches='tight')
     if showfig:
         plt.show()
+    plt.close()
     return
 
-##################################################
+#---------------------------------------
 def plot_annual_energy_Tmains(
         results,
         savefig=False,
@@ -335,9 +329,10 @@ def plot_annual_energy_Tmains(
             bbox_inches='tight')
     if showfig:
         plt.show()
+    plt.close()
     return
 
-
+#---------------------------------------
 def plot_total_emissions_one_location(
         results,
         savefig=False,
@@ -383,9 +378,10 @@ def plot_total_emissions_one_location(
             bbox_inches='tight')
     if showfig:
         plt.show()
+    plt.close()
     return
 
-
+#---------------------------------------
 def plot_total_emissions_diff_locations(
         results,
         savefig=False,
@@ -430,31 +426,31 @@ def plot_total_emissions_diff_locations(
             bbox_inches='tight')
     if showfig:
         plt.show()
+    plt.close()
     return
 
-########################################
+#---------------------------------------
 def main():
-    list_profile_HWD = [1,2,3,4,5,6]
-    list_profile_control = [0,1,2,3,4]
-    LIST_LOCATIONS = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
-
-    RESULTS_DIR = 'parametric_ResistiveSingle'
+    
+    RESULTS_FLDR = os.path.join(
+    MAIN_DIR,
+    "results",
+    'parametric_ResistiveSingle',
+    )
     RESULTS_FILE = '0-parametric_ResistiveSingle.csv'
 
     results = pd.read_csv(
-        os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "results", RESULTS_DIR, RESULTS_FILE,
-            ),
+        os.path.join( RESULTS_FLDR, RESULTS_FILE ),
         index_col=0
         )
 
     savefig = True
     showfig = False
-    fldr_fig = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "results", RESULTS_DIR,
-            )
+    # fldr_fig = os.path.join(
+    #         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    #         "results", RESULTS_DIR,
+    #         )
+    fldr_fig = RESULTS_FLDR
     plot_storage_efficiency_bars(
         results, fldr_fig=fldr_fig, savefig=savefig, showfig=showfig
         )
@@ -480,11 +476,9 @@ def main():
         results, fldr_fig=fldr_fig, savefig=savefig, showfig=showfig
         )
 
-#################################
+#---------------------------------------
 if __name__=="__main__":
     main()
-
-
 
 
 

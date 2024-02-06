@@ -25,6 +25,7 @@ showfig = False
 
 pd.set_option('display.max_columns', None)
 
+#-----------------------------
 def updating_parameters(
         general_setup: general.GeneralSetup,
         row: pd.Series,
@@ -34,18 +35,27 @@ def updating_parameters(
 
     for parameter in params_row:
         if 'DEWH.' in parameter:
-            setattr(general_setup.DEWH,
-                    parameter.split('.')[1],
-                    Variable(params_row[parameter],params_in[parameter].unit))
+            setattr(
+                general_setup.DEWH,
+                parameter.split('.')[1],
+                Variable(params_row[parameter], params_in[parameter].unit)
+                )
         elif 'solar_system.' in parameter:
-            setattr(general_setup.solar_system,
-                    parameter.split('.')[1],
-                    Variable(params_row[parameter],params_in[parameter].unit))
+            setattr(
+                general_setup.solar_system,
+                parameter.split('.')[1],
+                Variable(params_row[parameter], params_in[parameter].unit)
+                )
         else:
-            setattr(general_setup, parameter, params_row[parameter])
+            setattr(
+                general_setup,
+                parameter,
+                params_row[parameter]
+                )
 
     return
 
+#-----------------------------
 def load_profiles_all(
         general_setup: general.GeneralSetup,
 ) -> pd.DataFrame:
@@ -84,14 +94,12 @@ def load_profiles_all(
     Profiles = profiles.load_elec_consumption(Profiles)
     return Profiles
 
-
+#-----------------------------
 def parametric_run(
     runs_in: pd.DataFrame,
     params_in: Dict,
     params_out: List,
     general_setup_base = general.GeneralSetup(),
-    case_template: str = None,
-    case_vars: List = [],
     save_results_detailed: bool = False,
     fldr_results_detailed: bool = None,
     gen_plots_detailed: bool = False,
@@ -133,11 +141,7 @@ def parametric_run(
         values_out = [out_overall[lbl] for lbl in params_out]
         runs.loc[index, params_out] = values_out
         
-        # aux = [getattr(general_setup,x) for x in case_vars]
-        # case = case_template.format(*aux)
-        case = f'case_{index}'
-        
-        ###########################################
+        #----------------
         #General results?
         if save_results_general:
             fldr = os.path.join(DIR_RESULTS,fldr_results_general)
@@ -154,15 +158,16 @@ def parametric_run(
                     os.path.join(fldr,file_results_general)
                     )
                 
-        ###########################################
+        #-----------------
         #Detailed results?
+        case = f'case_{index}'
         if save_results_detailed:
             fldr = os.path.join(DIR_RESULTS,fldr_results_detailed)
             if not os.path.exists(fldr):
                 os.mkdir(fldr)
             out_data.to_csv(os.path.join(fldr,case+'_results.csv'))
     
-        ############################################
+        #-----------------
         #Detailed plots?
         if gen_plots_detailed:
             trnsys.detailed_plots(
@@ -193,14 +198,9 @@ def parametric_run_tank():
     runs = general.parametric_settings(params_in, PARAMS_OUT)
     general_setup_base = general.GeneralSetup()
 
-    # case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
-    # case_vars = ['location', 'profile_HWD', 'profile_control']
-
     runs = parametric_run(
         runs, params_in, PARAMS_OUT,
         general_setup_base = general_setup_base,
-        # case_template = case_template,
-        # case_vars = case_vars,
         save_results_detailed = True,
         gen_plots_detailed    = True,
         save_plots_detailed   = True,
@@ -211,84 +211,66 @@ def parametric_run_tank():
         append_results_general = False       #If false, create new file
         )
 
-#################################
+#----------------------------------
 def parametric_run_RS():
-    list_profile_HWD = [1,2,3,4,5,6]
-    list_profile_control = [0,1,2,3,4]
-    list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
-    
-    case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
-    case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
-                  'location', 'profile_HWD', 'profile_control']
-    
+
+    LOCATIONS_ALL = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
+    LOCATIONS_FEW = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne']
     params_in = {
-        'location'         : list_location,
-        'profile_HWD'      : list_profile_HWD,
-        'profile_control'  : list_profile_control,
+        'location'         : LOCATIONS_FEW,
+        'profile_HWD'      : [1,2,3,4,5,6],
+        'profile_control'  : [0,1,2,3,4],
         }
-    
-    runs = trnsys.parametric_settings(params_in, PARAMS_OUT)
+    runs = general.parametric_settings(params_in, PARAMS_OUT)
     general_setup_base = general.GeneralSetup(DEWH=ResistiveSingle())
 
     runs = parametric_run(
         runs, params_in, PARAMS_OUT,
         general_setup_base = general_setup_base,
-        case_template = case_template,
-        case_vars = case_vars,
         save_results_detailed = True,
         gen_plots_detailed    = True,
         save_plots_detailed   = True,
         save_results_general  = True,
-        fldr_results_detailed = 'Parametric_HWDP_CL_Resistive',
-        fldr_results_general  = 'Parametric_HWDP_CL_Resistive',
-        file_results_general  = '0-Parametric_HWDP_CL_Resistive.csv',
+        fldr_results_detailed = 'parametric_ResistiveSingle',
+        fldr_results_general  = 'parametric_ResistiveSingle',
+        file_results_general  = '0-parametric_ResistiveSingle.csv',
         append_results_general = False       #If false, create new file
         )
 
-#################################
+#----------------------------------
 def parametric_run_HP():
-    list_profile_HWD = [1,2,3,4,5,6]
-    list_profile_control = [0,1,2,3,4]
-    list_location = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne'] #, 'Canberra', 'Darwin', 'Perth', 'Townsville']
-    
-    case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
-    case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
-                  'location', 'profile_HWD', 'profile_control']
-    
+
+    LOCATIONS_ALL = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
+    LOCATIONS_FEW = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne']
     params_in = {
-        'profile_HWD'      : list_profile_HWD,
-        'profile_control'  : list_profile_control,
-        'location'         : list_location,
+        'location'         : LOCATIONS_FEW,
+        'profile_HWD'      : [1,2,3,4,5,6],
+        'profile_control'  : [0,1,2,3,4],
         }
-    
     runs = general.parametric_settings(params_in, PARAMS_OUT)
     
-    general_setup_base = general.GeneralSetup(
-        DEWH = HeatPump()
-        )
+    general_setup_base = general.GeneralSetup( DEWH = HeatPump() )
     
     runs = parametric_run(
         runs, params_in, PARAMS_OUT,
         general_setup_base = general_setup_base,
-        case_template = case_template,
-        case_vars = case_vars,
         save_results_detailed = True,
         gen_plots_detailed    = True,
         save_plots_detailed   = True,
         save_results_general  = True,
-        fldr_results_detailed = 'Parametric_HWDP_CL_HeatPump',
-        fldr_results_general  = 'Parametric_HWDP_CL_HeatPump',
-        file_results_general  = '0-Parametric_HWDP_CL_HeatPump.csv',
+        fldr_results_detailed = 'parametric_HeatPump',
+        fldr_results_general  = 'parametric_HeatPump',
+        file_results_general  = '0-parametric_HeatPump.csv',
         append_results_general = False      #If false, create new file
         )
 
 if __name__ == "__main__":
     
-    parametric_run_tank()
+    # parametric_run_tank()
     
     # parametric_run_RS()
 
-    # parametric_run_HP()
+    parametric_run_HP()
 
 
 ################################################

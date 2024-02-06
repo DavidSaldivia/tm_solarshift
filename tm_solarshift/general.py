@@ -11,10 +11,9 @@ from tm_solarshift.devices import (
     SolarSystem,
 )
 
+MAIN_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fileDir = os.path.dirname(os.path.abspath(__file__))
-dataDir = os.path.join(
-    os.path.dirname(fileDir), "data",
-    )
+dataDir = os.path.join(MAIN_DIR, "data")
 DATA_DIR = {
     "weather" : os.path.join(dataDir,"weather"),
     "HWDP" : os.path.join(dataDir,"HWD_Profiles"),
@@ -50,24 +49,25 @@ LOCATIONS_NEM_REGION = {
     "Canberra": "NSW1",
     "Townsville": "QLD1",
 }
+HWDP_NAMES = {
+    1:'Mor & Eve Only',
+    2:'Mor & Eve w daytime',
+    3:'Evenly',
+    4:'Morning',
+    5:'Evening',
+    6:'late Night'
+}
+CL_NAMES = {
+    0:'GS',
+    1:'CL1',
+    2:'CL2',
+    3:'CL3',
+    4:'SS'
+}
 
-
-######################################################
-######################################################
-# GeneralSetup
-# START, STOP, STEP, YEAR = Sim.START, Sim.STOP, Sim.STEP, Sim.YEAR
-
-# Profiles
-# HWD_avg = Sim.HWD_avg 
-# HWD_std = Sim.HWD_std 
-# HWD_min = Sim.HWD_min 
-# HWD_max = Sim.HWD_max 
-# HWD_daily_dist = Sim.HWD_daily_dist
-
-######################################################
-######################################################
+#------------------------------------
 ## The main object for the simulation
-class GeneralSetup(object):
+class GeneralSetup():
     def __init__(self, **kwargs):
 
         self.START = 0                  # [hr]
@@ -114,12 +114,6 @@ class GeneralSetup(object):
     def DAYS_i(self):
         return int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
 
-    # def derived_parameters(self):
-    #     self.DAYS = int(self.STOP / 24)
-    #     self.STEP_h = self.STEP / 60.0
-    #     self.PERIODS = int(np.ceil((self.STOP - self.START) / self.STEP_h))
-    #     self.DAYS_i = int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
-
     def update_params(self, params):
         for key, values in params.items():
             if hasattr(self, key):  # Checking if the params are in GeneralSetup to update them
@@ -132,9 +126,11 @@ class GeneralSetup(object):
         return self.__dict__.keys()
 
 
-
+#------------------------------------
 class Simulation():
     def __init__(self):
+
+        self.location = "Sydney"
         self.START = 0                  # [hr]
         self.STOP = 8760                # [hr]
         self.STEP = 3                   # [min]
@@ -152,74 +148,67 @@ class Simulation():
     @property
     def DAYS_i(self):
         return int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
-    
 
 
-class Household(object):
-    def __init__(self, **kwargs):
+    def create_new_profile(
+        self,
+        profile_columns: List[str] = None,
+    ) -> pd.DataFrame:
 
-        self.location = "Sydney"
+        if profile_columns == None:
+            from tm_solarshift.profiles import PROFILES_COLUMNS
+            profile_columns = PROFILES_COLUMNS
+        START = self.START
+        STEP = self.STEP
+        YEAR = self.YEAR
+        PERIODS = self.PERIODS
+
+        start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") \
+            + pd.DateOffset(hours=START)
+        idx = pd.date_range(
+            start=start_time, 
+            periods=PERIODS, 
+            freq=f"{STEP}min"
+        )
+        Profiles = pd.DataFrame(index=idx, columns=profile_columns)
+
+        return Profiles
+
+#------------------------------------
+class ElectricityInfo():
+    def __init__(self):
         self.tariff_type = "flat"
         self.DNSP = "Ausgrid"
         self.control_load = 0
         self.control_random_on = True
 
-        self.simulation = Simulation()
-        self.DEWH = ResistiveSingle()
-        self.solar_system = SolarSystem()
-
-        # HWD statistics
+#------------------------------------
+class HWDInfo():
+    def __init__(self):
         self.profile_HWD = 1
         self.HWD_avg = 200.0  # [L/d]
         self.HWD_std = self.HWD_avg / 3.0
         # [L/d] (Measure for daily variability. No variability = 0)
         self.HWD_min = 0.0  # [L/d] Minimum HWD. Default 0
         self.HWD_max = 2 * self.HWD_avg  # [L/d] Maximum HWD. Default 2x HWD_avg
-        # [str] Type of variability in daily consumption.
-        # Options: None, unif, truncnorm, sample
-        self.HWD_daily_dist = None
-
-        for key, value in kwargs.items():
-            setattr(self, key, value)
         
-    def update_params(self, params):
-        for key, values in params.items():
-            if hasattr(self, key):
-                setattr(self, key, values)
-            else:
-                text_error = f"Parameter {key} not in Sim object. Simulation will finish now"
-                raise ValueError(text_error)
+        # Options: None, unif, truncnorm, sample
+        self.HWD_daily_dist = None # [str] Type of variability in daily consumption.
+
+#------------------------------------
+class Household():
+    def __init__(self):
+
+        self.simulation = Simulation()
+        self.DEWH = ResistiveSingle()
+        self.solar_system = SolarSystem()
+        self.HWD = HWDInfo()
+        self.elec_plan = ElectricityInfo()
 
     def parameters(self):
         return self.__dict__.keys()
 
-
-class Profiles():
-    def __init__(self):
-
-        self.START = 0                  # [hr]
-        self.STOP = 8760                # [hr]
-        self.STEP = 3                   # [min]
-        self.YEAR = 2022                # [-]
-        
-        self.STEP_h = self.STEP / 60.0
-        self.PERIODS = int(
-            np.ceil((self.STOP - self.START) / self.STEP_h)
-        )
-        start_time = (
-            pd.to_datetime(f"{self.YEAR}-01-01 00:00:00") 
-            + pd.DateOffset(hours=self.START)
-        )
-        idx = pd.date_range(
-            start=start_time, 
-            periods=self.PERIODS,
-            freq=f"{self.STEP}min"
-        )
-        from tm_solarshift.profiles import PROFILES_COLUMNS
-        self.df = pd.DataFrame(index=idx, columns=PROFILES_COLUMNS)
-
-
-
+#------------------------------------
 def parametric_settings(
         params_in : Dict = {},
         params_out: List = [],
@@ -231,6 +220,7 @@ def parametric_settings(
     The order of running is "first=outer".
     It requires a dictionary with keys as Simulation attributes (to be changed)
     and a list of strings with the desired outputs from out_overall.
+
     Args:
         params_in (Dict): Dict with (parameter : [values]) structure.
         params_out (List): List with expected output from simulations.
@@ -255,7 +245,7 @@ def parametric_settings(
         runs[col] = np.nan
     return runs
 
-########################################
+#------------------------------------
 
 if __name__ == '__main__':
     Sim = GeneralSetup()

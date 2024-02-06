@@ -1,37 +1,28 @@
 import os
-import sys 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import List
-##############################################################
+
+from tm_solarshift.general import (HWDP_NAMES, CL_NAMES,MAIN_DIR)
+
+#---------------------------------------
+
 fs=16
 LIST_PROFILE_HWD = [1,2,3,4,5,6]
 LIST_PROFILE_CONTROL = [0,1,2,3,4]
 LOCATIONS_FEW = ['Sydney','Brisbane','Melbourne','Adelaide']
 mm = ['o','v','s','d','P','*','H']
-HWDP_NAMES = {
-    1:'Mor & Eve Only',
-    2:'Mor & Eve w daytime',
-    3:'Evenly',
-    4:'Morning',
-    5:'Evening',
-    6:'late Night'
-}
-CL_NAMES = {
-    0:'GS',
-    1:'CL1',
-    2:'CL2',
-    3:'CL3',
-    4:'SS'
-}
 colors = ['red','orange','green','darkblue','dodgerblue','maroon']
 
-RESULTS_FLDR = 'parametric_HeatPump'
 RESULTS_FILE = '0-parametric_HeatPump.csv'
+RESULTS_FLDR = os.path.join(
+    MAIN_DIR,
+    "results",
+    'parametric_HeatPump',
+    )
 
-##########################################
-# STORAGE EFFICIENCY: BARS PLOT
+#---------------------------------------
 
 def plot_storage_efficiency_bars(
         results: pd.DataFrame,
@@ -82,9 +73,10 @@ def plot_storage_efficiency_bars(
                 bbox_inches='tight')
         if showfig:
             plt.show()
+        plt.close()
     return
 
-########################################
+#---------------------------------------
 def plot_heater_energy_bars(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -166,9 +158,10 @@ def plot_heater_energy_bars(
                 bbox_inches='tight')
         if showfig:
             plt.show()
+        plt.close()
     return
 
-########################################
+#---------------------------------------
 def plot_SOC_minimum_scatter(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -211,9 +204,10 @@ def plot_SOC_minimum_scatter(
             
         if showfig:
             plt.show()
+        plt.close()
     return
 
-
+#---------------------------------------
 def plot_COP_avg_scatter(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -245,7 +239,7 @@ def plot_COP_avg_scatter(
                 fontsize=fs-2,
                 ncols=3)
         
-        ax.set_ylim(2.0,4.0)
+        ax.set_ylim(2.5,5.0)
         ax.set_xticks(LIST_PROFILE_CONTROL)
         ax.set_xticklabels(CL_NAMES.values(), rotation=45)
         ax.set_xlabel( 'Type of Control Load', fontsize=fs)
@@ -260,9 +254,10 @@ def plot_COP_avg_scatter(
                 bbox_inches='tight')
         if showfig:
             plt.show()
+        plt.close()
     return
 
-##########################################
+#---------------------------------------
 def plot_Annual_Energy_InOut(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -295,10 +290,11 @@ def plot_Annual_Energy_InOut(
                 ),
             bbox_inches='tight')
     if showfig:
-            plt.show()
+        plt.show()
+    plt.close()
     return
 
-########################################
+#---------------------------------------
 def plot_etastg_vs_SOC(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -343,10 +339,11 @@ def plot_etastg_vs_SOC(
                 ),
             bbox_inches='tight')
     if showfig:
-            plt.show()
+        plt.show()
+    plt.close()
     return
 
-##################################################
+#---------------------------------------
 def plot_AnnualEnergy_Tmains(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -383,10 +380,11 @@ def plot_AnnualEnergy_Tmains(
                 ),
             bbox_inches='tight')
     if showfig:
-            plt.show()
+        plt.show()
+    plt.close()
     return
 
-
+#---------------------------------------
 def plot_AnnualEnergy_Tamb(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -423,9 +421,11 @@ def plot_AnnualEnergy_Tamb(
                 ),
             bbox_inches='tight')
     if showfig:
-            plt.show()
+        plt.show()
+    plt.close()
     return
 
+#---------------------------------------
 def plot_AnnualEnergy_COP(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -462,9 +462,11 @@ def plot_AnnualEnergy_COP(
                 ),
             bbox_inches='tight')
     if showfig:
-            plt.show()
+        plt.show()
+    plt.close()
     return
 
+#---------------------------------------
 def plot_Total_Emissions_one_location(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -506,9 +508,11 @@ def plot_Total_Emissions_one_location(
                 ),
             bbox_inches='tight')
     if showfig:
-            plt.show()
+        plt.show()
+    plt.close()
     return
 
+#---------------------------------------
 def plot_COP_diff_locations(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -551,10 +555,11 @@ def plot_COP_diff_locations(
                 ),
             bbox_inches='tight')
     if showfig:
-            plt.show()
+        plt.show()
+    plt.close()
+    return
 
-####################################################
-
+#---------------------------------------
 def plot_Total_Emissions_diff_locations(
         results: pd.DataFrame,
         savefig: bool = False,
@@ -599,17 +604,15 @@ def plot_Total_Emissions_diff_locations(
                 ),
             bbox_inches='tight')
     if showfig:
-            plt.show()
+        plt.show()
+    plt.close()
+    return
 
-
-########################################
+#---------------------------------------
 def main():
 
     results = pd.read_csv(
-        os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "results", RESULTS_FLDR, RESULTS_FILE,
-            ),
+        os.path.join( RESULTS_FLDR, RESULTS_FILE ),
         index_col=0
         )
 
@@ -629,5 +632,6 @@ def main():
     plot_COP_diff_locations(results, savefig=savefig, showfig=showfig)
 
 
+#---------------------------------------
 if __name__ == '__main__':
     main()

@@ -1,16 +1,18 @@
 import numpy as np
 from typing import Optional, List, Dict, Any, Tuple
-# from tm_solarshift.general import CONV
 
 CONV = {
     "MJ_to_kWh": 1000/3600.,
+    "J_to_kWh": 1./(1000*3600.),
     "W_to_kJh": 3.6,
     "min_to_s": 60.,
     "min_to_hr": 1/60.,
+    "hr_to_s": 3600.,
     "L_to_m3": 1e-3,
     "W_to_MJ/hr": 3.6e-3
 }
 
+#-------------------------
 #Utilities classes
 class Variable():
     def __init__(self, value: float, unit: str = None, type="scalar"):
@@ -30,6 +32,7 @@ class Variable():
         return f"{self.value:} [{self.unit}]"
 
 
+#-------------------------
 class VariableList():
     def __init__(self, values: List, unit: str = None, type="scalar"):
         self.values = values
@@ -48,17 +51,20 @@ class VariableList():
         return f"{self.values:} [{self.unit}]"
 
 
+#-------------------------
 class Water():
     def __init__(self):
         self.rho = Variable(1000., "kg/m3")  # density (water)
         self.cp = Variable(4180., "J/kg-K")  # specific heat (water)
         self.k = Variable(0.6, "W/m-K")  # thermal conductivity (water)
 
+#-------------------------
 #Solar System and auxiliary devices
 class SolarSystem():
     def __init__(self):
         self.nom_power = Variable(4000.0,"W")
 
+#-------------------------
 #List of heater devices        
 class ResistiveSingle():
     def __init__(self, source: str="default"):
@@ -96,6 +102,7 @@ class ResistiveSingle():
         return tank_temp_high_control(self)
 
 
+#-------------------------
 class HeatPump():
     def __init__(self, source: str="default"):
 
@@ -133,6 +140,7 @@ class HeatPump():
         return tank_area_loss(self)
 
 
+#-------------------------
 def tank_thermal_capacity(tank):
     vol = tank.vol.get_value("m3")
     rho = tank.fluid.rho.get_value("kg/m3")
@@ -160,6 +168,7 @@ def tank_temp_high_control(tank):
     temp_high_control = temp_max - temp_deadband / 2.0
     return Variable(temp_high_control, "degC")
 
+#-------------------------
 class GasHeaterInstantaneous():
     def __init__(self, source: str="default"):
         if source == 'default':
@@ -188,9 +197,8 @@ class GasHeaterInstantaneous():
 def tm_heater_gas_instantaneuos(
         heater: Any = GasHeaterInstantaneous(),
         HW_flow: List = [200.,],
+        STEP_h: float = 3/60.
 ) -> dict:
-
-    STEP_h = 3/60. #Replace it for a constant later
 
     MJ_TO_kWh = CONV["MJ_to_kWh"]
     min_TO_sec = CONV["min_to_s"]
@@ -246,7 +254,7 @@ def tm_heater_gas_instantaneuos(
     }
     return output
 
-
+#-------------------------
 def main():
     heater = HeatPump()
 
@@ -257,5 +265,6 @@ def main():
 
     return
 
+#-------------------------
 if __name__=="__main__":
     main()
