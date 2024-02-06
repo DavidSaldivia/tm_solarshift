@@ -10,7 +10,7 @@ from tempfile import TemporaryDirectory
 
 from tm_solarshift.general import (
     GeneralSetup,
-    Household,
+    # Household,
     DATA_DIR,
 )
 from tm_solarshift.devices import (
@@ -402,7 +402,7 @@ def postprocessing_detailed(
         trnsys_setup: TrnsysSetup,
         profiles: pd.DataFrame,
         verbose: str=False
-        ):
+        )-> pd.DataFrame:
     
     #Reading output files
     tempDir = trnsys_setup.tempDir
@@ -689,10 +689,10 @@ def detailed_plots(
 
 #------------------------------
 def run_trnsys_simulation(
-        household: Household,
+        household: GeneralSetup,
         profiles: pd.DataFrame,
         verbose: bool = False,
-        ):
+        ) -> pd.DataFrame:
 
     if verbose:
         print("Running TRNSYS Simulation")

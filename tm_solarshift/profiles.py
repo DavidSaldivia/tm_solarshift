@@ -614,6 +614,7 @@ def weather_random_days_from_dataframe(
     ]
     Picked_Days = pd.concat(Days_All)
     Picked_Days.index = Profiles.index
+    print
     Profiles[columns] = Picked_Days[columns]
     
     return Profiles

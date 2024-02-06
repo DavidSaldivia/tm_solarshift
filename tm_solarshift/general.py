@@ -196,17 +196,17 @@ class HWDInfo():
         self.HWD_daily_dist = None # [str] Type of variability in daily consumption.
 
 #------------------------------------
-class Household():
-    def __init__(self):
+# class Household():
+#     def __init__(self):
 
-        self.simulation = Simulation()
-        self.DEWH = ResistiveSingle()
-        self.solar_system = SolarSystem()
-        self.HWD = HWDInfo()
-        self.elec_plan = ElectricityInfo()
+#         self.simulation = Simulation()
+#         self.DEWH = ResistiveSingle()
+#         self.solar_system = SolarSystem()
+#         self.HWD = HWDInfo()
+#         self.elec_plan = ElectricityInfo()
 
-    def parameters(self):
-        return self.__dict__.keys()
+#     def parameters(self):
+#         return self.__dict__.keys()
 
 #------------------------------------
 def parametric_settings(

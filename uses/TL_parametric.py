@@ -189,9 +189,9 @@ def parametric_run(
 def parametric_run_tank():
     
     params_in = {
-        'DEWH.nom_power' : VariableList([2400., 3600., 4800.],"W"),
-        'DEWH.temp_max'  : VariableList([55., 65., 75.],'degC'),
-        'DEWH.U'  : VariableList([0.5, 1.0, 2.0],'W/m2-K'),
+        'DEWH.nom_power' : VariableList([2400., 3600., 4800.], "W"),
+        'DEWH.temp_max'  : VariableList([55., 65., 75.], 'degC'),
+        'DEWH.U'  : VariableList([0.5, 1.0, 2.0], 'W/m2-K'),
         'DEWH.vol': VariableList([0.2, 0.3, 0.4], "m3")
         }
     
@@ -214,7 +214,7 @@ def parametric_run_tank():
 #----------------------------------
 def parametric_run_RS():
 
-    LOCATIONS_ALL = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
+    # LOCATIONS_ALL = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne', 'Canberra', 'Darwin', 'Perth', 'Townsville']
     LOCATIONS_FEW = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne']
     params_in = {
         'location'         : LOCATIONS_FEW,
