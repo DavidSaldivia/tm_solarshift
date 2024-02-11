@@ -15,17 +15,11 @@ LOCATIONS_FEW = ['Sydney','Brisbane','Melbourne','Adelaide']
 mm = ['o','v','s','d','P','*','H']
 colors = ['red','orange','green','darkblue','dodgerblue','maroon']
 
-RESULTS_FILE = '0-parametric_HeatPump.csv'
-RESULTS_FLDR = os.path.join(
-    MAIN_DIR,
-    "results",
-    'parametric_HeatPump',
-    )
-
 #---------------------------------------
 
 def plot_storage_efficiency_bars(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         width: float = 0.1,
@@ -68,7 +62,7 @@ def plot_storage_efficiency_bars(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    RESULTS_FLDR,'0-eta_stg_'+location+'.png'
+                    fldr_fig,'0-eta_stg_'+location+'.png'
                     ),
                 bbox_inches='tight')
         if showfig:
@@ -79,6 +73,7 @@ def plot_storage_efficiency_bars(
 #---------------------------------------
 def plot_heater_energy_bars(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         width: float = 0.1,
@@ -153,7 +148,7 @@ def plot_heater_energy_bars(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    RESULTS_FLDR,'0-E_Heater_'+location+'.png'
+                    fldr_fig,'0-E_Heater_'+location+'.png'
                     ),
                 bbox_inches='tight')
         if showfig:
@@ -164,6 +159,7 @@ def plot_heater_energy_bars(
 #---------------------------------------
 def plot_SOC_minimum_scatter(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         width: float = 0.1,
@@ -198,7 +194,7 @@ def plot_SOC_minimum_scatter(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    RESULTS_FLDR,'0-SOC_min_'+location+'.png'
+                    fldr_fig,'0-SOC_min_'+location+'.png'
                     ),
                 bbox_inches='tight')
             
@@ -210,6 +206,7 @@ def plot_SOC_minimum_scatter(
 #---------------------------------------
 def plot_COP_avg_scatter(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         width: float = 0.1,
@@ -239,7 +236,7 @@ def plot_COP_avg_scatter(
                 fontsize=fs-2,
                 ncols=3)
         
-        ax.set_ylim(2.5,5.0)
+        ax.set_ylim(2.0,4.0)
         ax.set_xticks(LIST_PROFILE_CONTROL)
         ax.set_xticklabels(CL_NAMES.values(), rotation=45)
         ax.set_xlabel( 'Type of Control Load', fontsize=fs)
@@ -249,7 +246,7 @@ def plot_COP_avg_scatter(
         if savefig:
             fig.savefig(
                 os.path.join(
-                    RESULTS_FLDR,'0-COP_avg_'+location+'.png'
+                    fldr_fig,'0-COP_avg_'+location+'.png'
                     ),
                 bbox_inches='tight')
         if showfig:
@@ -260,6 +257,7 @@ def plot_COP_avg_scatter(
 #---------------------------------------
 def plot_Annual_Energy_InOut(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         ):
@@ -286,7 +284,7 @@ def plot_Annual_Energy_InOut(
     if savefig:
         fig.savefig(
             os.path.join(
-                RESULTS_FLDR,'0-Annual_Energy_HeaterVsHWD.png'
+                fldr_fig,'0-Annual_Energy_HeaterVsHWD.png'
                 ),
             bbox_inches='tight')
     if showfig:
@@ -297,6 +295,7 @@ def plot_Annual_Energy_InOut(
 #---------------------------------------
 def plot_etastg_vs_SOC(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         ):
@@ -335,7 +334,7 @@ def plot_etastg_vs_SOC(
     if savefig:
         fig.savefig(
             os.path.join(
-                RESULTS_FLDR,'0-Eta_stg_Vs_SOC_min.png'
+                fldr_fig,'0-Eta_stg_Vs_SOC_min.png'
                 ),
             bbox_inches='tight')
     if showfig:
@@ -346,6 +345,7 @@ def plot_etastg_vs_SOC(
 #---------------------------------------
 def plot_AnnualEnergy_Tmains(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         ):
@@ -376,7 +376,7 @@ def plot_AnnualEnergy_Tmains(
     if savefig:
         fig.savefig(
             os.path.join(
-                RESULTS_FLDR,'0-Annual_Energy_Tmains.png'
+                fldr_fig,'0-Annual_Energy_Tmains.png'
                 ),
             bbox_inches='tight')
     if showfig:
@@ -387,6 +387,7 @@ def plot_AnnualEnergy_Tmains(
 #---------------------------------------
 def plot_AnnualEnergy_Tamb(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         ):
@@ -417,7 +418,7 @@ def plot_AnnualEnergy_Tamb(
     if savefig:
         fig.savefig(
             os.path.join(
-                RESULTS_FLDR,'0-Annual_Energy_Tamb'+location+'.png'
+                fldr_fig,'0-Annual_Energy_Tamb'+location+'.png'
                 ),
             bbox_inches='tight')
     if showfig:
@@ -428,6 +429,7 @@ def plot_AnnualEnergy_Tamb(
 #---------------------------------------
 def plot_AnnualEnergy_COP(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         ):
@@ -458,7 +460,7 @@ def plot_AnnualEnergy_COP(
     if savefig:
         fig.savefig(
             os.path.join(
-                RESULTS_FLDR,'0-Annual_COP_Tamb'+location+'.png'
+                fldr_fig,'0-Annual_COP_Tamb'+location+'.png'
                 ),
             bbox_inches='tight')
     if showfig:
@@ -469,6 +471,7 @@ def plot_AnnualEnergy_COP(
 #---------------------------------------
 def plot_Total_Emissions_one_location(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         location='Sydney',
@@ -504,7 +507,7 @@ def plot_Total_Emissions_one_location(
     if savefig:
         fig.savefig(
             os.path.join(
-                RESULTS_FLDR,'0-Emissions_'+location+'.png'
+                fldr_fig,'0-Emissions_'+location+'.png'
                 ),
             bbox_inches='tight')
     if showfig:
@@ -515,6 +518,7 @@ def plot_Total_Emissions_one_location(
 #---------------------------------------
 def plot_COP_diff_locations(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         list_location: List = LOCATIONS_FEW,
@@ -551,7 +555,7 @@ def plot_COP_diff_locations(
     if savefig:
         fig.savefig(
             os.path.join(
-                RESULTS_FLDR,'0-COP_all.png'
+                fldr_fig,'0-COP_all.png'
                 ),
             bbox_inches='tight')
     if showfig:
@@ -562,6 +566,7 @@ def plot_COP_diff_locations(
 #---------------------------------------
 def plot_Total_Emissions_diff_locations(
         results: pd.DataFrame,
+        fldr_fig: str,
         savefig: bool = False,
         showfig: bool = False,
         list_location: List = LOCATIONS_FEW,
@@ -600,7 +605,7 @@ def plot_Total_Emissions_diff_locations(
     if savefig:
         fig.savefig(
             os.path.join(
-                RESULTS_FLDR,'0-Emissions_all.png'
+                fldr_fig,'0-Emissions_all.png'
                 ),
             bbox_inches='tight')
     if showfig:
@@ -610,7 +615,13 @@ def plot_Total_Emissions_diff_locations(
 
 #---------------------------------------
 def main():
-
+    
+    RESULTS_FILE = '0-parametric_HeatPump.csv'
+    RESULTS_FLDR = os.path.join(
+    MAIN_DIR,
+    "results",
+    'parametric_HeatPump',
+    )
     results = pd.read_csv(
         os.path.join( RESULTS_FLDR, RESULTS_FILE ),
         index_col=0
@@ -618,18 +629,42 @@ def main():
 
     savefig = True
     showfig = False
-    plot_storage_efficiency_bars(results, savefig=savefig,showfig=showfig)
-    plot_heater_energy_bars(results, savefig=savefig, showfig=showfig)
-    plot_AnnualEnergy_Tamb(results, savefig=savefig, showfig=showfig)
-    plot_AnnualEnergy_COP(results, savefig=savefig, showfig=showfig)
-    plot_SOC_minimum_scatter(results, savefig=savefig, showfig=showfig)
-    plot_COP_avg_scatter(results, savefig=savefig, showfig=showfig)
-    plot_Annual_Energy_InOut(results, savefig=savefig, showfig=showfig)
-    plot_etastg_vs_SOC(results, savefig=savefig, showfig=showfig)
-    plot_AnnualEnergy_Tmains(results, savefig=savefig, showfig=showfig)
-    plot_Total_Emissions_one_location(results, savefig=savefig, showfig=showfig)
-    plot_Total_Emissions_diff_locations(results, savefig=savefig, showfig=showfig)
-    plot_COP_diff_locations(results, savefig=savefig, showfig=showfig)
+    plot_storage_efficiency_bars(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+        )
+    plot_heater_energy_bars(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_AnnualEnergy_Tamb(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_AnnualEnergy_COP(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_SOC_minimum_scatter(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_COP_avg_scatter(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_Annual_Energy_InOut(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_etastg_vs_SOC(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_AnnualEnergy_Tmains(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_Total_Emissions_one_location(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_Total_Emissions_diff_locations(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
+    plot_COP_diff_locations(
+        results, fldr_fig=RESULTS_FLDR, savefig=savefig,showfig=showfig
+    )
 
 
 #---------------------------------------

@@ -3,7 +3,7 @@ from typing import Dict, Optional, List, Any
 
 import tm_solarshift.profiles as profiles
 from tm_solarshift.general import (GeneralSetup, DATA_DIR)
-from tm_solarshift.devices import (GasHeaterInstantaneous, CONV)
+from tm_solarshift.devices import (GasHeaterInstantaneous, conversion_factor)
 
 def tm_state_heater_gas(
         heater_spec: Any = GasHeaterInstantaneous(),
@@ -11,8 +11,8 @@ def tm_state_heater_gas(
         HW_annual_energy: float = 2000.,
 ) -> dict:
 
-    MJ_TO_kWh = CONV["MJ_to_kWh"]
-    MIN_TO_SEC = CONV["min_to_s"]
+    MJ_TO_kWh = conversion_factor("MJ","kWh")
+    MIN_TO_SEC = conversion_factor("min", "s")
 
     nom_power = heater_spec.nom_power.get_value("MJ/hr")
     deltaT_rise = heater_spec.deltaT_rise.get_value("dgrC")

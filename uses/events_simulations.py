@@ -23,10 +23,8 @@ from tm_solarshift.general import (
     GeneralSetup,
     DATA_DIR
 )
-from tm_solarshift.devices import CONV
+from tm_solarshift.devices import conversion_factor
 
-
-W2kJh = CONV["W_to_kJh"]
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
 WEATHER_TYPES = [

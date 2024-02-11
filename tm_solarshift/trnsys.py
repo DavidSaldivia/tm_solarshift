@@ -17,10 +17,10 @@ from tm_solarshift.devices import (
     ResistiveSingle, 
     HeatPump,
     SolarSystem,
-    CONV
+    conversion_factor
 )
 
-W_TO_kJh = CONV["W_to_kJh"]
+# W_TO_kJh = conversion_factor("W", "kJ/h")
 TRNSYS_EXECUTABLE = r"C:/TRNSYS18/Exe/TRNExe64.exe"
 TRNSYS_TEMPDIR = "C:/SolarShift_TempDir"
 FILES_TRNSYS_INPUT = {
@@ -103,12 +103,11 @@ class TrnsysSetup():
 
         # Trnsys layout configurations
         if self.DEWH.__class__ == ResistiveSingle:
-            layout_DEWH = "RS"
+            self.layout_DEWH = "RS"
         elif self.DEWH.__class__ == HeatPump:
-            layout_DEWH = "HPF"
+            self.layout_DEWH = "HPF"
         else:
             raise ValueError("DEWH is not a valid class for TRNSYS simulation")
-        self.layout_DEWH = layout_DEWH
 
         if household.solar_system.__class__ == SolarSystem:
             self.layout_PV = "PVF"
@@ -116,7 +115,7 @@ class TrnsysSetup():
         self.layout_v = 0
         self.layout_TC = "MX"
         self.layout_WF = "W9a"
-        # self.layout_WF = "W15"
+        self.layout_WF = "W15"
         self.weather_source = None
 
         for key, value in kwargs.items():
@@ -139,7 +138,7 @@ def editing_dck_general(
     if DEWH.__class__ == ResistiveSingle:
         nom_power = DEWH.nom_power.get_value("W")
     elif DEWH.__class__ == HeatPump:
-        nom_power = DEWH.nom_power_el.get_value("W")
+        nom_power = DEWH.nom_power_th.get_value("W")
 
     eta = DEWH.eta.get_value("-")
     temp_max = DEWH.temp_max.get_value("degC")
@@ -158,7 +157,7 @@ def editing_dck_general(
 
     # Editing .dck file: DEWH: resistive single and HP
     gral_params = {
-        "Heater_NomCap": nom_power * W_TO_kJh,
+        "Heater_NomCap": nom_power * conversion_factor("W", "kJ/h"),
         "Heater_F_eta": eta,
         "Tank_TempHigh": temp_max,
         "Tank_TempLow": temp_min,
@@ -259,9 +258,9 @@ def editing_dck_tank(
     tank_params = {
         "1 Tank volume": vol,
         "2 Tank height": height,
-        "4 Top loss coefficient": U * W_TO_kJh,
-        "5 Edge loss coefficient": U * W_TO_kJh,
-        "6 Bottom loss coefficient": U * W_TO_kJh,
+        "4 Top loss coefficient": U * conversion_factor("W", "kJ/h"),
+        "5 Edge loss coefficient": U * conversion_factor("W", "kJ/h"),
+        "6 Bottom loss coefficient": U * conversion_factor("W", "kJ/h"),
     }
 
     for idx, line in enumerate(comp_lines):
@@ -492,17 +491,22 @@ def postprocessing_annual_simulation(
     STOP = trnsys_setup.STOP
     STEP = trnsys_setup.STEP
     thermal_cap = trnsys_setup.DEWH.thermal_cap.get_value("kWh")
-    tank_cp = trnsys_setup.DEWH.fluid.cp.get_value("J/kg-K")
+    cp = trnsys_setup.DEWH.fluid.cp.get_value("J/kg-K")
     
     # Derivated parameters
-    STEP_h = STEP / 60.0  # [hr] delta t in hours
+    STEP_h = STEP * conversion_factor("min", "hr")
     PERIODS = int(np.ceil((STOP - START) / STEP_h))  # [-] Number of periods to simulate
-    DAYS = STEP_h * PERIODS / 24.0
-
+    DAYS = STEP_h * PERIODS * conversion_factor("hr", "d")
     # Calculating overall parameters
     # Accumulated energy values (all in [kWh])
-    heater_heat_acum = (out_all["HeaterHeat"] * STEP_h / W_TO_kJh / 1000.0).sum()
-    heater_power_acum = (out_all["HeaterPower"] * STEP_h / W_TO_kJh / 1000.0).sum()
+    heater_heat_acum = (
+        out_all["HeaterHeat"] * STEP_h 
+        * conversion_factor("kJ/h", "kW")
+        ).sum()
+    heater_power_acum = (
+        out_all["HeaterPower"] * STEP_h 
+        * conversion_factor("kJ/h", "kW")
+        ).sum()
 
     if heater_heat_acum <= 0:
         heater_heat_acum = np.nan
@@ -512,9 +516,9 @@ def postprocessing_annual_simulation(
     heater_perf_avg = heater_heat_acum / heater_power_acum
 
     E_HWD_acum = (
-        out_all["Tank_FlowRate"] * STEP_h * tank_cp
+        out_all["Tank_FlowRate"] * STEP_h * cp
         * (out_all["TempTop"] - out_all["T_mains"])
-        / W_TO_kJh / 1e6
+        * conversion_factor("J", "kWh")
     ).sum()
 
     E_losses = heater_heat_acum - E_HWD_acum
@@ -547,8 +551,10 @@ def postprocessing_annual_simulation(
         / heater_power_sum
     )
     
-    emissions_total = ((out_all["HeaterPower"] / 1e6 / 3.6 * STEP_h)
-                       * Profiles["Intensity_Index"]).sum()
+    emissions_total = (
+        (out_all["HeaterPower"] * STEP_h * conversion_factor("kJ/h", "kW"))
+        * Profiles["Intensity_Index"]
+        ).sum()
 
     out_overall = {
         "heater_heat_acum": heater_heat_acum,
@@ -594,8 +600,8 @@ def postprocessing_events_simulation(
     E_HWD_acum = (
         (out_data["Tank_FlowRate"] * STEP_h * tank_cp
          * (out_data["TempTop"] - out_data["T_mains"])
-         / W_TO_kJh / 1e6)
-        .groupby(out_data.index.date)
+         * conversion_factor("J/h", "kW")
+         ).groupby(out_data.index.date)
         .sum()
     )
     df.loc[df.index == idx, "E_HWD_day"] = E_HWD_acum
@@ -658,9 +664,9 @@ def detailed_plots(
     fs = 16
     ax2 = ax.twinx()
     aux = (
-        (out_all.index.dayofyear - 1) * 24
+        (out_all.index.dayofyear - 1) * conversion_factor("d", "hr")
         + out_all.index.hour
-        + out_all.index.minute / 60.0
+        + out_all.index.minute * conversion_factor("min", "hr")
     )
 
     # ax.plot( aux, out_all.PVPower/W_TO_kJh, label='E_PV', c='C0',ls='-',lw=2)
@@ -726,7 +732,7 @@ def run_trnsys_simulation(
 
 #------------------------------
 def main():
-    household = GeneralSetup()
+    household = GeneralSetup(DEWH=HeatPump())
     from tm_solarshift.profiles import new_profile
     profiles = new_profile(household)
     run_trnsys_simulation(household, profiles, verbose=True)

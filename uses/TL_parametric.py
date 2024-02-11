@@ -185,7 +185,7 @@ def parametric_run(
         
     return runs
 
-################################################
+#------------------------------
 def parametric_run_tank():
     
     params_in = {
@@ -264,239 +264,127 @@ def parametric_run_HP():
         append_results_general = False      #If false, create new file
         )
 
-if __name__ == "__main__":
+#----------------------------
+# Include tariffs
+def parametric_run_tariffs():
+
+    list_profile_HWD     = [1,2,3,4,5,6]
+    LIST_DNSP = ["Actewagl", "Ausgrid", "Ausnet", "CitiPower", "Endeavour",
+                  "Essential","Energex","Ergon","Horizon","Jemena","Powercor",
+                  "Powerwater","SAPN","TasNetworks","Unitedenergy","Western",]
     
+    list_tariff_type = ['flat','tou']
+    
+    params_in = {
+        'profile_HWD'  : list_profile_HWD,
+        'DNSP'         : LIST_DNSP,
+        'tariff_type'  : list_tariff_type
+        }
+    
+    runs = trnsys.Parametric_Settings(params_in, PARAMS_OUT)
+    
+    general_setup_base = general.GeneralSetup(
+        DEWH = HeatPump(),
+        location='Sydney',
+        profile_control = 0,
+        DNSP = 'Ausgrid',
+        tariff_type='flat',
+        )
+    
+    runs = parametric_run(
+        runs, params_in, PARAMS_OUT,
+        Sim_base = general_setup_base,
+        save_results_detailed = True,
+        gen_plots_detailed    = True,
+        save_plots_detailed   = True,
+        save_results_general  = True,
+        fldr_results_detailed = 'Tariffs',
+        fldr_results_general  = 'Tariffs',
+        file_results_general  = '0-HP_Tariffs.csv',
+        append_results_general = False      #If false, create new file
+        )
+    return
+
+#------------------------------
+def parametric_run_test():
+    
+    params_in = {
+        'location' : ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne'],
+        'profile_control'  : [0,1,2],
+        }
+    
+    runs = general.parametric_settings(params_in, PARAMS_OUT)
+    general_setup_base = general.GeneralSetup( DEWH = HeatPump() )
+
+    runs = parametric_run(
+        runs, params_in, PARAMS_OUT,
+        general_setup_base = general_setup_base,
+        save_results_detailed = True,
+        gen_plots_detailed    = True,
+        save_plots_detailed   = True,
+        save_results_general  = True,
+        fldr_results_detailed = 'test_HP_layout_W15',
+        fldr_results_general  = 'test_HP_layout_W15',
+        file_results_general  = '0-test_HP_layout_W15.csv',
+        append_results_general = False       #If false, create new file
+        )
+
+def main():
+    # parametric_run_test()
+
     # parametric_run_tank()
     
     # parametric_run_RS()
 
     parametric_run_HP()
+    return
 
-
-################################################
-# #### Parametric Analysis: Tank
-#     list_heater_nom_cap = np.array([2400., 3600., 4800.])
-#     list_tank_temp_high = np.array([55., 60., 65., 70.])
-#     list_tank_U        = np.array([0.5, 1.0, 2.0])
-#     list_tank_vol      = np.array([0.1, 0.3, 0.5])
-#     list_HWD_avg       = np.array([100,200,300,400])
-    
-#     case_template = 'Heater-{:.0f}_TempHigh-{:.0f}_U-{:.2f}_Vol-{:.3f}_HWD-{:.0f}'
-#     case_vars = ['Heater_NomCap','Tank_TempHigh','Tank_U','Tank_Vol','HWD_avg']
-    
-#     params_in = {
-#         'Heater_NomCap'  : list_heater_nom_cap,
-#         'Tank_TempHigh'  : list_tank_temp_high,
-#         'Tank_Vol'       : list_tank_vol,
-#         'Tank_U'         : list_tank_U,
-#         'HWD_avg'        : list_HWD_avg,
-#         }
-    
-#     runs = trnsys.parametric_settings(params_in, PARAMS_OUT)
-    
-#     Sim_base = trnsys.TRNSYS_Setup(
-#             profile_HWD     = 1,
-#             profile_control = 1
-#             )
-    
-#     runs = Parametric_Run(
-#         runs, params_in, PARAMS_OUT,
-#         Sim_base = Sim_base,
-#         case_template=case_template,
-#         case_vars=case_vars,
-#         save_results_detailed = False,
-#         gen_plots_detailed    = True,
-#         save_plots_detailed   = True,
-#         save_results_general  = True,
-#         fldr_results_detailed = 'Results_Parametric_Tank',
-#         fldr_results_general  = 'Results_Parametric_Tank',
-#         file_results_general  = 'Results_Param_Tank.csv',
-#         append_results_general = False       #If false, create new file
-#         )
-
-################################################
-################################################
-#### Parametric Analysis Volume, HWD and CLs
-    # list_Tank_Vol        = np.array([0.1, 0.2, 0.3, 0.4])
-    # list_HWD_avg         = np.array([100,200,300,400])
-    # list_profile_control = np.array([0,1,2,3,4,5])
-    
-    # case_template = 'Control-{:}_TankVol-{:.2f}_HWD-{:.0f}'
-    # case_vars = ['profile_control','Tank_Vol','HWD_avg']
-    
-    # params_in = {
-    #     'Tank_Vol'        : list_Tank_Vol,
-    #     'HWD_avg'         : list_HWD_avg,
-    #     'profile_control' : list_profile_control
-    #     }
-    
-    # params_out = ['E_HWD_acum', 'E_Heater_acum',
-    #             'eta_stg', 'Cycles_day', 'SOC_avg', 'SOC2_avg', 'SOC3_avg',
-    #             'm_HWD_avg', 'T_amb_avg', 'T_mains_avg',
-    #             'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0']
-    
-    # runs = trnsys.Parametric_Settings(params_in, params_out)
-    
-    # runs = Parametric_Run(
-    #     runs, params_in, params_out,
-    #     case_template = case_template,
-    #     case_vars = case_vars,
-    #     save_results_detailed = True,
-    #     gen_plots_detailed    = True,
-    #     save_plots_detailed   = True,
-    #     save_results_general  = True,
-    #     fldr_results_detailed = 'Results_Parametric_CS',
-    #     fldr_results_general  = 'Results_Parametric_CS',
-    #     file_results_general  = '0-Results_Parametric_CS.csv',
-    #     append_results_general = False       #If false, create new file
-    #     )
-################################################
-################################################
-
-
-###############################################
-###############################################
-#### HP SIMULATIONS
+#----------------------------
+if __name__ == "__main__":
+    main()    
 
 
 
-################################################
-#### INCLUDING TARIFFS HP
-
+# #######################################################
+#### INCLUDING TARIFFS RESISTIVE
     # list_profile_HWD     = [1,2,3,4,5,6]
     # list_DNSP = ["Actewagl", "Ausgrid", "Ausnet", "CitiPower", "Endeavour",
     #               "Essential","Energex","Ergon","Horizon","Jemena","Powercor",
     #               "Powerwater","SAPN","TasNetworks","Unitedenergy","Western",]
+    # list_tariff_type = ['flat','tou']
     
-#     list_tariff_type = ['flat','tou']
-    
-#     case_template = '{}-{}-{}-{}_{}_HWD-{}_{}_{}'
-#     case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
-#                   'location', 'profile_HWD','DNSP','tariff_type']
-    
-#     params_in = {
-#         'profile_HWD'  : list_profile_HWD,
-#         # 'profile_control'  : list_profile_control,
-#         'DNSP'         : list_DNSP,
-#         'tariff_type'  : list_tariff_type
-#         }
-    
-#     # params_out = params_out + ['Total_Elec_Cost']
-    
-#     runs = trnsys.Parametric_Settings(params_in, params_out)
-    
-#     Sim_base = trnsys.General_Setup(
-#         layout_DEWH   = 'HPF',
-#         Heater_NomCap = 5240,
-#         Heater_F_eta  = 6.02,
-#         Tank_TempHigh = 63.,
-#         Tank_TempHighControl = 59.,
-#         location='Sydney',
-#         profile_control = 0,
-#         DNSP = 'Ausgrid',
-#         tariff_type='flat',
-#         # STOP=120,
-#         )
-#     # Sim_base = trnsys.TRNSYS_Setup()
-    
-#     runs = Parametric_Run(
-#         runs, params_in, params_out,
-#         Sim_base = Sim_base,
-#         case_template = case_template,
-#         case_vars = case_vars,
-#         save_results_detailed = True,
-#         gen_plots_detailed    = True,
-#         save_plots_detailed   = True,
-#         save_results_general  = True,
-#         fldr_results_detailed = 'Tariffs',
-#         fldr_results_general  = 'Tariffs',
-#         file_results_general  = '0-HP_Tariffs.csv',
-#         append_results_general = False      #If false, create new file
-#         )
-
-# #######################################################
-# #### INCLUDING TARIFFS RESISTIVE
-#     list_profile_HWD     = [1,2,3,4,5,6]
-#     list_DNSP = ["Actewagl", "Ausgrid", "Ausnet", "CitiPower", "Endeavour",
-#                   "Essential","Energex","Ergon","Horizon","Jemena","Powercor",
-#                   "Powerwater","SAPN","TasNetworks","Unitedenergy","Western",]
-#     list_tariff_type = ['flat','tou']
-    
-#     case_template = '{}-{}-{}-{}_{}_HWD-{}_{}_{}'
-#     case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
-#                   'location', 'profile_HWD','DNSP','tariff_type']
-    
-#     params_in = {
-#         'profile_HWD'  : list_profile_HWD,
-#         'DNSP'         : list_DNSP,
-#         'tariff_type'  : list_tariff_type
-#         }
-    
-#     # params_out = params_out + ['Total_Elec_Cost']
-    
-#     runs = trnsys.Parametric_Settings(params_in, params_out)
-    
-#     # Sim_base = trnsys.General_Setup(
-#     #     layout_DEWH   = 'HPF',
-#     #     Heater_NomCap = 5240,
-#     #     Heater_F_eta  = 6.02,
-#     #     Tank_TempHigh = 63.,
-#     #     Tank_TempHighControl = 59.,
-#     #     location='Sydney',
-#     #     profile_control = 0,
-#     #     DNSP = 'Ausgrid',
-#     #     tariff_type='flat',
-#     #     # STOP=120,
-#     #     )
-#     Sim_base = trnsys.TRNSYS_Setup(
-#         layout_DEWH   = 'RS',
-#         profile_control = 0,
-#         DNSP = 'Ausgrid',
-#         tariff_type='flat'
-#         )
-    
-#     runs = Parametric_Run(
-#         runs, params_in, params_out,
-#         Sim_base = Sim_base,
-#         case_template = case_template,
-#         case_vars = case_vars,
-#         save_results_detailed = True,
-#         gen_plots_detailed    = True,
-#         save_plots_detailed   = True,
-#         save_results_general  = True,
-#         fldr_results_detailed = 'Tariffs',
-#         fldr_results_general  = 'Tariffs',
-#         file_results_general  = '0-RS_Tariffs.csv',
-#         append_results_general = False      #If false, create new file
-#         )
-
-################################################
-##### TESTING
-
-    # list_profile_HWD = [1,2,3,4,5,6]
-    # list_profile_control = [0]
-    # list_location = ['Sydney']
-    
-    # case_template = '{}-{}-{}-{}_{}_HWD-{}_CL-{}'
+    # case_template = '{}-{}-{}-{}_{}_HWD-{}_{}_{}'
     # case_vars = ['layout_DEWH', 'layout_PV', 'layout_TC', 'layout_WF', 
-    #               'location', 'profile_HWD', 'profile_control']
+    #               'location', 'profile_HWD','DNSP','tariff_type']
     
     # params_in = {
-    #     'profile_HWD'      : list_profile_HWD,
-    #     'profile_control'  : list_profile_control,
-    #     'location'         : list_location,
+    #     'profile_HWD'  : list_profile_HWD,
+    #     'DNSP'         : list_DNSP,
+    #     'tariff_type'  : list_tariff_type
     #     }
+    
+    # # params_out = params_out + ['Total_Elec_Cost']
     
     # runs = trnsys.Parametric_Settings(params_in, params_out)
     
+    # # Sim_base = trnsys.General_Setup(
+    # #     layout_DEWH   = 'HPF',
+    # #     Heater_NomCap = 5240,
+    # #     Heater_F_eta  = 6.02,
+    # #     Tank_TempHigh = 63.,
+    # #     Tank_TempHighControl = 59.,
+    # #     location='Sydney',
+    # #     profile_control = 0,
+    # #     DNSP = 'Ausgrid',
+    # #     tariff_type='flat',
+    # #     # STOP=120,
+    # #     )
     # Sim_base = trnsys.TRNSYS_Setup(
-    #     layout_DEWH   = 'HPF',
-    #     Heater_NomCap = 5240,
-    #     Heater_F_eta  = 6.02,
-    #     Tank_TempHigh = 63.,
-    #     Tank_TempHighControl = 59.,
+    #     layout_DEWH   = 'RS',
+    #     profile_control = 0,
+    #     DNSP = 'Ausgrid',
+    #     tariff_type='flat'
     #     )
-    # # Sim_base = trnsys.TRNSYS_Setup()
     
     # runs = Parametric_Run(
     #     runs, params_in, params_out,
@@ -507,8 +395,8 @@ if __name__ == "__main__":
     #     gen_plots_detailed    = True,
     #     save_plots_detailed   = True,
     #     save_results_general  = True,
-    #     fldr_results_detailed = 'Testing',
-    #     fldr_results_general  = 'Testing',
-    #     file_results_general  = '0-Testing.csv',
+    #     fldr_results_detailed = 'Tariffs',
+    #     fldr_results_general  = 'Tariffs',
+    #     file_results_general  = '0-RS_Tariffs.csv',
     #     append_results_general = False      #If false, create new file
     #     )

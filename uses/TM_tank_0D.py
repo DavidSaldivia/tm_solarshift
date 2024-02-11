@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from tm_solarshift.devices import (
     ResistiveSingle, 
     Variable,
-    CONV,
+    conversion_factor
     )
 
 def tank_0D_two_temps(
@@ -36,8 +36,8 @@ def tank_0D_two_temps(
     k = heater.fluid.k.get_value("W/m-K")
 
     #Constants
-    STEP_h = STEP * CONV["min_to_hr"]
-    STEP_s = STEP * CONV["min_to_s"]
+    STEP_h = STEP * conversion_factor("min", "hr")
+    STEP_s = STEP * conversion_factor("min", "s")
 
     # Derived values for tank
     A_mantle = np.pi * diam * height
@@ -177,16 +177,17 @@ def tank_0D_SOC_based(
     height = heater.height.get_value("m")
     vol = heater.vol.get_value("m3")
     temp_cons = heater.temp_consump.get_value("degC")
+    temp_max = heater.temp_max.get_value("degC")
+
     cp = heater.fluid.cp.get_value("J/kg-K")
     rho = heater.fluid.rho.get_value("kg/m3")
     k = heater.fluid.k.get_value("W/m-K")
+    
+    STEP_h = STEP * conversion_factor("min", "hr")
+    STEP_s = STEP * conversion_factor("min", "s")
+    hr_TO_s = conversion_factor("hr", "s")
+    J_to_kWh = conversion_factor("J", "kWh")
 
-    temp_max = heater.temp_max.get_value("degC")
-    #Constants
-    STEP_h = STEP * CONV["min_to_hr"]
-    STEP_s = STEP * CONV["min_to_s"]
-    hr_TO_s = CONV["hr_to_s"]
-    J_to_kWh = CONV["J_to_kWh"]
     # Derived values for tank
     A_mantle = np.pi * diam * height
     A_top =  np.pi * diam **2 / 4.
@@ -290,10 +291,10 @@ def tank_0D_SOC_profiles(
 
     temp_max = heater.temp_max.get_value("degC")
     #Constants
-    STEP_h = STEP * CONV["min_to_hr"]
-    STEP_s = STEP * CONV["min_to_s"]
-    hr_TO_s = CONV["hr_to_s"]
-    J_to_kWh = CONV["J_to_kWh"]
+    STEP_h = STEP * conversion_factor("min", "hr")
+    STEP_s = STEP * conversion_factor("min", "s")
+    hr_TO_s = conversion_factor("hr", "s")
+    J_TO_kWh = conversion_factor("J", "kWh")
     # Derived values for tank
     A_mantle = np.pi * diam * height
     A_top =  np.pi * diam **2 / 4.
@@ -301,7 +302,7 @@ def tank_0D_SOC_profiles(
 
     #Initial values
     temp_0 = temp_max
-    energy_0 = rho * vol * cp * (temp_0 - temp_cons) * J_to_kWh  #[kWh]
+    energy_0 = rho * vol * cp * (temp_0 - temp_cons) * J_TO_kWh  #[kWh]
     vol_H_0 = vol
     vol_C_0 = 0.0
     temp_H_0 = temp_0
@@ -317,7 +318,7 @@ def tank_0D_SOC_profiles(
                 "SOC", "r_vol", "energy", "theta_m", "theta_t",
                 "vol_HWD", "vol_in", 
                 "energy_new", "vol_H_new", "vol_C_new"]
-    out_all = pd.DataFrame(None,index=Profiles.index,columns=COLS_DATA)
+    out_all = pd.DataFrame(None, index=Profiles.index, columns=COLS_DATA)
 
     COLUMNS_PROFILES = ["Temp_Amb","Temp_Mains","m_HWD","CS"]
     for x in COLUMNS_PROFILES:
@@ -354,7 +355,7 @@ def tank_0D_SOC_profiles(
         Q_HWD = (m_HWD/hr_TO_s) * cp * (temp_cons - temp_mains)       #[W]
 
         energy_delta = (power_th_in - Q_HWD - Q_loss) * STEP_s        #[J]
-        energy_new = energy + energy_delta * J_to_kWh                 #[kWh]
+        energy_new = energy + energy_delta * J_TO_kWh                 #[kWh]
 
         #changes in cold and hot water fractions
         vol_H_new = vol_H - vol_in
@@ -387,29 +388,9 @@ def tank_0D_SOC_profiles(
         n_idx += 1
         t_sim += STEP_h
     
-    output1 = pd.DataFrame(data,columns=COLS_DATA)
+    output1 = pd.DataFrame(data, columns=COLS_DATA)
     output2 = out_all
     return output2
-#------------------------
-def plot_main_vars(
-        data,
-        showfig=True
-):
-
-    fig, ax = plt.subplots(figsize=(9,6))
-    fs = 16
-    for lbl in ["theta_t", "SOC", "r_vol"]:
-        ax.plot(
-            data["t_sim"], data[lbl],
-            lw=2, label=lbl
-            )
-    ax.grid()
-    ax.legend()
-    if showfig:
-        plt.show()
-    plt.close()
-
-    return
 
 #------------------------------
 def detailed_plot_0D_based(
@@ -566,7 +547,9 @@ def main():
                                          'comparison_trnsys_0D',)
 
     if True:
-        out_all_trnsys = trnsys.run_trnsys_simulation(general_setup, Profiles, verbose=True)
+        out_all_trnsys = trnsys.run_trnsys_simulation(
+            general_setup, Profiles, verbose=True
+            )
         trnsys.detailed_plots(
             general_setup,
             out_all_trnsys,
@@ -579,7 +562,6 @@ def main():
 
     if True:
         out_all_0D = tank_0D_SOC_profiles(general_setup.DEWH, Profiles, verbose=True)
-        # detailed_plot_0D_based(general_setup,out_all_0D)
         print(out_all_0D)
         
         detailed_plot_comparison(

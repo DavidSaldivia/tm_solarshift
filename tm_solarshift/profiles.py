@@ -131,12 +131,10 @@ def new_profile(
 def profile_gaussian(df, mu1, sig1, A1, base=0):
 
     aux = df.index.hour + df.index.minute / 60.0
-
     Amp = A1 * sig1 * (2 * np.pi) ** 0.5
     series = base + (Amp / sig1 / (2 * np.pi) ** 0.5) * np.exp(
         -0.5 * (aux - mu1) ** 2 / sig1**2
     )
-
     return series
 
 def profile_step(df, t1, t2, A1, A0=0):
@@ -250,7 +248,6 @@ def HWD_daily_distribution(
         )
 
     return HWD_daily
-
 
 #---------------------------------
 
