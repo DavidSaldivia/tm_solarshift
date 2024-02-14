@@ -23,7 +23,8 @@ The repository is structured in the following directories and modules:
 
 
 ### Examples
-
+A simple example of how to use this package for an annual simulation can be seen here: [Simple Example](uses/simple_example.py).
+Additionally, a script for parametric runs is available [Here](uses/TL_parametric.py). Examples of parametric simulations for different tank properties, resistive heater under different conditons and heat pumps under different conditions are also available.
 
 ## Support
 
