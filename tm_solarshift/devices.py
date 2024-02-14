@@ -2,17 +2,6 @@ import numpy as np
 import pandas as pd
 from typing import Optional, List, Dict, Any, Tuple
 
-# CONV = {
-#     "MJ_to_kWh": 1000/3600.,
-#     "J_to_kWh": 1./(1000*3600.),
-#     "W_to_kJh": 3.6,
-#     "min_to_s": 60.,
-#     "min_to_hr": 1/60.,
-#     "hr_to_s": 3600.,
-#     "L_to_m3": 1e-3,
-#     "W_to_MJ/hr": 3.6e-3
-# }
-
 UNIT_CONV = {
     "length" : {
         "m": 1e0,
@@ -97,15 +86,14 @@ UNIT_CONV = {
     }
 }
 
-# UNIT_TYPES = {}
-# for type_unit in UNIT_CONV:
-#     for unit in UNIT_CONV[type_unit]:
-#         UNIT_TYPES[unit] = type_unit
-
 UNIT_TYPES = {unit:type_unit for type_unit in UNIT_CONV for unit in UNIT_CONV[type_unit]}
 
 #-------------------------
 def conversion_factor(unit1: str, unit2: str) -> float:
+    """ Function to obtain conversion factor between units.
+    The units must be in the UNIT_CONV dictionary.
+    If they are units from different phyisical quantities an error is raised.
+    """
     if UNIT_TYPES[unit1] == UNIT_TYPES[unit2]:
         type_unit = UNIT_TYPES[unit1]
         conv_factor = UNIT_CONV[type_unit][unit2] / UNIT_CONV[type_unit][unit1]
@@ -116,6 +104,13 @@ def conversion_factor(unit1: str, unit2: str) -> float:
 #-------------------------
 #Utilities classes
 class Variable():
+    """
+    Class to represent parameters and variables in the system.
+    It is used to store the values with their units.
+    If you have a Variable instance, always obtain the value with the get_value method.
+    In this way you make sure you are getting the value with the expected unit.
+    get_value internally converts unit if it is possible.
+    """
     def __init__(self, value: float, unit: str = None, type="scalar"):
         self.value = value
         self.unit = unit
@@ -143,6 +138,9 @@ class Variable():
 
 #-------------------------
 class VariableList():
+    """
+    Similar to Variable() but for lists.
+    """
     def __init__(self, values: List, unit: str = None, type="scalar"):
         self.values = values
         self.unit = unit
@@ -401,6 +399,12 @@ def tm_heater_gas_instantaneuos(
 #-----------------------
 if __name__ == "__main__":
 
+
+    pass
+#-------------------------
+def main():
+
+    #Examples of conversion factors and Variable usage.
     print(conversion_factor("W", "kJ/hr"))
 
     time_sim = Variable(365, "d")
@@ -408,16 +412,17 @@ if __name__ == "__main__":
     print(f"time_sim in hours: {time_sim.get_value("hr")}")
     print(f"time_sim in seconds: {time_sim.get_value("s")}")
 
+    #Example to load ResistiveSingle defining the model (it reads a csv file with data)
     heater = ResistiveSingle.from_model_file(model="491315")
-    pass
-#-------------------------
-def main():
+
+    #Example of Heat Pump technical information
     heater = HeatPump()
     print(heater.thermal_cap)
     print(heater.diam)
     print(heater.area_loss)
     print(heater.temp_high_control)
 
+    #Example of Gas Heater usage and running its thermal model
     heater = GasHeaterInstantaneous()
     output = heater.run_simple_thermal_model([200,100])
     print(output)
