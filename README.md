@@ -1,6 +1,6 @@
 # tm_solarshift
 
-A package for thermal simulation of Domestic Electric Water Heating (DEWH) systems. It allows to generate profiles of hot water draw (HWD), controlled load (CL), weather, and electricity consumption for a household in order to estimate 
+A package for thermal simulation of Domestic Electric Water Heating (DEWH) systems as part of the project Solarshift. It allows to generate profiles of hot water draw (HWD), controlled load (CL), weather, and electricity consumption for a household in order to estimate 
 
 ## Installation
 This is a project still under development, and therefore it is not published yet on PyPi and it is not possible to install it through pip yet. Then, to run the codes, just download the repository on your local computer, create a virtual environment to install the requirements and run the scripts.
