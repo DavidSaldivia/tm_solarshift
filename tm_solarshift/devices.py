@@ -92,10 +92,8 @@ UNIT_CONV = {
         "g/cm3": 1e-3,
     },
     "specific_heat": {
-        "J/kgK": 1.0,
-        "J/kg-K": 1.0,
-        "kJ/kgK": 1e-3,
-        "kJ/kg-K": 1e-3,
+        "J/kgK": 1e0, "J/kg-K": 1e0,
+        "kJ/kgK": 1e-3, "kJ/kg-K": 1e-3,
     }
 }
 
@@ -143,19 +141,6 @@ class Variable():
     def __repr__(self) -> str:
         return f"{self.value:} [{self.unit}]"
 
-#-----------------------
-if __name__ == "__main__":
-
-    print(conversion_factor("W", "kJ/hr"))
-    
-    print(conversion_factor("kWh","J"))
-    print(conversion_factor("J","cal"))
-
-    time_sim = Variable(365, "d")
-    print(f"time_sim in days: {time_sim.get_value("d")}")
-    print(f"time_sim in hours: {time_sim.get_value("hr")}")
-    print(f"time_sim in seconds: {time_sim.get_value("s")}")
-
 #-------------------------
 class VariableList():
     def __init__(self, values: List, unit: str = None, type="scalar"):
@@ -181,6 +166,8 @@ class Water():
         self.rho = Variable(1000., "kg/m3")  # density (water)
         self.cp = Variable(4180., "J/kg-K")  # specific heat (water)
         self.k = Variable(0.6, "W/m-K")  # thermal conductivity (water)
+    def __repr__(self) -> str:
+        return "water"
 
 #-------------------------
 #Solar System and auxiliary devices
@@ -200,10 +187,15 @@ class ResistiveSingle():
         
         # tank
         self.vol = Variable(0.315,"m3")
-        self.height = Variable(1.3, "m")
+        self.height = Variable(1.640, "m")
+        self.height_inlet = Variable(0.113, "m")
+        self.height_outlet = Variable(0.1317, "m")
+        self.height_heater = Variable(0.103, "m")
+        self.height_thermostat = Variable(0.103, "m")
         self.U = Variable(0.9, "W/m2-K")
+
         self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
-        self.temps_ini = 3  # [-] Initial temperature of the tank. Check Editing_dck_tank() below for the options
+        self.temps_ini = 3  # [-] Initial temperature of the tank. Check trnsys.editing_dck_tank() for options
         self.fluid = Water()
 
         # control
@@ -227,12 +219,22 @@ class ResistiveSingle():
 
     @classmethod
     def from_model_file(cls, file_path: str = "", model:str = ""):
-        file_data = pd.read_csv(file_path)
-        specs = file_data[model]
-        unit = file_data["units"]
+        
+        if file_path=="":
+            from tm_solarshift.general import DATA_DIR
+            import os
+            file_path = os.path.join(DATA_DIR["specs"], "data_models_RS.csv")
+        file_data = pd.read_csv(file_path, index_col=0)
+        specs = file_data.loc[model]
+        units = file_data.loc["units"]
         
         output = cls()
-        for (lbl,value, unit) in specs:
+        for (lbl,value) in specs.items():
+            unit = units[lbl]
+            try:
+                value = float(value)
+            except:
+                pass          
             setattr(output, lbl, Variable(value, unit) )
 
         return output
@@ -251,7 +253,10 @@ class HeatPump():
 
             # tank
             self.vol = Variable(0.315,"m3")
-            self.height = Variable(1.3, "m")
+            self.height = Variable(1.640, "m")
+            self.height_inlet = Variable(0.113, "m")
+            self.height_outlet = Variable(0.1317, "m")
+            self.height_heater = Variable(0.103, "m")
             self.U = Variable(0.9, "W/m2-K")
             self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
             self.temps_ini = 3  # [-] Initial temperature of the tank. Check Editing_dck_tank() below for the options
@@ -393,10 +398,20 @@ def tm_heater_gas_instantaneuos(
     }
     return output
 
+#-----------------------
+if __name__ == "__main__":
+
+    print(conversion_factor("W", "kJ/hr"))
+
+    time_sim = Variable(365, "d")
+    print(f"time_sim in days: {time_sim.get_value("d")}")
+    print(f"time_sim in hours: {time_sim.get_value("hr")}")
+    print(f"time_sim in seconds: {time_sim.get_value("s")}")
+
+    heater = ResistiveSingle.from_model_file(model="491315")
+    pass
 #-------------------------
 def main():
-
-
     heater = HeatPump()
     print(heater.thermal_cap)
     print(heater.diam)

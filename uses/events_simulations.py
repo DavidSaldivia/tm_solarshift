@@ -35,6 +35,7 @@ WEATHER_TYPES = [
     ]
 DIR_RESULTS = "results/event_simulations"
 
+#-------------------------
 def loading_timeseries(
     general_setup = GeneralSetup(),
     HWD_generator_method: str = 'events',
@@ -112,7 +113,7 @@ def loading_timeseries(
     )
     return timeseries
 
-
+#-------------------------
 def run_or_load_simulation(
         general_setup: GeneralSetup,
         timeseries: pd.DataFrame,
@@ -166,6 +167,7 @@ def run_or_load_simulation(
 
     return (out_data, df)
 
+#-------------------------
 def plot_histogram_end_of_day(
         values,
         xlim = (0,1),
@@ -192,6 +194,7 @@ def plot_histogram_end_of_day(
     plt.show()
     return
 
+#-------------------------
 def plots_histogram_end_of_days(
         df: pd.DataFrame,
         include: List,
@@ -230,7 +233,7 @@ def plots_histogram_end_of_days(
             )
     return
 
-
+#-------------------------
 def additional_plots(
         df : pd.DataFrame,
         case: Union[int, str] = None,
@@ -286,6 +289,7 @@ def additional_plots(
     plt.show()
     return
 
+#-------------------------
 def plot_histogram_2D(
     general_setup: GeneralSetup,
     df : pd.DataFrame,
@@ -338,7 +342,7 @@ def plot_histogram_2D(
     plt.close(fig)
     return
 
-
+#-------------------------
 def plots_sample_simulations(
     general_setup: GeneralSetup,
     out_data : pd.DataFrame,
@@ -409,6 +413,7 @@ def plots_sample_simulations(
         )
     plt.show()
 
+#-------------------------
 def regression_analysis_and_plots(
     general_setup: GeneralSetup,
     timeseries : pd.DataFrame,
@@ -457,7 +462,6 @@ def regression_analysis_and_plots(
             )
         plt.show()
     
-        #############################
         fig, ax = plt.subplots(figsize=(9, 6))
         ax.bar(HWDP_generated.index, HWDP_template,
                 width=0.4, align="edge",)
@@ -467,7 +471,7 @@ def regression_analysis_and_plots(
         ax.tick_params(axis="both", which="major", labelsize=fs)
         plt.show()
 
-    #%%% REGRESSION
+    #Regresion
     for lbl in ["SOC_end", "TempTh_end"]:
         cols = ["SOC_ini", "Temp_Amb", "Temp_Mains", "m_HWD_day"]
         df2 = df[cols + [lbl]].copy()
@@ -503,7 +507,7 @@ def regression_analysis_and_plots(
 
     return [R2_SOC, R2_TempTh]
     
-
+#-------------------------
 def main():
 
     ## DEFINING CASES

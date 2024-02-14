@@ -309,12 +309,13 @@ def parametric_run_tariffs():
 def parametric_run_test():
     
     params_in = {
-        'location' : ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne'],
+        'location' : ['Sydney',],
         'profile_control'  : [0,1,2],
         }
     
     runs = general.parametric_settings(params_in, PARAMS_OUT)
-    general_setup_base = general.GeneralSetup( DEWH = HeatPump() )
+    general_setup_base = general.GeneralSetup()
+    general_setup_base.DEWH = ResistiveSingle.from_model_file(model="491315")
 
     runs = parametric_run(
         runs, params_in, PARAMS_OUT,
@@ -323,20 +324,22 @@ def parametric_run_test():
         gen_plots_detailed    = True,
         save_plots_detailed   = True,
         save_results_general  = True,
-        fldr_results_detailed = 'test_HP_layout_W15',
-        fldr_results_general  = 'test_HP_layout_W15',
-        file_results_general  = '0-test_HP_layout_W15.csv',
+        fldr_results_detailed = 'parametric_test',
+        fldr_results_general  = 'parametric_test',
+        file_results_general  = '0-parametric_test.csv',
         append_results_general = False       #If false, create new file
         )
-
+    
+#--------------------------
 def main():
+
     # parametric_run_test()
 
     # parametric_run_tank()
     
-    # parametric_run_RS()
+    parametric_run_RS()
 
-    parametric_run_HP()
+    # parametric_run_HP()
     return
 
 #----------------------------

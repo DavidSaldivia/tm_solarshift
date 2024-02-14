@@ -225,15 +225,8 @@ def editing_dck_tank(
         dck_editing: List[str],
         ) -> List[str]:
 
+    W_TO_KJ_H = conversion_factor("W", "kJ/h")
     DEWH = trnsys_setup.DEWH
-    vol = DEWH.vol.get_value("m3")
-    height = DEWH.height.get_value("m")
-    U = DEWH.U.get_value("W/m2-K")
-    temp_max = DEWH.temp_max.get_value("degC")
-    temp_min = DEWH.temp_min.get_value("degC")
-
-    temps_ini = DEWH.temps_ini
-    nodes = DEWH.nodes
 
     # The start and end lines of the component are identified and extracted
     # Start
@@ -254,14 +247,44 @@ def editing_dck_tank(
 
     comp_lines = dck_editing[idx_start:idx_end]
 
-    # Finding the Initial Parameters to change
-    tank_params = {
-        "1 Tank volume": vol,
-        "2 Tank height": height,
-        "4 Top loss coefficient": U * conversion_factor("W", "kJ/h"),
-        "5 Edge loss coefficient": U * conversion_factor("W", "kJ/h"),
-        "6 Bottom loss coefficient": U * conversion_factor("W", "kJ/h"),
+    # Defining the initial parameters (common to all tanks)
+    tank_params_common = {
+        "1 Tank volume" : DEWH.vol.get_value("m3"),
+        "2 Tank height" : DEWH.height.get_value("m"),
+        "4 Top loss coefficient" : DEWH.U.get_value("W/m2-K") * W_TO_KJ_H,
+        "5 Edge loss coefficient" : DEWH.U.get_value("W/m2-K") * W_TO_KJ_H,
+        "6 Bottom loss coefficient" : DEWH.U.get_value("W/m2-K") * W_TO_KJ_H,
+        "7 Fluid specific heat" : DEWH.fluid.cp.get_value("kJ/kg-K"),
+        "8 Fluid density" : DEWH.fluid.rho.get_value("kg/m3"),
+        "9 Fluid thermal conductivity" : DEWH.fluid.k.get_value("W/m-K") * W_TO_KJ_H,
     }
+
+    #Defining specific parameters for each type of heater
+    if DEWH.__class__ == ResistiveSingle:
+        height = DEWH.height.get_value("m")
+        f_inlet = DEWH.height_inlet.get_value("m") / height
+        f_outlet = DEWH.height_outlet.get_value("m") / height
+        f_thermostat = DEWH.height_thermostat.get_value("m") / height
+        f_heater = DEWH.height_heater.get_value("m") / height
+        
+        tank_params_specific = {
+            "12 Height fraction of inlet 2" : f_inlet,
+            "13 Height fraction of outlet 2" : f_outlet,
+            "16 Height fraction of thermostat-2": f_thermostat,
+            "18 Height fraction of auxiliary input": f_heater,
+        }
+
+    if DEWH.__class__ == HeatPump:    
+        tank_params_specific = {
+            "10 Height fraction of inlet 1": 1.0, # HP inlet, not implemented yet
+            "11 Height fraction of outlet 1": 0.0, #HP outlet, not implemented yet
+            "12 Height fraction of inlet 2" : 0.0, #water inlet, not implemented yet
+            "13 Height fraction of outlet 2" : 1.0, #water outlet, not implemented yet
+            "16 Height fraction of thermostat-2" : 0.33, #thermostat HP, not implemented yet
+        }
+
+    #Merging both dictionaries
+    tank_params = tank_params_common | tank_params_specific
 
     for idx, line in enumerate(comp_lines):
         for key, value in tank_params.items():
@@ -269,7 +292,11 @@ def editing_dck_tank(
                 new_line = "{:}   !  {:}".format(value, key)
                 comp_lines[idx] = new_line
 
-    # Defining the Initial temperature (DERIVATIVE PARAMETERS)
+    #(DERIVATIVE PARAMETERS) Defining the initial temperature
+    temp_max = DEWH.temp_max.get_value("degC")
+    temp_min = DEWH.temp_min.get_value("degC")
+    temps_ini = DEWH.temps_ini
+    nodes = DEWH.nodes
     # Linear stratification
     if temps_ini == 1:
         tank_node_temps = np.linspace(temp_max, temp_min, nodes)
@@ -288,7 +315,7 @@ def editing_dck_tank(
             low=temp_min, high=temp_max, size=(nodes,)
         )
     else:
-        raise ValueError("Value for temp_ini is not valid [0-5]")
+        raise ValueError(f"Value for temp_ini ({temps_ini}) is not valid [0-5]")
 
     tag4 = "DERIVATIVES"  # There should be only one on lines_tank
     for idx, line in enumerate(comp_lines):

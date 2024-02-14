@@ -288,13 +288,14 @@ def tank_0D_SOC_profiles(
     cp = heater.fluid.cp.get_value("J/kg-K")
     rho = heater.fluid.rho.get_value("kg/m3")
     k = heater.fluid.k.get_value("W/m-K")
-
     temp_max = heater.temp_max.get_value("degC")
+
     #Constants
     STEP_h = STEP * conversion_factor("min", "hr")
     STEP_s = STEP * conversion_factor("min", "s")
     hr_TO_s = conversion_factor("hr", "s")
     J_TO_kWh = conversion_factor("J", "kWh")
+
     # Derived values for tank
     A_mantle = np.pi * diam * height
     A_top =  np.pi * diam **2 / 4.
@@ -543,8 +544,9 @@ def main():
     
     Profiles = load_profiles_all(general_setup)
 
-    fldr_results_detailed = os.path.join( MAIN_DIR, "results",
-                                         'comparison_trnsys_0D',)
+    fldr_results_detailed = os.path.join(
+        MAIN_DIR, "results", 'comparison_trnsys_0D',
+    )
 
     if True:
         out_all_trnsys = trnsys.run_trnsys_simulation(

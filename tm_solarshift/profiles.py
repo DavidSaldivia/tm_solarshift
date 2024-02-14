@@ -6,10 +6,11 @@ from typing import Optional, List, Dict, Any, Union
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
 
-from tm_solarshift.general import (SEASON_DEFINITION,
-                                   LOCATIONS_NEM_REGION,
-                                   DATA_DIR,
-                                   )
+from tm_solarshift.general import (
+    SEASON_DEFINITION,
+    LOCATIONS_NEM_REGION,
+    DATA_DIR,
+)
 
 #---------------------------------
 W2kJh = 3.6
@@ -300,8 +301,10 @@ def HWDP_generator_standard(
             ),
         )
 
-        f1D = interp1d(HWDP_day["time"], HWDP_day["HWDP"],
-                       kind="linear", fill_value="extrapolate")
+        f1D = interp1d(
+            HWDP_day["time"], HWDP_day["HWDP"],
+            kind="linear", fill_value="extrapolate"
+        )
         df_HWD["P_HWD"] = f1D(
             df_HWD.index.hour
             + df_HWD.index.minute / 60.0
@@ -362,8 +365,8 @@ def HWDP_generator_events(
         DESCRIPTION.
 
     """
-    # Profiles = timeseries.df
-    Profiles = timeseries
+    Profiles = timeseries.df
+    # Profiles = timeseries
     STEP = Profiles.index.freq.n
     STEP_h = STEP / 60.0
     list_dates = np.unique(Profiles.index.date)
@@ -459,10 +462,11 @@ def HWDP_generator_events(
         Events["kg_event"] = Events["flow"] * Events["duration"] / 60
         Events["name"] = name
         
-        Events["kg_accum"] = Events.groupby(Events.index.date
-                                            )["kg_event"].transform(
-                                                "cumsum"
-                                                )
+        Events["kg_accum"] = Events.groupby(
+            Events.index.date
+            )["kg_event"].transform(
+                "cumsum"
+        )
         Events["kg_max"] = np.array(
             HWD_daily_dist.loc[Events.index.date]["HWD_day"]
         )
@@ -1117,8 +1121,7 @@ def load_PV_generation(
     elif profile_PV == 1:
         df_PV[lbl] = profile_gaussian(df_PV, 12.0, 2.0, PV_NomPow * W2kJh)
     else:
-        print("profile_PV not valid. The simulation will finish.")
-        sys.exit()
+        raise ValueError("profile_PV not valid. The simulation will finish.")
     
     Profiles[columns] = df_PV[columns]
     return Profiles
@@ -1133,12 +1136,11 @@ def load_elec_consumption(
 
     df_Elec = pd.DataFrame(index=Profiles.index, columns=columns)
     lbl = columns[0]
-    ########################################
+    
     if profile_elec == 0:
         df_Elec[lbl] = 0.0  # 0 means no appliance load
     else:
-        print("profile_Elec not valid. The simulation will finish.")
-        sys.exit()
+        raise ValueError("profile_Elec not valid. The simulation will finish.")
 
     Profiles[columns] = df_Elec[columns]
     return Profiles
@@ -1159,42 +1161,68 @@ def load_emission_index_year(
         "both": PROFILES_TYPES["emissions"]
         }[index_type]
     
-    STEP = Profiles.index.freq.n
-    file_emissions = os.path.join(
-        DATA_DIR["emissions"],
-        f"emissions_year_{year}_{index_type}.csv"
+    emissions = pd.read_csv(
+        os.path.join(
+            DATA_DIR["emissions"], f"emissions_year_{year}_{index_type}.csv"
+            ),
+        index_col=0,
     )
-    emissions = pd.read_csv(file_emissions, index_col=0)
     emissions.index = pd.to_datetime(emissions.index)
-    emi_type = emissions[
-        emissions.Region == LOCATIONS_NEM_REGION[location]
-    ]
-    Profiles[columns] = emi_type[columns].resample(f"{STEP}T").interpolate('linear')
+
+    Profiles[columns] = emissions[
+        emissions["Region"] == LOCATIONS_NEM_REGION[location]
+        ][columns].resample(
+            f"{Profiles.index.freq.n}T"
+        ).interpolate('linear')
+    return Profiles
+
+#---------------------------------
+# Wholesale prices
+def load_wholesale_prices(
+        Profiles: pd.DataFrame,
+        location: str = "Sydney",
+        ) -> pd.DataFrame:
+    
+    df_SP = pd.read_csv(
+        os.path.join(DATA_DIR["energy_market"],'SP_2017-2023.csv'),
+        index_col=0
+        )
+    df_SP.index = pd.to_datetime(df_SP.index).tz_localize(None)
+
+    Profiles["Wholesale_Market"] = df_SP[
+        LOCATIONS_NEM_REGION[location]
+        ].resample(
+            f"{Profiles.index.freq.n}T"
+        ).interpolate('linear')
 
     return Profiles
 
 #---------------------------------
 def main():
 
-    from tm_solarshift.general import Household
-    household = Household()
+    from tm_solarshift.general import GeneralSetup
+    general_setup = GeneralSetup()
     timeseries = Profiles()
 
     HWD_daily_dist = HWD_daily_distribution(
-        household, timeseries.df
+        general_setup, timeseries.df
     )
     event_probs = events_file(
             file_name = os.path.join(
                 DATA_DIR["samples"], "HWD_events.xlsx",
                 ),
-                sheet_name="Custom")
-    
+                sheet_name="Custom"
+            )
     timeseries.load_HWDP(
         method='events',
         HWD_daily_dist=HWD_daily_dist,
         HWD_hourly_dist=1,
         event_probs=event_probs
     )
+
+    timeseries = load_wholesale_prices(timeseries.df, general_setup.location)
+
+    timeseries = load_emission_index_year(timeseries, general_setup.location)
     pass
 
 #---------------------------------

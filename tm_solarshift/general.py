@@ -19,9 +19,11 @@ DATA_DIR = {
     "HWDP" : os.path.join(dataDir,"HWD_Profiles"),
     "SA_processed" : os.path.join(dataDir,"SA_processed"),
     "tariffs" : os.path.join(dataDir,"energy_plans"),
+    "energy_market": os.path.join(dataDir,"energy_market"),
     "emissions" : os.path.join(dataDir,"emissions"),
     "samples" : os.path.join(dataDir,"samples"),
     "layouts" : os.path.join(dataDir,"trnsys_layouts"),
+    "specs" : os.path.join(dataDir,"device_specs"),
     }
 SEASON_DEFINITION = {
     "summer": [12, 1, 2],
