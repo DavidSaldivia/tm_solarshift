@@ -26,36 +26,6 @@ showfig = False
 pd.set_option('display.max_columns', None)
 
 #-----------------------------
-def updating_parameters(
-        general_setup: general.GeneralSetup,
-        row: pd.Series,
-        params_in: Dict,
-):
-    params_row = row[params_in.keys()].to_dict()
-
-    for parameter in params_row:
-        if 'DEWH.' in parameter:
-            setattr(
-                general_setup.DEWH,
-                parameter.split('.')[1],
-                Variable(params_row[parameter], params_in[parameter].unit)
-                )
-        elif 'solar_system.' in parameter:
-            setattr(
-                general_setup.solar_system,
-                parameter.split('.')[1],
-                Variable(params_row[parameter], params_in[parameter].unit)
-                )
-        else:
-            setattr(
-                general_setup,
-                parameter,
-                params_row[parameter]
-                )
-
-    return
-
-#-----------------------------
 def load_profiles_all(
         general_setup: general.GeneralSetup,
 ) -> pd.DataFrame:
@@ -93,6 +63,36 @@ def load_profiles_all(
     Profiles = profiles.load_PV_generation(Profiles)
     Profiles = profiles.load_elec_consumption(Profiles)
     return Profiles
+
+#-----------------------------
+def updating_parameters(
+        general_setup: general.GeneralSetup,
+        row: pd.Series,
+        params_in: Dict,
+):
+    params_row = row[params_in.keys()].to_dict()
+
+    for parameter in params_row:
+        if 'DEWH.' in parameter:
+            setattr(
+                general_setup.DEWH,
+                parameter.split('.')[1],
+                Variable(params_row[parameter], params_in[parameter].unit)
+                )
+        elif 'solar_system.' in parameter:
+            setattr(
+                general_setup.solar_system,
+                parameter.split('.')[1],
+                Variable(params_row[parameter], params_in[parameter].unit)
+                )
+        else:
+            setattr(
+                general_setup,
+                parameter,
+                params_row[parameter]
+                )
+
+    return
 
 #-----------------------------
 def parametric_run(
