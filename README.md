@@ -19,7 +19,7 @@ The repository is structured in the following directories and modules:
 
 - `uses`: It contains scripts with examples and typical uses of this repository. Scripts to run parametric simulations, events simulations, are included here. Also, plotting scripts are included.
 - `data`: It contains all the data required to run the simulations. In Github this folder is empty. The required folders can be checked in `tm_solarshift.general.DATA_DIR`.
-- results: the default folder where the different results are stored.
+- `results`: the default folder where the different results are stored.
 
 
 ### Examples
