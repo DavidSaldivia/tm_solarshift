@@ -17,12 +17,14 @@ from scipy.stats import norm
 
 from typing import Optional, List, Dict, Any, Union
 
+from tm_solarshift.constants import (
+    DIR_DATA,
+    PROFILES_TYPES,
+)
+
 import tm_solarshift.trnsys as trnsys
 import tm_solarshift.profiles as profiles
-from tm_solarshift.general import (
-    GeneralSetup,
-    DATA_DIR
-)
+from tm_solarshift.general import GeneralSetup
 from tm_solarshift.devices import conversion_factor
 
 PROFILES_TYPES = profiles.PROFILES_TYPES
@@ -59,7 +61,7 @@ def loading_timeseries(
     if HWD_generator_method == 'events':
         event_probs = profiles.events_file(
             file_name = os.path.join(
-                DATA_DIR["samples"], "HWD_events.xlsx",
+                DIR_DATA["samples"], "HWD_events.xlsx",
                 ),
             sheet_name="Custom"
             )
@@ -89,7 +91,7 @@ def loading_timeseries(
         )
     else:
         file_weather = os.path.join(
-            DATA_DIR["weather"],
+            DIR_DATA["weather"],
             "meteonorm_processed",
             f"meteonorm_{location}.csv",
         )
@@ -432,7 +434,7 @@ def regression_analysis_and_plots(
     list_hours = np.arange(0, 23 + 1)
     if HWDP_dist is not None:
         HWD_file = os.path.join(
-            DATA_DIR["HWDP"], f"HWDP_Generic_AU_{HWDP_dist}.csv"
+            DIR_DATA["HWDP"], f"HWDP_Generic_AU_{HWDP_dist}.csv"
         )
         HWDP_day = pd.read_csv(HWD_file)
         probs = HWDP_day.loc[list_hours, "HWDP"].values

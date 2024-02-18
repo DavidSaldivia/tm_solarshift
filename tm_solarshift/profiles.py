@@ -6,38 +6,27 @@ from typing import Optional, List, Dict, Any, Union
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
 
-from tm_solarshift.general import (
+from tm_solarshift.constants import (
     SEASON_DEFINITION,
     LOCATIONS_NEM_REGION,
-    DATA_DIR,
+    DIR_DATA,
+    PROFILES_TYPES,
+    PROFILES_COLUMNS,
+    FILE_SAMPLES,
+    conversion_factor
 )
-
+FILE_WHOLESALE_PRICES = os.path.join(DIR_DATA["energy_market"], 'SP_2017-2023.csv')
 #---------------------------------
-W2kJh = 3.6
-PROFILES_TYPES = {
-    "HWDP": ["P_HWD", "m_HWD", "Events", "m_HWD_day"],
-    "weather": ["GHI", "Temp_Amb", "Temp_Mains"],
-    "control": ["CS"],
-    "electric": ["PV_Gen", "Import_Grid", "Import_CL"],
-    "economic": ["Tariff", "Wholesale_Market"],
-    "emissions": ["Intensity_Index","Marginal_Emission"],
-}
-PROFILES_COLUMNS = [
-    item for sublist in 
-        [value for _, value in PROFILES_TYPES.items()]
-    for item in sublist
-]
-
-FILE_SAMPLE_HWD_DAILY = "HWD_Daily_Sample_site.csv"
+W2kJh = conversion_factor("W", "kJ/h")
 
 #---------------------------------
 # DEFINITION OF PROFILES
-# In each case 0 means not included (profile will be fill with 0 or 1 depending on the case)
+# In each case 0 means not included (filled with NaN or dummy value)
 
 # profile_PV
 # Profile for the PV generation source
 #       0: No PV included (generation = 0 all the time)
-#       1: Gaussian shape with peak = PV_NomPow
+#       1: Gaussian shape with peak as PV_NomPow
 
 # profile_Elec
 # Profile for the electricity load (non-DEHW)
@@ -64,8 +53,12 @@ FILE_SAMPLE_HWD_DAILY = "HWD_Daily_Sample_site.csv"
 #   4: Only solar soak (9am-3pm)
 #   5: Specific Control strategy (defined by file file_cs)
 
-class Profiles():
-    def __init__(self, START: int=0, STOP:int=8760, STEP:int=3, YEAR=2022):
+class TimeSeries():
+    def __init__(self,
+                 START: int = 0,
+                 STOP: int = 8760,
+                 STEP: int= 3,
+                 YEAR: int = 2022):
 
         self.START = START              # [hr]
         self.STOP = STOP                # [hr]
@@ -76,6 +69,9 @@ class Profiles():
         self.PERIODS = int(
             np.ceil((self.STOP - self.START) / self.STEP_h)
         )
+
+    @property
+    def idx(self):
         start_time = (
             pd.to_datetime(f"{self.YEAR}-01-01 00:00:00") 
             + pd.DateOffset(hours=self.START)
@@ -85,7 +81,21 @@ class Profiles():
             periods=self.PERIODS,
             freq=f"{self.STEP}min"
         )
-        self.df = pd.DataFrame(index=idx, columns=PROFILES_COLUMNS)
+        return idx
+        
+    @property
+    def data(self):
+        return pd.DataFrame(index=self.idx, columns=PROFILES_COLUMNS)
+
+    @classmethod
+    def new_from_gs(cls, general_setup = None):
+        ts = cls(
+            START = general_setup.START,
+            STOP = general_setup.STOP,
+            STEP = general_setup.STEP,
+            YEAR = general_setup.YEAR,
+        )
+        return ts
 
     def load_HWDP(
             self,
@@ -235,9 +245,7 @@ def HWD_daily_distribution(
             )
     
     elif HWD_daily_dist == "sample":
-        sample = pd.read_csv(
-            os.path.join(DATA_DIR["samples"], FILE_SAMPLE_HWD_DAILY)
-            )['m_HWD_day']
+        sample = pd.read_csv( FILE_SAMPLES["HWD_daily"] )['m_HWD_day']
         sample = sample[sample>0].to_list()
         m_HWD_day = np.random.choice(sample, size=DAYS)
         
@@ -251,7 +259,6 @@ def HWD_daily_distribution(
     return HWD_daily
 
 #---------------------------------
-
 def HWDP_generator_standard(
     Profiles: pd.DataFrame,
     HWD_daily_dist: pd.DataFrame,
@@ -296,7 +303,7 @@ def HWDP_generator_standard(
     elif (HWD_hourly_dist >= 1) & (HWD_hourly_dist <= 6):
         HWDP_day = pd.read_csv(
             os.path.join(
-                DATA_DIR["HWDP"],
+                DIR_DATA["HWDP"],
                 f"HWDP_Generic_AU_{HWD_hourly_dist}.csv",
             ),
         )
@@ -365,8 +372,9 @@ def HWDP_generator_events(
         DESCRIPTION.
 
     """
-    Profiles = timeseries.df
-    # Profiles = timeseries
+
+    # Profiles = timeseries.df
+    Profiles = timeseries
     STEP = Profiles.index.freq.n
     STEP_h = STEP / 60.0
     list_dates = np.unique(Profiles.index.date)
@@ -421,7 +429,7 @@ def HWDP_generator_events(
         else:
             HWDP_day = pd.read_csv(
                 os.path.join(
-                DATA_DIR["HWDP"], 
+                DIR_DATA["HWDP"], 
                 f"HWDP_Generic_AU_{HWD_hourly_dist}.csv"
                 )
             )
@@ -1105,7 +1113,6 @@ def load_controlled_load(
 
 #---------------------------------
 # Electric Profiles
-
 def load_PV_generation(
         Profiles: pd.DataFrame,
         profile_PV: int = 0,
@@ -1163,7 +1170,7 @@ def load_emission_index_year(
     
     emissions = pd.read_csv(
         os.path.join(
-            DATA_DIR["emissions"], f"emissions_year_{year}_{index_type}.csv"
+            DIR_DATA["emissions"], f"emissions_year_{year}_{index_type}.csv"
             ),
         index_col=0,
     )
@@ -1184,7 +1191,7 @@ def load_wholesale_prices(
         ) -> pd.DataFrame:
     
     df_SP = pd.read_csv(
-        os.path.join(DATA_DIR["energy_market"],'SP_2017-2023.csv'),
+        FILE_WHOLESALE_PRICES,
         index_col=0
         )
     df_SP.index = pd.to_datetime(df_SP.index).tz_localize(None)
@@ -1200,29 +1207,30 @@ def load_wholesale_prices(
 #---------------------------------
 def main():
 
-    from tm_solarshift.general import GeneralSetup
-    general_setup = GeneralSetup()
-    timeseries = Profiles()
+    import tm_solarshift.general as general
+    
+    gs = general.GeneralSetup()
+    ts = TimeSeries()
+
+    ts2 = TimeSeries.new_from_gs(gs)
 
     HWD_daily_dist = HWD_daily_distribution(
-        general_setup, timeseries.df
+        gs, ts2.data
     )
     event_probs = events_file(
-            file_name = os.path.join(
-                DATA_DIR["samples"], "HWD_events.xlsx",
-                ),
-                sheet_name="Custom"
+            file_name = FILE_SAMPLES["HWD_events"],
+            sheet_name = "Custom",
             )
-    timeseries.load_HWDP(
+    ts.load_HWDP(
         method='events',
         HWD_daily_dist=HWD_daily_dist,
         HWD_hourly_dist=1,
         event_probs=event_probs
     )
 
-    timeseries = load_wholesale_prices(timeseries.df, general_setup.location)
+    ts = load_wholesale_prices(ts.data, gs.location)
+    ts = load_emission_index_year(ts, gs.location)
 
-    timeseries = load_emission_index_year(timeseries, general_setup.location)
     pass
 
 #---------------------------------

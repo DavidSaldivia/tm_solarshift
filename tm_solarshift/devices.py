@@ -1,106 +1,20 @@
+import os
 import numpy as np
 import pandas as pd
 from typing import Optional, List, Dict, Any, Tuple
 
-UNIT_CONV = {
-    "length" : {
-        "m": 1e0,
-        "mm": 1e3,
-        "km": 1e-3,
-        "mi": 1e0/1609.34,
-        "ft": 3.28084,
-        "in": 39.3701,
-        },
-    "area" : {
-        "m2": 1e0,
-        "mm2": 1e6,
-        "km2": 1e-6,
-        "ha": 1e-4,
-    },
-    "volume": {
-        "m3": 1e0,
-        "L": 1e3,
-        },
-    "time": {
-        "s": 1e0,
-        "min": 1e0/60,
-        "h": 1e0/3600, "hr": 1e0/3600,
-        "d": 1e0/(24*3600), "day": 1e0/(24*3600),
-        "wk": 1e0/(24*3600*7),
-        "mo": 1e0/(24*3600*30),
-        "yr": 1e0/(24*3600*365),
-    },
-    "mass": {
-        "kg": 1e0,
-        "g": 1e3,
-        "ton": 1e-3,
-        "lb": 2.20462,
-        "oz": 35.274,
-    },
-    "mass_flowrate": {
-        "kg/s": 1e0,
-        "g/s": 1e3,
-        "kg/hr": 3600,
-    },
-    "energy": {
-        "J": 1e0,
-        "kJ": 1e-3,
-        "MJ": 1e-6,
-        "Wh": 1e-3/3.6,
-        "kWh": 1e-6/3.6,
-        "cal": 4.184,
-        "kcal": 4184,
-    },
-    "power": {
-        "W": 1e0,
-        "kW": 1e-3,
-        "MW": 1e-6,
-        "J/h": 3.6e6, "J/hr": 3.6e6,
-        "kJ/h": 3.6e0, "kJ/hr": 3.6e0,
-        "MJ/h": 3.6e-3, "MJ/hr": 3.6e-3,
-    },
-    "pressure": {
-        "Pa": 1e0,
-        "bar": 1e-5,
-        "psi": 1e0/6894.76,
-        "atm": 1e0/101300,
-    },
-    "velocity": {
-        "m/s": 1e0,
-        "km/hr": 3.6,
-        "mi/hr": 2.23694,
-        "ft/s": 3.28084,
-    },
-    "angular": {
-        "rad": 1e0,
-        "deg": 180./np.pi,
-    },
-#-------------------
-    "density": {
-        "kg/m3": 1e0,
-        "g/cm3": 1e-3,
-    },
-    "specific_heat": {
-        "J/kgK": 1e0, "J/kg-K": 1e0,
-        "kJ/kgK": 1e-3, "kJ/kg-K": 1e-3,
-    }
-}
+from tm_solarshift.constants import (
+    DIRECTORY,
+    UNITS,
+)
 
-UNIT_TYPES = {unit:type_unit for type_unit in UNIT_CONV for unit in UNIT_CONV[type_unit]}
+DIR_DATA = DIRECTORY.DIR_DATA
+UNIT_TYPES = UNITS.TYPES
+conversion_factor = UNITS.conversion_factor
 
-#-------------------------
-def conversion_factor(unit1: str, unit2: str) -> float:
-    """ Function to obtain conversion factor between units.
-    The units must be in the UNIT_CONV dictionary.
-    If they are units from different phyisical quantities an error is raised.
-    """
-    if UNIT_TYPES[unit1] == UNIT_TYPES[unit2]:
-        type_unit = UNIT_TYPES[unit1]
-        conv_factor = UNIT_CONV[type_unit][unit2] / UNIT_CONV[type_unit][unit1]
-    else:
-        raise ValueError(f"Units {unit1} and {unit2} do not represent the same physical quantity.")
-    return conv_factor
-
+FILE_MODELS_RS = os.path.join(DIR_DATA["specs"], "data_models_RS.csv")
+FILE_MODELS_HP = os.path.join(DIR_DATA["specs"], "data_models_HP.csv")
+FILE_MODELS_GI = os.path.join(DIR_DATA["specs"], "data_models_GI.csv")
 #-------------------------
 #Utilities classes
 class Variable():
@@ -176,7 +90,7 @@ class SolarSystem():
 #-------------------------
 #List of heater devices        
 class ResistiveSingle():
-    def __init__(self, **kwargs):
+    def __init__(self):
 
         #Loading all default values
         # heater
@@ -216,15 +130,15 @@ class ResistiveSingle():
         return tank_temp_high_control(self)
 
     @classmethod
-    def from_model_file(cls, file_path: str = "", model:str = ""):
+    def from_model_file(
+        cls,
+        file_path: str = FILE_MODELS_RS,
+        model:str = "",
+        ):
         
-        if file_path=="":
-            from tm_solarshift.general import DATA_DIR
-            import os
-            file_path = os.path.join(DATA_DIR["specs"], "data_models_RS.csv")
-        file_data = pd.read_csv(file_path, index_col=0)
-        specs = file_data.loc[model]
-        units = file_data.loc["units"]
+        df = pd.read_csv(file_path, index_col=0)
+        specs = df.loc[model]
+        units = df.loc["units"]
         
         output = cls()
         for (lbl,value) in specs.items():
@@ -277,6 +191,27 @@ class HeatPump():
     def area_loss(self):
         return tank_area_loss(self)
 
+    @classmethod
+    def from_model_file(
+        cls,
+        file_path: str = FILE_MODELS_HP,
+        model:str = "",
+        ):
+        
+        df = pd.read_csv(file_path, index_col=0)
+        specs = df.loc[model]
+        units = df.loc["units"]
+        
+        output = cls()
+        for (lbl,value) in specs.items():
+            unit = units[lbl]
+            try:
+                value = float(value)
+            except:
+                pass          
+            setattr(output, lbl, Variable(value, unit) )
+
+        return output
 
 #-------------------------
 def tank_thermal_capacity(tank):
@@ -308,25 +243,45 @@ def tank_temp_high_control(tank):
 
 #-------------------------
 class GasHeaterInstantaneous():
-    def __init__(self, source: str="default"):
-        if source == 'default':
-            # Default data from:
-            # https://www.rheem.com.au/rheem/products/Residential/Gas-Continuous-Flow/Continuous-Flow-%2812---27L%29/Rheem-12L-Gas-Continuous-Flow-Water-Heater-%3A-50%C2%B0C-preset/p/876812PF#collapse-1-2-1
-            # Data from model Rheim 20
-            #heater
-            self.nom_power = Variable(157., "MJ/hr")
-            self.flow_water = Variable(20., "L/min")
-            self.deltaT_rise = Variable(25., "dgrC")
-            self.heat_value = Variable(47.,"MJ/kg_gas")
-            
-            #tank
-            self.vol = Variable(0., "m3")
-            self.fluid = Water()
-
-            #control
-            self.temp_consump = Variable(45.0, "degC")
-
+    def __init__(self):
+        # Default data from:
+        # https://www.rheem.com.au/rheem/products/Residential/Gas-Continuous-Flow/Continuous-Flow-%2812---27L%29/Rheem-12L-Gas-Continuous-Flow-Water-Heater-%3A-50%C2%B0C-preset/p/876812PF#collapse-1-2-1
+        # Data from model Rheim 20
+        #heater
+        self.nom_power = Variable(157., "MJ/hr")
+        self.flow_water = Variable(20., "L/min")
+        self.deltaT_rise = Variable(25., "dgrC")
+        self.heat_value = Variable(47.,"MJ/kg_gas")
+        
+        #tank
+        self.vol = Variable(0., "m3")
         self.fluid = Water()
+
+        #control
+        self.temp_consump = Variable(45.0, "degC")
+
+
+    @classmethod
+    def from_model_file(
+        cls,
+        file_path: str = FILE_MODELS_GI,
+        model:str = "",
+        ):
+        
+        df = pd.read_csv(file_path, index_col=0)
+        specs = df.loc[model]
+        units = df.loc["units"]
+        
+        output = cls()
+        for (lbl,value) in specs.items():
+            unit = units[lbl]
+            try:
+                value = float(value)
+            except:
+                pass          
+            setattr(output, lbl, Variable(value, unit) )
+        return output
+
 
     def run_simple_thermal_model(self, HW_flow: List = [200.,]):
         return tm_heater_gas_instantaneuos(self, HW_flow) 
@@ -396,11 +351,6 @@ def tm_heater_gas_instantaneuos(
     }
     return output
 
-#-----------------------
-if __name__ == "__main__":
-
-
-    pass
 #-------------------------
 def main():
 
