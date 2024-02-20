@@ -17,7 +17,7 @@ PROFILES_TYPES = PROFILES.TYPES
 DEFINITION_SEASON = DEFINITIONS.SEASON
 CF = UNITS.conversion_factor
 
-class ControlLoad():
+class ControlledLoad():
     pass
 
     @staticmethod
@@ -37,43 +37,39 @@ class ControlLoad():
         df = df_in.copy()
         df["Switch_no_rand"] = df["CS"].diff()  # Values 1=ON, -1=OFF
 
-        # Defining starting times
+        # Defining starting and stoping times without randomness
         df_starts = df[df["Switch_no_rand"] == 1].copy()
         df_starts["start_no_rand"] = df_starts.index
+        df_stops = df[df["Switch_no_rand"] == -1].copy()
+        df_stops["stop_no_rand"] = df_stops.index
+
+        # Defining on and off delays
         df_starts["delays_on"] = np.random.choice(
             np.arange(0, random_delay_on + 1, STEP),
             size=len(df_starts),
         )
-        # The last randomization is set to 0 to avoid get outside indexes
+        df_stops["delays_off"] = np.random.choice(
+            np.arange(0, random_delay_off + 1, STEP),
+            size=len(df_stops)
+        )
+        #Last delays are =0 to avoid get outside indexes
         df_starts.iloc[-1, df_starts.columns.get_loc("delays_on")] = 0
-
+        df_stops.iloc[-1, df_stops.columns.get_loc("delays_off")] = 0
+        # Defining starting and stopping times once randomization is applied
         df_starts["start_with_rand"] = df_starts.apply(
             lambda aux: aux["start_no_rand"] 
             + pd.offsets.Minute(aux["delays_on"]),
             axis=1
         )
-
-        # Defining stoping times
-        df_stops = df[df["Switch_no_rand"] == -1].copy()
-        df_stops["stop_no_rand"] = df_stops.index
-        df_stops["delays_off"] = np.random.choice(
-            np.arange(0, random_delay_off + 1, STEP),
-            size=len(df_stops)
-        )
-        # The last randomization is set to 0 to avoid get outside indexes
-        df_stops.iloc[-1, df_stops.columns.get_loc("delays_off")] = 0
-
         df_stops["stop_with_rand"] = df_stops.apply(
             lambda aux: aux["stop_no_rand"] 
             + pd.offsets.Minute(aux["delays_off"]),
             axis=1,
         )
-
-        # Applying the randomization into the final
+        # Applying the randomization into the final dataframe
         df["Switch_rand"] = 0
         df.loc[df_starts["start_with_rand"], "Switch_rand"] = 1
         df.loc[df_stops["stop_with_rand"], "Switch_rand"] = -1
-
         output = (df.iloc[0]["CS"] + df["Switch_rand"].cumsum())
         return output
 
@@ -387,15 +383,14 @@ class ControlLoad():
     @classmethod
     def load_schedule(
         cls,
-        profiles: pd.DataFrame,
+        timeseries: pd.DataFrame,
         profile_control: int = 0,
         columns: List[str] = PROFILES_TYPES["control"],
         random_ON: bool = True,
     ) -> pd.DataFrame:
 
-        
-        STEP = profiles.index.freq.n
-        idx = profiles.index
+        STEP = timeseries.index.freq.n
+        idx = timeseries.index
         df_cs = pd.DataFrame(index=idx, columns=["CS"])
         
         periods = cls.loading_period_definitions(profile_control)
@@ -407,23 +402,84 @@ class ControlLoad():
         (df_cs["CS_norand"], df_cs["CS"]) = cls.create_signal_series(
             df_cs, periods, random_ON=random_ON, STEP=STEP
         )
-        profiles[columns] = df_cs[columns]
-        return profiles
+        timeseries[columns] = df_cs[columns]
+        return timeseries
 
+
+#---------------------------------
+class Circuits():
+
+    # Basic functions for profiles
+    @staticmethod
+    def profile_gaussian(df: pd.DataFrame, mu1: float, sig1: float, A1:float, base:float=0) -> pd.DataFrame:
+        aux = df.index.hour + df.index.minute / 60.0
+        Amp = A1 * sig1 * (2 * np.pi) ** 0.5
+        series = base + (Amp / sig1 / (2 * np.pi) ** 0.5) * np.exp(
+            -0.5 * (aux - mu1) ** 2 / sig1**2
+        )
+        return series
+    @staticmethod
+    def profile_step(df:pd.DataFrame, t1:float, t2:float, A1:float, A0:float=0)-> pd.DataFrame:
+        aux = df.index.hour + df.index.minute / 60.0
+        series = np.where((aux >= t1) & (aux < t2), A1, A0)
+        return series
+
+    #---------------------------------
+    @classmethod
+    def load_PV_generation(
+            cls,
+            timeseries: pd.DataFrame,
+            solar_system: Any,
+            columns: List[str] = ["PV_Gen"],
+            ) -> pd.DataFrame:
+
+        profile_PV = solar_system.profile_PV
+        nom_power = solar_system.nom_power.get_value("kJ/hr")
+        df_PV = pd.DataFrame(index=timeseries.index, columns=columns)
+        lbl = columns[0]
+        if profile_PV == 0:
+            df_PV[lbl] = 0.0
+        elif profile_PV == 1:
+            df_PV[lbl] = cls.profile_gaussian( df_PV, 12.0, 2.0, nom_power )
+        else:
+            raise ValueError("profile_PV not valid. The simulation will finish.")
+        
+        timeseries[columns] = df_PV[columns]
+        return timeseries
+
+    #---------------------------------
+    @classmethod
+    def load_elec_consumption(
+        cls,
+        timeseries: pd.DataFrame,
+        profile_elec: int = 0,
+        columns: List[str] = ["Import_Grid"],
+    ) -> pd.DataFrame:
+
+        df_Elec = pd.DataFrame(index=timeseries.index, columns=columns)
+        lbl = columns[0]
+        
+        if profile_elec == 0:
+            df_Elec[lbl] = 0.0  # 0 means no appliance load
+        else:
+            raise ValueError("profile_Elec not valid. The simulation will finish.")
+
+        timeseries[columns] = df_Elec[columns]
+        return timeseries
 
 #------------------
 def main():
 
-    #Creating a timeseries
-    from tm_solarshift.general_dev import (ThermalSimulation, Household)
-    simulation = ThermalSimulation()
-    household = Household()
-    ts = simulation.create_new_profile()
-
-    #Different ways to create weather columns
-    ts = ControlLoad.load_schedule(ts, profile_control=household.control_load)
+    #Creating a timeseries dataframe
+    from tm_solarshift.general_dev import GeneralSetup
+    GS = GeneralSetup()
+    ts = GS.simulation.create_new_profile()
+    control_load = GS.household.control_load()
+    
+    #Creating a schedule Control timeseries
+    ts = ControlledLoad.load_schedule(ts, profile_control=control_load)
     print(ts[PROFILES_TYPES["control"]])
-
+    ts = Circuits.load_PV_generation(ts, GS.solar_system)
     return
 
 

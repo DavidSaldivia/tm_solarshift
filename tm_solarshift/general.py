@@ -12,9 +12,8 @@ from tm_solarshift.devices import (
     SolarSystem,
 )
 
-from tm_solarshift.constants import (
-    PROFILES_COLUMNS,
-)
+from tm_solarshift.constants import PROFILES
+PROFILES_COLUMNS = PROFILES.COLUMNS
 
 #------------------------------------
 ## The main object for the simulation

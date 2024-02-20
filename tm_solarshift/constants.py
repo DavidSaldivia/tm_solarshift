@@ -6,15 +6,16 @@ class DIRECTORY():
     DIR_MAIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DIR_FILE = os.path.dirname(os.path.abspath(__file__))
     DIR_DATA = {
-        "weather" : os.path.join(DIR_MAIN, "data", "weather"),
-        "HWDP" : os.path.join(DIR_MAIN, "data", "HWD_Profiles"),
-        "tariffs" : os.path.join(DIR_MAIN, "data", "energy_plans"),
         "energy_market": os.path.join(DIR_MAIN, "data", "energy_market"),
         "emissions" : os.path.join(DIR_MAIN, "data", "emissions"),
-        "samples" : os.path.join(DIR_MAIN, "data", "samples"),
+        "HWDP" : os.path.join(DIR_MAIN, "data", "HWD_Profiles"),
         "layouts" : os.path.join(DIR_MAIN, "data", "trnsys_layouts"),
-        "specs" : os.path.join(DIR_MAIN, "data", "device_specs"),
+        "postcodes" : os.path.join(DIR_MAIN, "data", "postcodes"),
         "SA_processed" : os.path.join(DIR_MAIN, "data", "SA_processed"),
+        "samples" : os.path.join(DIR_MAIN, "data", "samples"),
+        "specs" : os.path.join(DIR_MAIN, "data", "device_specs"),
+        "tariffs" : os.path.join(DIR_MAIN, "data", "energy_plans"),
+        "weather" : os.path.join(DIR_MAIN, "data", "weather"),
         }
     DIR_RESULTS = os.path.join(DIR_MAIN, "results")
     FILE_SAMPLES ={
@@ -24,11 +25,70 @@ class DIRECTORY():
 
 # General definitions
 class DEFINITIONS():
+    LOCATION_DEFAULT = "Sydney"
+    LOCATIONS_METEONORM = ['Adelaide', 'Brisbane', 'Canberra',
+                     'Darwin', 'Melbourne', 'Perth', 'Sydney', 'Townsville',]
+    LOCATIONS_FEW = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne']
+    NEM_REGIONS = [ "NSW1", "VIC1", "QLD1", "SA1", "TAS1" ]
+    STATES = {
+        "SA": "South Australia",
+        "NSW": "New South Wales",
+        "QLD": "Queensland",
+        "TAS": "Tasmania",
+        "VIC": "Victoria",
+        "WA": "Western Australia",
+        "ACT": "Australian Capital Territory",
+        "NT": "Northern Territory",
+    }
+    LOCATIONS_STATE = {
+        "Adelaide": "SA",
+        "Brisbane": "QLD",
+        "Canberra": "ACT",
+        "Darwin": "NT",
+        'Hobart': "TAS",
+        "Melbourne": "VIC",
+        "Perth": "WA",
+        "Sydney": "NSW",
+        "Townsville": "QLD",
+    }
+    CITIES_COORDINATES = {
+        'Adelaide': (138.6011, -34.9289),
+        'Brisbane': (153.0281, -27.4678),
+        'Canberra': (149.1269, -35.2931),
+        'Darwin': (130.8411, -12.4381),
+        'Hobart': (147.3257, -42.8826),
+        'Melbourne': (144.9631, -37.8136),
+        'Perth': (115.8589, -31.9522),
+        'Sydney': (151.21, -33.86),
+        'Townsville': (146.817, -19.25)
+    }
+    LOCATIONS_NEM_REGION = {
+        "Sydney": "NSW1",
+        "Melbourne": "VIC1",
+        "Brisbane": "QLD1",
+        "Adelaide": "SA1",
+        "Canberra": "NSW1",
+        "Townsville": "QLD1",
+    }
     SEASON = {
         "summer": [12, 1, 2],
         "autumn": [3, 4, 5],
         "winter": [6, 7, 8],
         "spring": [9, 10, 11],
+    }
+    MONTHS = {
+        1: "January",
+        2: "February",
+        3: "March",
+        4: "April",
+        5: "May",
+        6: "June",
+        7: "July",
+        8: "August",
+        9: "September",
+        10: "October",
+        11: "November",
+        12: "December"
     }
     DAYOFWEEK = {
         "weekday": [0, 1, 2, 3, 4],
@@ -41,14 +101,6 @@ class DEFINITIONS():
         4: "Hot dry summer, cold winter",
         5: "Warm summer, cool winter",
         6: "Mild warm summer, cold winter",
-    }
-    LOCATIONS_NEM_REGION = {
-        "Sydney": "NSW1",
-        "Melbourne": "VIC1",
-        "Brisbane": "QLD1",
-        "Adelaide": "SA1",
-        "Canberra": "NSW1",
-        "Townsville": "QLD1",
     }
     HWDP_NAMES = {
         1:'Mor & Eve Only',
@@ -65,6 +117,13 @@ class DEFINITIONS():
         3:'CL3',
         4:'SS'
     }
+    CL_MAP = {
+        0:'General Supply',
+        1:'Controlled Load 1',
+        2:'Controlled Load 2',
+        3:'Solar Soak (Ausgrid)',
+        4:'Solar Soak (only)',
+    }
 
 # Profiles
 class PROFILES():
@@ -74,7 +133,7 @@ class PROFILES():
         "control": ["CS"],
         "electric": ["PV_Gen", "Import_Grid", "Import_CL"],
         "economic": ["Tariff", "Wholesale_Market"],
-        "emissions": ["Intensity_Index", "Marginal_Emission"],
+        "emissions": ["Intensity_Index", "Marginal_Index"],
     }
     COLUMNS = [
         item for sublist in 

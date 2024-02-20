@@ -7,17 +7,19 @@ from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
 
 from tm_solarshift.constants import (
-    SEASON_DEFINITION,
-    LOCATIONS_NEM_REGION,
-    DIR_DATA,
-    PROFILES_TYPES,
-    PROFILES_COLUMNS,
-    FILE_SAMPLES,
-    conversion_factor
+    DIRECTORY, DEFINITIONS, PROFILES, UNITS
 )
+DIR_DATA = DIRECTORY.DIR_DATA
+FILE_SAMPLES = DIRECTORY.FILE_SAMPLES
+SEASON_DEFINITION = DEFINITIONS.SEASON
+LOCATIONS_NEM_REGION = DEFINITIONS.LOCATIONS_NEM_REGION
+PROFILES_TYPES = PROFILES.TYPES
+PROFILES_COLUMNS = PROFILES.COLUMNS
+CF = UNITS.conversion_factor
+
 FILE_WHOLESALE_PRICES = os.path.join(DIR_DATA["energy_market"], 'SP_2017-2023.csv')
 #---------------------------------
-W2kJh = conversion_factor("W", "kJ/h")
+W2kJh = CF("W", "kJ/h")
 
 #---------------------------------
 # DEFINITION OF PROFILES
@@ -424,7 +426,7 @@ def HWDP_generator_events(
 
         # Obtaining the probabilities of events based on HWDP
         list_hours = np.arange(t_ini, t_fin + 1)
-        if HWD_hourly_dist == None:
+        if HWD_hourly_dist == None or HWD_hourly_dist == 0:
             probs = np.ones(len(list_hours))
         else:
             HWDP_day = pd.read_csv(

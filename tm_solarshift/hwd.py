@@ -19,15 +19,11 @@ FILE_SAMPLES = DIRECTORY.FILE_SAMPLES
 PROFILES_TYPES = PROFILES.TYPES
 CF = UNITS.conversion_factor
 
-from tm_solarshift.devices import(
-    Variable
-)
+from tm_solarshift.devices import Variable
 
 FILE_HWDP_AUSTRALIA = os.path.join(
-                    DIR_DATA["HWDP"],
-                    "HWDP_Generic_AU_{:0d}.csv",
-                )
-
+    DIR_DATA["HWDP"], "HWDP_Generic_AU_{:0d}.csv",
+)
 FILE_WHOLESALE_PRICES = os.path.join(DIR_DATA["energy_market"], 'SP_2017-2023.csv')
 
 #------------------------------------
@@ -40,6 +36,8 @@ class HWD():
         self.daily_max = None
         self.daily_distribution = None
 
+    #-------------------------
+    #Alternative initialiser
     @classmethod
     def standard_case(cls):
 
@@ -49,10 +47,41 @@ class HWD():
         standard_case.daily_avg = Variable(daily_avg, unit_avg)
         standard_case.daily_std = Variable(daily_avg / 3.0, unit_avg)
         standard_case.daily_min = Variable(0.0, unit_avg)
-        standard_case.daily_max = Variable(2 * daily_avg , unit_avg)
-        standard_case.daily_distribution = "truncnorm"       #Options: (None, "unif", "truncnorm", "sample")
+        standard_case.daily_max = Variable(2*daily_avg , unit_avg)
+        standard_case.daily_distribution = "sample"       #Options: (None, "unif", "truncnorm", "sample")
         return standard_case
-        
+    
+    #----------------------
+    @staticmethod
+    def event_basic():
+        event_basic = {
+            "name": "custom",  # Event type label
+            "basis": "daily",  # To determine number of events
+            "N_ev_min": Variable( 1, "-" ),  # minimum N_events in the specific basis
+            "N_ev_max": Variable( 4, "-" ),  # maximum N_events in the specific basis
+            "t_ini": Variable( 3, "hr" ),  # decimal time for event to start
+            "t_fin": Variable( 23, "hr" ),  # decimal time for event finish
+            "dt_min": Variable( 3, "min" ),  # minimum duration for event
+            "dt_max": Variable( 60, "min" ),  # maximum duration for event
+            "factor_a": Variable( 50, "kg" ),  # minimum bound for water consumption
+            "factor_b": Variable( 200, "kg" ),  # maximum bound for water consumption
+            "DensFunc": "uniform", # type of distribution of water consumption and time
+            "profile_HWD": None, # density function of occurrance during the day
+        }
+        return event_basic
+    
+    @staticmethod
+    def event_file(file_name:str=None, sheet_name="Basic"):
+        if file_name is None:
+            file_name = FILE_SAMPLES["HWD_events"]
+            warnings.warn("No file path for events is given. Sample file is used.")
+
+        events = pd.read_excel(
+            file_name,
+            sheet_name=sheet_name,
+        )
+        return events
+    
     #----------------------
     def interday_distribution(
         self,
@@ -123,38 +152,6 @@ class HWD():
         return pd.DataFrame(m_HWD_day, 
                             index=list_dates_unique, 
                             columns=["HWD_day"],)
-    
-    #----------------------
-    @staticmethod
-    def event_basic():
-        event_basic = {
-            "name": "custom",  # Event type label
-            "basis": "daily",  # To determine number of events
-            "N_ev_min": Variable( 1, "-" ),  # minimum N_events in the specific basis
-            "N_ev_max": Variable( 4, "-" ),  # maximum N_events in the specific basis
-            "t_ini": Variable( 3, "hr" ),  # decimal time for event to start
-            "t_fin": Variable( 23, "hr" ),  # decimal time for event finish
-            "dt_min": Variable( 3, "min" ),  # minimum duration for event
-            "dt_max": Variable( 60, "min" ),  # maximum duration for event
-            "factor_a": Variable( 50, "kg" ),  # minimum bound for water consumption
-            "factor_b": Variable( 200, "kg" ),  # maximum bound for water consumption
-            "DensFunc": "uniform", # type of distribution of water consumption and time
-            "profile_HWD": None, # density function of occurrance during the day
-        }
-        return event_basic
-    
-    @staticmethod
-    def event_file(file_name:str=None, sheet_name="Basic"):
-
-        if file_name is None:
-            file_name = FILE_SAMPLES["HWD_events"]
-            warnings.warn("No file path for events is given. Sample file is used.")
-
-        events = pd.read_excel(
-            file_name,
-            sheet_name=sheet_name,
-        )
-        return events
 
 
     #----------------------
@@ -163,7 +160,7 @@ class HWD():
         timeseries: pd.DataFrame,
         method: str = 'standard',
         interday_dist: pd.DataFrame = None,
-        intraday_dist: int = None,
+        intraday_dist: int = None, 
         event_probs: pd.DataFrame = None,
         columns: List[str] = PROFILES_TYPES['HWDP'],
     ) -> pd.DataFrame:

@@ -12,6 +12,7 @@ from tm_solarshift.devices import (
 )
 
 from tm_solarshift.hwd import HWD
+from tm_solarshift.weather import Location
 
 #------------------------------------
 class GeneralSetup():
@@ -20,7 +21,7 @@ class GeneralSetup():
         self.household = Household()
         self.DEWH = ResistiveSingle()
         self.solar_system = SolarSystem()
-        self.HWD = HWD.standard_case()
+        self.HWDInfo = HWD.standard_case()
         self.simulation = ThermalSimulation()
 
 #------------------------------------
@@ -42,10 +43,13 @@ class Household():
 #------------------------------------
 class ThermalSimulation():
     def __init__(self):
+        self.location = Location()
+        self.engine = "TRNSYS",
         self.START = Variable(0, "hr")
         self.STOP = Variable(8760, "hr")
         self.STEP = Variable(3, "min")
         self.YEAR = Variable(2022, "-")
+        
 
     @property
     def DAYS(self):
@@ -77,3 +81,53 @@ class ThermalSimulation():
             freq=f"{STEP}min"
         )
         return pd.DataFrame(index=idx, columns=profile_columns)
+    
+
+#-----------------------------
+def load_timeseries_all(
+        GS: GeneralSetup,
+) -> pd.DataFrame:
+    
+    import tm_solarshift.circuits as circuits
+    import tm_solarshift.external_data as external_data
+    from tm_solarshift.weather import Weather
+    
+    from tm_solarshift.circuits import (ControlledLoad, Circuits)
+    ControlledLoad = circuits.ControlledLoad
+
+    location = GS.household.location
+    control_load = GS.household.control_load
+    random_control = GS.household.control_random_on
+    YEAR = GS.simulation.YEAR.get_value("-")
+
+    ts = GS.simulation.create_new_profile()
+    ts = GS.HWDInfo.generator(ts, method="standard")
+    
+    file_path = Weather.FILE_METEONORM_TEMPLATE.format(location)
+    ts = Weather.from_file( ts, file_path )
+
+    ts = external_data.load_emission_index_year(
+        ts, 
+        index_type= 'total',
+        location = location,
+        year=YEAR,
+    )
+    ts = external_data.load_wholesale_prices(ts, location)
+
+    ts = ControlledLoad.load_schedule(ts, profile_control = control_load, random_ON = random_control)
+    ts = Circuits.load_PV_generation(ts, GS.solar_system)
+    ts = Circuits.load_elec_consumption(ts)
+
+    return ts
+
+#-----------
+def main():
+    GS = GeneralSetup()
+    ts = GS.simulation.create_new_profile()
+    ts = load_timeseries_all(GS)
+    print(ts.head(20))
+    print(len(ts))
+    return
+
+if __name__ == "__main__":
+    main()

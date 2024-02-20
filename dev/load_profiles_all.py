@@ -1,12 +1,13 @@
 import numpy as np
 import pandas as pd
 import os
+from typing import Any
 
-from tm_solarshift.general import (
-    GeneralSetup,
-    DATA_DIR,
-    )
+from tm_solarshift.general import GeneralSetup
+from tm_solarshift.constants import DIRECTORY
 import tm_solarshift.profiles as profiles
+
+DIR_DATA = DIRECTORY.DIR_DATA
 PROFILES_TYPES = profiles.PROFILES_TYPES
 
 #-------------------------
@@ -35,7 +36,7 @@ def load_timeseries_all_event_simulations(
     if HWD_generator_method == 'events':
         event_probs = profiles.events_file(
             file_name = os.path.join(
-                DATA_DIR["samples"], "HWD_events.xlsx",
+                DIR_DATA["samples"], "HWD_events.xlsx",
                 ),
             sheet_name="Custom"
             )
@@ -65,7 +66,7 @@ def load_timeseries_all_event_simulations(
         )
     else:
         file_weather = os.path.join(
-            DATA_DIR["weather"],
+            DIR_DATA["weather"],
             "meteonorm_processed",
             f"meteonorm_{location}.csv",
         )
@@ -82,7 +83,7 @@ def load_timeseries_all_event_simulations(
     timeseries = profiles.load_elec_consumption(timeseries)
     
     #Control Load
-    timeseries = profiles.load_control_load(
+    timeseries = profiles.load_controlled_load(
         timeseries, 
         profile_control = profile_control, 
         random_ON = random_control
@@ -108,7 +109,7 @@ def load_timeseries_all_parametric(
         HWD_hourly_dist = profile_HWD
     )
     file_weather = os.path.join(
-        DATA_DIR["weather"], "meteonorm_processed",
+        DIR_DATA["weather"], "meteonorm_processed",
         f"meteonorm_{location}.csv",
     )
     Profiles = profiles.load_weather_from_file(
@@ -129,16 +130,58 @@ def load_timeseries_all_parametric(
     Profiles = profiles.load_elec_consumption(Profiles)
     return Profiles
 
+#-----------------------------
+def load_timeseries_all_dev(
+        GS: Any,
+) -> pd.DataFrame:
+    
+    import tm_solarshift.circuits as circuits
+    import tm_solarshift.external_data as external_data
+    from tm_solarshift.weather import Weather
+    
+    from tm_solarshift.circuits import (ControlledLoad, Circuits)
+    ControlledLoad = circuits.ControlledLoad
+
+    location = GS.household.location
+    control_load = GS.household.control_load
+    random_control = GS.household.control_random_on
+    YEAR = GS.simulation.YEAR.get_value("-")
+
+    ts = GS.simulation.create_new_profile()
+    ts = GS.HWDInfo.generator(ts, method="standard")
+    
+    file_path = Weather.FILE_METEONORM_TEMPLATE.format(location)
+    ts = Weather.from_file( ts, file_path )
+
+    ts = external_data.load_emission_index_year(
+        ts, 
+        index_type= 'both',
+        location = location,
+        year=YEAR,
+    )
+    ts = external_data.load_wholesale_prices(ts, location)
+
+    ts = ControlledLoad.load_schedule(ts, profile_control = control_load, random_ON = random_control)
+    ts = Circuits.load_PV_generation(ts, GS.solar_system)
+    ts = Circuits.load_elec_consumption(ts)
+
+    return ts
 
 #----------------------
 def main():
     
-    general_setup = GeneralSetup()
-    ts_1 = load_timeseries_all_event_simulations(general_setup)
-
+    GS = GeneralSetup()
+    ts_1 = load_timeseries_all_event_simulations(GS)
+    print(ts_1.head())
     #Option 2
-    ts_2 = load_timeseries_all_parametric(general_setup)
+    ts_2 = load_timeseries_all_parametric(GS)
+    print(ts_2.head())
 
+    #Option 3 (dev)
+    from tm_solarshift.general_dev import GeneralSetup as GeneralSetup_new
+    GS = GeneralSetup_new()
+    ts_3 = load_timeseries_all_dev(GS)
+    print(ts_3.head(20))
     return
 
 #------------------------

@@ -86,6 +86,7 @@ class Water():
 class SolarSystem():
     def __init__(self):
         self.nom_power = Variable(4000.0,"W")
+        self.profile_PV = 1
 
 #-------------------------
 #List of heater devices        
