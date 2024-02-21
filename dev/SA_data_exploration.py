@@ -17,15 +17,27 @@ import cartopy
 import cartopy.crs as ccrs                   # import projections
 import cartopy.feature as cf                 # import features
 
-from SA_Solarshift_data import (
-    DATA_DIRECTORY,
-    prepare_site_data_in_df
-    )
-from energy_plan_utils import (
-    get_energy_plan_for_dnsp,
-    get_energy_breakdown,
-    add_wholesale_prices,
-)
+from tm_solarshift.external import solarshift_sola_data
+DATA_DIRECTORY = solarshift_sola_data.DATA_DIRECTORY
+prepare_site_data_in_df = solarshift_sola_data.prepare_site_data_in_df
+
+from tm_solarshift.external import energy_plan_utils
+get_energy_plan_for_dnsp = energy_plan_utils.get_energy_plan_for_dnsp
+get_energy_breakdown = energy_plan_utils.get_energy_breakdown
+add_wholesale_prices = energy_plan_utils.add_wholesale_prices
+
+# from tm_solarshift.external import model_constants
+
+
+# from SA_Solarshift_data import (
+#     DATA_DIRECTORY,
+#     prepare_site_data_in_df
+#     )
+# from energy_plan_utils import (
+#     get_energy_plan_for_dnsp,
+#     get_energy_breakdown,
+#     add_wholesale_prices,
+# )
 from model_constants import SolarShiftConstants
 (
     NUM_TSTAMP_IN_DAY,
