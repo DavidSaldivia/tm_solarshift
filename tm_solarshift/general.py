@@ -1,9 +1,8 @@
-import os
-import sys
-import pandas as pd
 import numpy as np
-from typing import Optional, List, Dict, Any, Tuple
+import pandas as pd
+from typing import List
 
+from tm_solarshift.constants import PROFILES
 from tm_solarshift.devices import (
     Variable,
     VariableList,
@@ -12,111 +11,130 @@ from tm_solarshift.devices import (
     SolarSystem,
 )
 
-from tm_solarshift.constants import PROFILES
-PROFILES_COLUMNS = PROFILES.COLUMNS
+from tm_solarshift.hwd import HWD
+from tm_solarshift.weather import Location
 
 #------------------------------------
-## The main object for the simulation
 class GeneralSetup():
-    def __init__(self, **kwargs):
+    def __init__(self):
 
-        self.START = 0                  # [hr]
-        self.STOP = 8760                # [hr]
-        self.STEP = 3                   # [min]
-        self.YEAR = 2022                # [-]
-        self.location = "Sydney"
-        self.DNSP = "Ausgrid"
-        self.tariff_type = "flat"
-
+        self.household = Household()
         self.DEWH = ResistiveSingle()
         self.solar_system = SolarSystem()
+        self.HWDInfo = HWD.standard_case()
+        self.simulation = ThermalSimulation()
 
-        # Profile/Behavioural Parameters
-        self.profile_PV = 0  # See above for the meaning of these options
-        self.profile_Elec = 0
-        self.profile_HWD = 1
-        self.profile_control = 0
-        self.random_control = True
+#------------------------------------
+class Household():
+    def __init__(self):
 
-        # HWD statistics
-        self.HWD_avg = 200.0  # [L/d]
-        self.HWD_std = self.HWD_avg / 3.0
-        # [L/d] (Measure for daily variability. If 0, no variability)
-        self.HWD_min = 0.0  # [L/d] Minimum HWD. Default 0
-        self.HWD_max = 2 * self.HWD_avg  # [L/d] Maximum HWD. Default 2x HWD_avg
-        # [str] Type of variability in daily consumption.
-        # Options: None, unif, truncnorm, sample
-        self.HWD_daily_dist = None
+        self.tariff_type = "flat"
+        self.DNSP = "Ausgrid"
+        self.location = "Sydney"
+        self.control_load = 1
+        self.control_random_on = True
 
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        
+#------------------------------------
+class ThermalSimulation():
+    def __init__(self):
+        self.location = Location()
+        self.engine = "TRNSYS",
+        self.START = Variable(0, "hr")
+        self.STOP = Variable(8760, "hr")
+        self.STEP = Variable(3, "min")
+        self.YEAR = Variable(2022, "-")
+
     @property
     def DAYS(self):
-        return int(self.STOP / 24)
-    @property
-    def STEP_h(self):
-        return self.STEP / 60.0
+        START = self.START.get_value("hr")
+        STOP = self.STOP.get_value("hr")
+        return Variable( int((STOP-START)/24), "d")
     @property
     def PERIODS(self):
-        return int(np.ceil((self.STOP - self.START) / self.STEP_h))
-    @property
-    def DAYS_i(self):
-        return int(np.ceil(self.STEP_h * self.PERIODS / 24.0))
+        START = self.START.get_value("hr")
+        STOP = self.STOP.get_value("hr")
+        STEP_h = self.STEP.get_value("hr")
+        return Variable( int(np.ceil((STOP - START)/STEP_h)), "-")
+    
 
-    def update_params(self, params):
-        for key, values in params.items():
-            if hasattr(self, key):  # Checking if the params are in GeneralSetup to update them
-                setattr(self, key, values)
-            else:
-                text_error = f"Parameter {key} not in GeneralSetup. Simulation will finish now"
-                raise ValueError(text_error)
+    def create_new_profile(
+        self,
+        profile_columns: List[str] = PROFILES.COLUMNS,
+    ) -> pd.DataFrame:
 
-    def parameters(self):
-        return self.__dict__.keys()
+        START = self.START.get_value("hr")
+        STEP = self.STEP.get_value("min")
+        YEAR = self.YEAR.get_value("-")
+        PERIODS = self.PERIODS.get_value("-")
 
-#------------------------------------
-def parametric_settings(
-        params_in : Dict = {},
-        params_out: List = [],
-        ) -> pd.DataFrame:
-
-    """_summary_
-    This function creates a parametric run.
-    It creates a pandas dataframe with all the runs required.
-    The order of running is "first=outer".
-    It requires a dictionary with keys as Simulation attributes (to be changed)
-    and a list of strings with the desired outputs from out_overall.
-
-    Args:
-        params_in (Dict): Dict with (parameter : [values]) structure.
-        params_out (List): List with expected output from simulations.
-
-    Returns:
-        pd.DataFrame: Dataframe with all the runs
-    """
-    import itertools
-    cols_in = params_in.keys()
-    params_values = []
-    for lbl in params_in:
-        values = params_in[lbl]
-        if type(values)==VariableList:
-            values = values.get_values(values.unit)
-        params_values.append(values)
-
-    runs = pd.DataFrame(
-        list(itertools.product(*params_values)), 
-        columns=cols_in,
+        start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") \
+            + pd.DateOffset(hours=START)
+        idx = pd.date_range(
+            start=start_time, 
+            periods=PERIODS, 
+            freq=f"{STEP}min"
         )
-    for col in params_out:
-        runs[col] = np.nan
-    return runs
+        return pd.DataFrame(index=idx, columns=profile_columns)
 
-#------------------------------------
+#-----------------------------
+def load_timeseries_all(
+        GS: GeneralSetup,
+) -> pd.DataFrame:
+    
+    import tm_solarshift.circuits as circuits
+    import tm_solarshift.external_data as external_data
+    import tm_solarshift.weather as weather
+    Weather = weather.Weather
+    
+    from tm_solarshift.circuits import (ControlledLoad, Circuits)
+    ControlledLoad = circuits.ControlledLoad
 
-if __name__ == '__main__':
-    Sim = GeneralSetup()
-    # profiles = Profiles(Sim)
+    location = GS.household.location
+    control_load = GS.household.control_load
+    random_control = GS.household.control_random_on
+    YEAR = GS.simulation.YEAR.get_value("-")
 
-    import tm_solarshift.trnsys as trnsys
-    Sim2 = trnsys.GeneralSetup()
+    ts = GS.simulation.create_new_profile()
+    ts = GS.HWDInfo.generator(ts, method="standard")
+    
+    file_path = Weather.FILES["METEONORM_TEMPLATE"].format(location)
+    ts = weather.from_file( ts, file_path )
+
+    ts = external_data.load_emission_index_year(
+        ts, 
+        index_type= 'total',
+        location = location,
+        year=YEAR,
+    )
+    ts = external_data.load_wholesale_prices(ts, location)
+
+    ts = ControlledLoad.load_schedule(ts, profile_control = control_load, random_ON = random_control)
+    ts = Circuits.load_PV_generation(ts, GS.solar_system)
+    ts = Circuits.load_elec_consumption(ts)
+
+    return ts
+
+#-----------
+def main():
+
+    from tm_solarshift.thermal_models import trnsys
+
+    GS = GeneralSetup()
+    GS.household.control_load = 4
+
+    ts = GS.simulation.create_new_profile()
+    ts = load_timeseries_all(GS)
+    print(ts.head(20))
+    print(ts[PROFILES.TYPES["HWDP"]])
+    print(ts[PROFILES.TYPES["weather"]])
+    print(ts[PROFILES.TYPES["control"]])
+
+    out_all = trnsys.run_simulation(GS, ts, verbose=True)
+    print(out_all)
+    out_overall = trnsys.postprocessing_annual_simulation(GS, ts, out_all)
+    print(out_overall)
+    
+    return
+
+if __name__ == "__main__":
+    main()

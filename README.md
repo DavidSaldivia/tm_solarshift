@@ -22,11 +22,10 @@ The repository is structured in the following directories and modules:
     - [trnsys](tm_solarshift/trnsys.py): It contains the functions to run a TRNSYS simulation based on GeneralSetup and the profiles defined earlier. It also includes the postprocessing from the resulting simulation. In order to run the TRNSYS simulations you need to have TRNSYS installed in your computer with a valid Licence. If you have so, you can edit the `trnsys.TRNSYS_EXECUTABLE` string with your TRNSYS executable path.
 
 - `uses`: It contains scripts with examples and typical uses of this repository. Scripts to run parametric simulations, events simulations, are included here. Also, plotting scripts are included.
-- `data`: It contains all the data required to run the simulations. In Github this folder is empty. The required folders can be checked in `tm_solarshift.general.DATA_DIR`.
+- `data`: It contains all the data required to run the simulations. In Github this folder is empty. The required folders can be checked in `tm_solarshift.constants.DATA_DIR`.
 - `results`: the default folder where the different results are stored.
 
-
-### Examples
+## Examples
 A simple example of how to use this package for an annual simulation can be seen here: [Simple Example](uses/simple_example.py).
 Additionally, a script for parametric runs is available [Here](uses/TL_parametric.py). Examples of parametric simulations for different tank properties, resistive heater under different conditons and heat pumps under different conditions are also available.
 
@@ -35,7 +34,6 @@ This is a "work-in-progress" repository. If you have any issue please contact di
 
 
 ## Citation
-
 A journal paper is in progress with some of the analysis and results obtained with this code.
 
 ## Licenses

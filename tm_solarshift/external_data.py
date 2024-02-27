@@ -27,7 +27,7 @@ def load_emission_index_year(
     columns = {
         "total": "Intensity_Index",
         "marginal": "Marginal_Index",
-        # "both": PROFILES.TYPES["emissions"]
+        # "both": PROFILES.TYPES["emissions"]   #Not working well yet
         }[index_type]
     
     emissions = pd.read_csv(
@@ -70,7 +70,7 @@ def load_wholesale_prices(
 
 def main():
 
-    from tm_solarshift.general_dev import GeneralSetup
+    from tm_solarshift.general import GeneralSetup
     GS = GeneralSetup()
     ts = GS.simulation.create_new_profile()
     

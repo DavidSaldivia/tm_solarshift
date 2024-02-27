@@ -124,6 +124,9 @@ class DEFINITIONS():
         3:'Solar Soak (Ausgrid)',
         4:'Solar Soak (only)',
     }
+    LIST_DNSP = ["Actewagl", "Ausgrid", "Ausnet", "CitiPower", "Endeavour",
+                  "Essential","Energex","Ergon","Horizon","Jemena","Powercor",
+                  "Powerwater","SAPN","TasNetworks","Unitedenergy","Western",]
 
 # Profiles
 class PROFILES():

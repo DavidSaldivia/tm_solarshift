@@ -48,7 +48,7 @@ class HWD():
         standard_case.daily_std = Variable(daily_avg / 3.0, unit_avg)
         standard_case.daily_min = Variable(0.0, unit_avg)
         standard_case.daily_max = Variable(2*daily_avg , unit_avg)
-        standard_case.daily_distribution = "sample"       #Options: (None, "unif", "truncnorm", "sample")
+        standard_case.daily_distribution = "truncnorm"       #Options: (None, "unif", "truncnorm", "sample")
         return standard_case
     
     #----------------------
@@ -407,7 +407,7 @@ class HWD():
 #----------------------------
 def main():
     
-    from tm_solarshift.general_dev import ThermalSimulation
+    from tm_solarshift.general import ThermalSimulation
     simulation = ThermalSimulation()
     ts = simulation.create_new_profile()
     

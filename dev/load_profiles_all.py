@@ -178,7 +178,7 @@ def main():
     print(ts_2.head())
 
     #Option 3 (dev)
-    from tm_solarshift.general_dev import GeneralSetup as GeneralSetup_new
+    from tm_solarshift.general import GeneralSetup as GeneralSetup_new
     GS = GeneralSetup_new()
     ts_3 = load_timeseries_all_dev(GS)
     print(ts_3.head(20))

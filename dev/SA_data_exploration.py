@@ -84,7 +84,7 @@ DEFINITION_SEASON = DEFINITIONS.SEASON
 LOCATIONS_METEONORM = DEFINITIONS.LOCATIONS_METEONORM
 CF = UNITS.conversion_factor
 
-from tm_solarshift.general_dev import GeneralSetup
+from tm_solarshift.general import GeneralSetup
 from tm_solarshift.devices import Variable
 from tm_solarshift.weather import (
         Weather,
@@ -264,6 +264,64 @@ def get_daily_values(site_data: pd.DataFrame, showfig:bool = True) -> pd.DataFra
     plt.close()
     return hw_day
 
+#----------------
+def get_location_SolA_sites() -> pd.DataFrame:
+    df_sitesinfo = pd.read_csv(Weather.FILES["SOLA_CL_INFO"])
+    
+    df_postcodes = pd.read_csv(Weather.FILES["postcodes"])
+    df_postcodes = df_postcodes.groupby("postcode")[["long","lat"]].mean()
+    
+    df_sitesinfo["lon"] = df_postcodes["long"].loc[df_sitesinfo["postcode"]].to_list()
+    df_sitesinfo["lat"] = df_postcodes["lat"].loc[df_sitesinfo["postcode"]].to_list()
+    
+    df_sitesinfo.index = df_sitesinfo["site_id"]
+    df_sitesinfo.to_csv(Weather.FILES["SOLA_POSTCODES_INFO"])
+    return df_sitesinfo
+
+#---------------
+def plot_SolA_locations(
+        file_sites: str = None,
+        showfig: bool = False,
+        savefig: bool = True,
+) -> None:
+
+    if file_sites is None:
+        file_sites = Weather.FILES["SOLA_POSTCODES_INFO"]
+        
+    f_s = 16
+    fig = plt.figure(figsize=(12, 9))
+    ax = fig.add_subplot(111,projection=ccrs.epsg(AUS_PROJ))
+    ax.set_extent(AUS_BOUNDS)
+    ax.set_title("SolA dataset sites. Locations")
+    res='50m'
+    ocean = cf.NaturalEarthFeature('physical', 'ocean', res, edgecolor='face', facecolor= cf.COLORS['water'])
+    lakes = cf.NaturalEarthFeature('physical', 'lakes', res, edgecolor='k', facecolor= cf.COLORS['water'], lw=0.5)
+    borders = cf.NaturalEarthFeature('cultural', 'admin_1_states_provinces', res, facecolor='none', edgecolor='k', lw=0.5)
+    
+    ax.add_feature(borders)
+    ax.add_feature(ocean)
+    ax.add_feature(lakes)
+    ax.add_feature(cf.COASTLINE)
+
+    df_sites = pd.read_csv(file_sites)
+    for state in DEFINITIONS.STATES.keys():
+        df_state = df_sites[df_sites["state"]==state]
+        ax.scatter(
+            df_state["lon"],df_state["lat"],
+            transform=ccrs.PlateCarree(), c = colors[state], s=10,
+            label=f"{state} ({len(df_state)} sites)",
+            )
+    ax.legend()
+
+    if showfig:
+        plt.show()
+    if savefig:
+        fig.savefig(
+            os.path.join("SolA_locations.png"),
+            bbox_inches="tight",
+        )
+    return None
+
 
 def plot_SolAsites_merra2(
         file_sites: str = None,
@@ -272,7 +330,6 @@ def plot_SolAsites_merra2(
         savefig: bool = True,
         
 ) -> None:
-
 
     mms = ['o','*','.',',','x','X','+','P','s','D','d','p','H']
 
@@ -350,13 +407,16 @@ def plot_SolAsites_merra2(
     
 
     plt.close()
-    return
+    return None
+
 
 def main():
     GS = GeneralSetup()
     GS.simulation.YEAR = Variable(2020,"-")
 
-    
+    get_location_SolA_sites()
+    plot_SolA_locations( Weather.FILES["SOLA_POSTCODES_INFO"], showfig=True )
+
     file_merra2 = os.path.join(Weather.FLDR["MERRA2"], "MERRA2_Processed_2023.nc")
     plot_SolAsites_merra2(file_merra2=file_merra2, showfig=True)
 
@@ -365,7 +425,8 @@ def main():
 
     site_id = 998800275
     get_hw_dataframe(site_id)
-
+    
+    return
     
 
 if __name__ == "__main__":

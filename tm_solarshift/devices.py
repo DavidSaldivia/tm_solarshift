@@ -100,9 +100,9 @@ class ResistiveSingle():
         
         # tank
         self.vol = Variable(0.315,"m3")
-        self.height = Variable(1.640, "m")
+        self.height = Variable(1.45, "m")  # It says 1.640 in specs, but it is external height, not internal
         self.height_inlet = Variable(0.113, "m")
-        self.height_outlet = Variable(0.1317, "m")
+        self.height_outlet = Variable(1.317, "m")
         self.height_heater = Variable(0.103, "m")
         self.height_thermostat = Variable(0.103, "m")
         self.U = Variable(0.9, "W/m2-K")
@@ -166,13 +166,13 @@ class HeatPump():
 
             # tank
             self.vol = Variable(0.315,"m3")
-            self.height = Variable(1.640, "m")
+            self.height = Variable(1.45, "m")  # It says 1.640 in specs, but it is external height, not internal
             self.height_inlet = Variable(0.113, "m")
-            self.height_outlet = Variable(0.1317, "m")
+            self.height_outlet = Variable(1.317, "m")
             self.height_heater = Variable(0.103, "m")
             self.U = Variable(0.9, "W/m2-K")
             self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
-            self.temps_ini = 3  # [-] Initial temperature of the tank. Check Editing_dck_tank() below for the options
+            self.temps_ini = 3  # [-] Initial temperature of the tank. Check editing_dck_tank() below for the options
             self.fluid = Water()
 
             #control

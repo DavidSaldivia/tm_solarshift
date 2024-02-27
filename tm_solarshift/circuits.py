@@ -471,7 +471,7 @@ class Circuits():
 def main():
 
     #Creating a timeseries dataframe
-    from tm_solarshift.general_dev import GeneralSetup
+    from tm_solarshift.general import GeneralSetup
     GS = GeneralSetup()
     ts = GS.simulation.create_new_profile()
     control_load = GS.household.control_load()

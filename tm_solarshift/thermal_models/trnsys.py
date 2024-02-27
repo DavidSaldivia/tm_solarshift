@@ -8,21 +8,23 @@ import matplotlib.pyplot as plt
 from typing import Optional, List, Dict, Any, Tuple
 from tempfile import TemporaryDirectory
 
+from tm_solarshift.constants import (
+    DIRECTORY,
+    PROFILES,
+)
+DIR_DATA = DIRECTORY.DIR_DATA
 from tm_solarshift.general import (
     GeneralSetup,
-    # Household,
-    DATA_DIR,
 )
 from tm_solarshift.devices import (
     ResistiveSingle, 
     HeatPump,
     SolarSystem,
-    conversion_factor
+    conversion_factor as CF,
 )
 
-# W_TO_kJh = conversion_factor("W", "kJ/h")
 TRNSYS_EXECUTABLE = r"C:/TRNSYS18/Exe/TRNExe64.exe"
-TRNSYS_TEMPDIR = "C:/SolarShift_TempDir"
+TEMPDIR_SIMULATION = "C:/SolarShift_TempDir"
 FILES_TRNSYS_INPUT = {
     "PV_Gen": "0-Input_PVGen.csv",
     "Import_Grid": "0-Input_Elec.csv",
@@ -89,17 +91,17 @@ METEONORM_FILES = {
 #------------------------------
 #### DEFINING TRNSYS CLASSES
 class TrnsysSetup():
-    def __init__(self, household, **kwargs):
+    def __init__(self, GS, **kwargs):
         # Directories
         self.tempDir = None
 
-        self.START= household.START   # [hr]
-        self.STOP = household.STOP    # [hr]
-        self.STEP = household.STEP    # [min]
+        self.START= GS.simulation.START
+        self.STOP = GS.simulation.STOP
+        self.STEP = GS.simulation.STEP
 
-        self.location = household.location
-        self.DEWH = household.DEWH
-        self.solar_system = household.solar_system
+        self.location = GS.simulation.location
+        self.DEWH = GS.DEWH
+        self.solar_system = GS.solar_system
 
         # Trnsys layout configurations
         if self.DEWH.__class__ == ResistiveSingle:
@@ -107,31 +109,32 @@ class TrnsysSetup():
         elif self.DEWH.__class__ == HeatPump:
             self.layout_DEWH = "HPF"
         else:
-            raise ValueError("DEWH is not a valid class for TRNSYS simulation")
+            raise ValueError("DEWH object is not a valid one for TRNSYS simulation")
 
-        if household.solar_system.__class__ == SolarSystem:
+        if GS.solar_system.__class__ == SolarSystem:
             self.layout_PV = "PVF"
+        else:
+            raise ValueError("Solar system object is not a valid one for TRNSYS simulation")
 
         self.layout_v = 0
         self.layout_TC = "MX"
         self.layout_WF = "W9a"
-        self.layout_WF = "W15"
+        # self.layout_WF = "W15"
         self.weather_source = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
 
 
-#------------------------------
-#### EDITING DCK FILE FUNCTIONS
+#------------
 def editing_dck_general(
         trnsys_setup: TrnsysSetup,
         dck_editing: List[str],
         ) -> List[str]:
 
-    START = trnsys_setup.START
-    STOP = trnsys_setup.STOP
-    STEP = trnsys_setup.STEP
+    START = trnsys_setup.START.get_value("hr")
+    STOP = trnsys_setup.STOP.get_value("hr")
+    STEP = trnsys_setup.STEP.get_value("min")
 
     DEWH = trnsys_setup.DEWH
     
@@ -157,7 +160,7 @@ def editing_dck_general(
 
     # Editing .dck file: DEWH: resistive single and HP
     gral_params = {
-        "Heater_NomCap": nom_power * conversion_factor("W", "kJ/h"),
+        "Heater_NomCap": nom_power * CF("W", "kJ/h"),
         "Heater_F_eta": eta,
         "Tank_TempHigh": temp_max,
         "Tank_TempLow": temp_min,
@@ -175,6 +178,7 @@ def editing_dck_general(
     return dck_editing
 
 
+#------------
 def editing_dck_weather(
         trnsys_setup: TrnsysSetup,
         dck_editing: List[str],
@@ -219,18 +223,18 @@ def editing_dck_weather(
 
     return dck_editing
 
+#------------
 # Editing dck tank file
 def editing_dck_tank(
         trnsys_setup: TrnsysSetup,
         dck_editing: List[str],
         ) -> List[str]:
 
-    W_TO_KJ_H = conversion_factor("W", "kJ/h")
     DEWH = trnsys_setup.DEWH
 
-    # The start and end lines of the component are identified and extracted
-    # Start
-    tag1 = "HotWaterTank_1"  # Component name (Two tags are used in case there is more than one tank)
+    # The start line of the component is identified with tag1 and tag2
+    # Two tags are used in case there is more than one tank
+    tag1 = "HotWaterTank_1"  # Component name 
     tag2 = "158"  # Component Type
     for idx, line in enumerate(dck_editing):
         if tag1 in line and tag2 in line:
@@ -238,7 +242,7 @@ def editing_dck_tank(
             comp_lines = dck_editing[idx_start:]
             break
 
-    # End
+    # The end line is identified with tag3
     tag3 = "*------------"
     for idx, line in enumerate(comp_lines):
         if tag3 in line:
@@ -247,16 +251,16 @@ def editing_dck_tank(
 
     comp_lines = dck_editing[idx_start:idx_end]
 
-    # Defining the initial parameters (common to all tanks)
+    # Common parameters
     tank_params_common = {
         "1 Tank volume" : DEWH.vol.get_value("m3"),
         "2 Tank height" : DEWH.height.get_value("m"),
-        "4 Top loss coefficient" : DEWH.U.get_value("W/m2-K") * W_TO_KJ_H,
-        "5 Edge loss coefficient" : DEWH.U.get_value("W/m2-K") * W_TO_KJ_H,
-        "6 Bottom loss coefficient" : DEWH.U.get_value("W/m2-K") * W_TO_KJ_H,
+        "4 Top loss coefficient" : DEWH.U.get_value("W/m2-K") * CF("W", "kJ/h"),
+        "5 Edge loss coefficient" : DEWH.U.get_value("W/m2-K") * CF("W", "kJ/h"),
+        "6 Bottom loss coefficient" : DEWH.U.get_value("W/m2-K") * CF("W", "kJ/h"),
         "7 Fluid specific heat" : DEWH.fluid.cp.get_value("kJ/kg-K"),
         "8 Fluid density" : DEWH.fluid.rho.get_value("kg/m3"),
-        "9 Fluid thermal conductivity" : DEWH.fluid.k.get_value("W/m-K") * W_TO_KJ_H,
+        "9 Fluid thermal conductivity" : DEWH.fluid.k.get_value("W/m-K") * CF("W", "kJ/h"),
     }
 
     #Defining specific parameters for each type of heater
@@ -297,25 +301,41 @@ def editing_dck_tank(
     temp_min = DEWH.temp_min.get_value("degC")
     temps_ini = DEWH.temps_ini
     nodes = DEWH.nodes
-    # Linear stratification
-    if temps_ini == 1:
-        tank_node_temps = np.linspace(temp_max, temp_min, nodes)
-    # Linear inverted stratification
-    elif temps_ini == 2:
-        tank_node_temps = np.linspace(temp_min, temp_max, nodes)
-    # Full Charged
-    elif temps_ini == 3:
-        tank_node_temps = temp_max * np.ones(nodes)
-    # Full Discharged
-    elif temps_ini == 4:
-        tank_node_temps = temp_min * np.ones(nodes)
-    # Random
-    elif temps_ini == 5:
-        tank_node_temps = np.random.uniform(
-            low=temp_min, high=temp_max, size=(nodes,)
-        )
-    else:
-        raise ValueError(f"Value for temp_ini ({temps_ini}) is not valid [0-5]")
+    match temps_ini:
+        case 1:
+            tank_node_temps = np.linspace(temp_max, temp_min, nodes)
+        case 2:
+            tank_node_temps = np.linspace(temp_min, temp_max, nodes)
+        case 3:
+            tank_node_temps = temp_max * np.ones(nodes)
+        case 4:
+            tank_node_temps = temp_min * np.ones(nodes)
+        case 5:
+            tank_node_temps = np.random.uniform(
+                low=temp_min, high=temp_max, size=(nodes,)
+            )
+        case _:
+            raise ValueError(f"Value for temp_ini ({temps_ini}) is not valid [0-5]")
+
+    # # Linear stratification
+    # if temps_ini == 1:
+    #     tank_node_temps = np.linspace(temp_max, temp_min, nodes)
+    # # Linear inverted stratification
+    # elif temps_ini == 2:
+    #     tank_node_temps = np.linspace(temp_min, temp_max, nodes)
+    # # Full Charged
+    # elif temps_ini == 3:
+    #     tank_node_temps = temp_max * np.ones(nodes)
+    # # Full Discharged
+    # elif temps_ini == 4:
+    #     tank_node_temps = temp_min * np.ones(nodes)
+    # # Random
+    # elif temps_ini == 5:
+    #     tank_node_temps = np.random.uniform(
+    #         low=temp_min, high=temp_max, size=(nodes,)
+    #     )
+    # else:
+    #     raise ValueError(f"Value for temp_ini ({temps_ini}) is not valid [0-5]")
 
     tag4 = "DERIVATIVES"  # There should be only one on lines_tank
     for idx, line in enumerate(comp_lines):
@@ -336,6 +356,7 @@ def editing_dck_tank(
 
     return dck_editing
 
+#------------
 def editing_dck_file(trnsys_setup: TrnsysSetup):
 
     layout_DEWH = trnsys_setup.layout_DEWH
@@ -352,8 +373,8 @@ def editing_dck_file(trnsys_setup: TrnsysSetup):
             f"TRNSYS_{layout_DEWH}_{layout_PV}_{layout_TC}_{layout_WF}_v{layout_v}.dck"
         )
 
-    # The original .dck file. It is in layoutDir
-    dck_path = os.path.join(DATA_DIR["layouts"], file_trnsys)
+    # The original .dck file. It is in DATA_DIR["layouts"]
+    dck_path = os.path.join(DIR_DATA["layouts"], file_trnsys)
 
     # Loading the original TRNSYS (.dck) file
     with open(dck_path, "r") as file_in:
@@ -361,14 +382,11 @@ def editing_dck_file(trnsys_setup: TrnsysSetup):
 
     # Making the edits
     dck_editing = dck_original.copy()
-    # General parameters for simulation and devices
     dck_editing = editing_dck_general(trnsys_setup, dck_editing)
-    # Defining weather file
     dck_editing = editing_dck_weather(trnsys_setup, dck_editing)
-    # Defining tank parameters
     dck_editing = editing_dck_tank(trnsys_setup, dck_editing)
 
-    # Saving the edits into a new .dck file that will be read
+    # Saving the edits into a new .dck file that will be read by trnsys.exe
     trnsys_dck_path = os.path.join(tempDir, file_trnsys)
     with open(trnsys_dck_path, "w") as dckfile_out:
         for line in dck_editing:
@@ -376,30 +394,27 @@ def editing_dck_file(trnsys_setup: TrnsysSetup):
     
     return trnsys_dck_path
 
-#------------------------------
-# Setting and running the simulation
-
-def creating_trnsys_files(
+#------------
+def creating_timeseries_files(
         trnsys_setup: TrnsysSetup,
-        profiles: pd.DataFrame,
+        timeseries: pd.DataFrame,
         ) -> None:
 
-    from tm_solarshift.profiles import PROFILES_TYPES
     layout_WF = trnsys_setup.layout_WF
     layout_DEWH = trnsys_setup.layout_DEWH
     weather_source = trnsys_setup.weather_source
     location = trnsys_setup.location
     tempDir = trnsys_setup.tempDir
         
-    # Creating files from Profiles
-    #Saving Files
+    #Saving files for other than weather
     lbls = ["PV_Gen", "m_HWD", "CS", "Import_Grid"]
     for lbl in lbls:
-        profiles[lbl].to_csv(
+        timeseries[lbl].to_csv(
             os.path.join(tempDir, FILES_TRNSYS_INPUT[lbl]), index=False
         )
         
-    profiles[PROFILES_TYPES['weather']].to_csv(
+    #Saving file for weather
+    timeseries[PROFILES.TYPES['weather']].to_csv(
         os.path.join(tempDir, FILES_TRNSYS_INPUT["weather"]), index=False
     )
     
@@ -407,7 +422,7 @@ def creating_trnsys_files(
     if layout_DEWH == "HPF":
         file_HP_data = FILES_TRNSYS_INPUT["HP"]
         shutil.copyfile(
-            os.path.join(DATA_DIR["samples"], file_HP_data),
+            os.path.join(DIR_DATA["specs"], file_HP_data),
             os.path.join(tempDir, file_HP_data)
         )
 
@@ -426,7 +441,7 @@ def creating_trnsys_files(
 #------------------------------
 def postprocessing_detailed(
         trnsys_setup: TrnsysSetup,
-        profiles: pd.DataFrame,
+        timeseries: pd.DataFrame,
         verbose: str=False
         )-> pd.DataFrame:
     
@@ -502,37 +517,30 @@ def postprocessing_detailed(
     # First row are initial conditions, but are dummy values for results. They can be removed
     out_all = out_all.iloc[1:]
     out_all["TIME"] = out_all.index
-    out_all.index = profiles.index
+    out_all.index = timeseries.index
     
     return out_all
 
 
 #------------------------------
 def postprocessing_annual_simulation(
-        trnsys_setup: TrnsysSetup,
-        Profiles: pd.DataFrame,
+        general_setup: GeneralSetup,
+        timeseries: pd.DataFrame,
         out_all: pd.DataFrame
         ) -> Dict:
 
-    START = trnsys_setup.START
-    STOP = trnsys_setup.STOP
-    STEP = trnsys_setup.STEP
-    thermal_cap = trnsys_setup.DEWH.thermal_cap.get_value("kWh")
-    cp = trnsys_setup.DEWH.fluid.cp.get_value("J/kg-K")
-    
-    # Derivated parameters
-    STEP_h = STEP * conversion_factor("min", "hr")
-    PERIODS = int(np.ceil((STOP - START) / STEP_h))  # [-] Number of periods to simulate
-    DAYS = STEP_h * PERIODS * conversion_factor("hr", "d")
+    STEP_h = general_setup.simulation.STEP.get_value("hr")
+    DAYS = general_setup.simulation.DAYS.get_value("d")
+    thermal_cap = general_setup.DEWH.thermal_cap.get_value("kWh")
+    cp = general_setup.DEWH.fluid.cp.get_value("J/kg-K")
+
     # Calculating overall parameters
     # Accumulated energy values (all in [kWh])
     heater_heat_acum = (
-        out_all["HeaterHeat"] * STEP_h 
-        * conversion_factor("kJ/h", "kW")
+        out_all["HeaterHeat"] * STEP_h  * CF("kJ/h", "kW")
         ).sum()
     heater_power_acum = (
-        out_all["HeaterPower"] * STEP_h 
-        * conversion_factor("kJ/h", "kW")
+        out_all["HeaterPower"] * STEP_h  * CF("kJ/h", "kW")
         ).sum()
 
     if heater_heat_acum <= 0:
@@ -545,7 +553,7 @@ def postprocessing_annual_simulation(
     E_HWD_acum = (
         out_all["Tank_FlowRate"] * STEP_h * cp
         * (out_all["TempTop"] - out_all["T_mains"])
-        * conversion_factor("J", "kWh")
+        * CF("J", "kWh")
     ).sum()
 
     E_losses = heater_heat_acum - E_HWD_acum
@@ -579,8 +587,8 @@ def postprocessing_annual_simulation(
     )
     
     emissions_total = (
-        (out_all["HeaterPower"] * STEP_h * conversion_factor("kJ/h", "kW"))
-        * Profiles["Intensity_Index"]
+        (out_all["HeaterPower"] * CF("kJ/h", "MW")) * STEP_h
+        * timeseries["Intensity_Index"]
         ).sum()
 
     out_overall = {
@@ -607,18 +615,18 @@ def postprocessing_annual_simulation(
 
 #------------------------------
 def postprocessing_events_simulation(
-        trnsys_setup: TrnsysSetup, 
-        Profiles: pd.DataFrame,
+        general_setup: GeneralSetup, 
+        timeseries: pd.DataFrame,
         out_data: pd.DataFrame,
     ) -> pd.DataFrame:
     
-    STEP_h = trnsys_setup.STEP_h
-    tank_cp = trnsys_setup.DEWH.fluid.cp.get_value("J/kg-K")
+    STEP_h = general_setup.simulation.STEP.get_value("hr")
+    tank_cp = general_setup.DEWH.fluid.cp.get_value("J/kg-K")
 
-    df = Profiles.groupby(Profiles.index.date)[
+    df = timeseries.groupby(timeseries.index.date)[
         ["m_HWD_day", "Temp_Amb", "Temp_Mains"]
     ].mean()
-    idx = np.unique(Profiles.index.date)
+    idx = np.unique(timeseries.index.date)
     df_aux = out_data.groupby(out_data.index.date)
     df.loc[ df.index == idx, "SOC_end"] = df_aux.tail(1)["SOC"].values
     df.loc[df.index == idx,"TempTh_end"] = df_aux.tail(1)["TempBottom"].values
@@ -627,7 +635,7 @@ def postprocessing_events_simulation(
     E_HWD_acum = (
         (out_data["Tank_FlowRate"] * STEP_h * tank_cp
          * (out_data["TempTop"] - out_data["T_mains"])
-         * conversion_factor("J/h", "kW")
+         * CF("J/h", "kW")
          ).groupby(out_data.index.date)
         .sum()
     )
@@ -691,9 +699,9 @@ def detailed_plots(
     fs = 16
     ax2 = ax.twinx()
     aux = (
-        (out_all.index.dayofyear - 1) * conversion_factor("d", "hr")
+        (out_all.index.dayofyear - 1) * CF("d", "hr")
         + out_all.index.hour
-        + out_all.index.minute * conversion_factor("min", "hr")
+        + out_all.index.minute * CF("min", "hr")
     )
 
     # ax.plot( aux, out_all.PVPower/W_TO_kJh, label='E_PV', c='C0',ls='-',lw=2)
@@ -721,23 +729,23 @@ def detailed_plots(
     return
 
 #------------------------------
-def run_trnsys_simulation(
-        household: GeneralSetup,
-        profiles: pd.DataFrame,
+def run_simulation(
+        GS: GeneralSetup,
+        timeseries: pd.DataFrame,
         verbose: bool = False,
         ) -> pd.DataFrame:
 
     if verbose:
         print("Running TRNSYS Simulation")
     
-    with TemporaryDirectory(dir=TRNSYS_TEMPDIR) as tmpdir:
-        trnsys_setup = TrnsysSetup(household)
+    with TemporaryDirectory(dir=TEMPDIR_SIMULATION) as tmpdir:
+        trnsys_setup = TrnsysSetup(GS)
         trnsys_setup.tempDir = tmpdir
 
         stime = time.time()
         if verbose:
             print("Creating the temporary folder with files")
-        creating_trnsys_files(trnsys_setup, profiles)
+        creating_timeseries_files(trnsys_setup, timeseries)
         
         if verbose:
             print("Creating the trnsys source code (dck file)")
@@ -749,7 +757,7 @@ def run_trnsys_simulation(
         
         if verbose:
             print("TRNSYS simulation finished. Starting postprocessing.")
-        out_all = postprocessing_detailed(trnsys_setup, profiles)
+        out_all = postprocessing_detailed(trnsys_setup, timeseries)
             
         elapsed_time = time.time()-stime
         if verbose:
@@ -759,11 +767,14 @@ def run_trnsys_simulation(
 
 #------------------------------
 def main():
-    household = GeneralSetup(DEWH=HeatPump())
-    from tm_solarshift.profiles import new_profile
-    profiles = new_profile(household)
-    run_trnsys_simulation(household, profiles, verbose=True)
+    from tm_solarshift.general import load_timeseries_all
 
+    GS = GeneralSetup()
+    # GS.DEWH = HeatPump()
+    ts = GS.simulation.create_new_profile()
+    ts = load_timeseries_all(GS)
+    out_all = run_simulation(GS, ts, verbose=True)
+    print(out_all)
 
 if __name__=="__main__":
     main()

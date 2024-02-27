@@ -51,6 +51,7 @@ class Location():
     def lat(self) -> float:
         return self.coords[1]
 
+#---------
 class Postcode():
     def __init__(self, value: int = 2035):
         self.value = value
@@ -71,6 +72,7 @@ class Postcode():
     def lat(self) -> float:
         return self.coords[1]
 
+#---------
 class Coords():
     def __init__(self, value: Tuple[float,float] = (150., -33.) ):
         self.lon = value[0]
@@ -153,7 +155,7 @@ class Weather():
         "NCI": os.path.join(DIR_DATA["weather"], "nci_processed"),
     }
     FILES = {
-        "METEONORM_TEMPLATE" : "meteonorm_{:}.csv",     #expected DEFINITIONS.LOCATIONS_METEONORM
+        "METEONORM_TEMPLATE" : os.path.join( FLDR["METEONORM"], "meteonorm_{:}.csv"), #expected DEFINITIONS.LOCATIONS_METEONORM
         "MERRA2" : os.path.join( FLDR["MERRA2"], "merra2_processed_all.nc" ),
         "NCI": None,
         "postcodes": os.path.join(DIR_DATA["postcodes"], "australian_postcodes.csv"), # https://www.matthewproctor.com/australian_postcodes
@@ -371,7 +373,6 @@ def from_file(
             set_days.index.date==subset_value.date()
             ]  
     
-    
     if subset_random is None:
         timeseries = from_tmy(
             timeseries, set_days, columns=columns
@@ -428,17 +429,13 @@ def load_dataset_merra2(
         STEP:int = 5,
         file_dataset:str = Weather.FILES["MERRA2"],
         ) -> pd.DataFrame:
-    
-    
 
-    if type(location) == float:
-        (lon,lat) = (location)
-    elif type(location) == int:
+    if type(location) == int:   #postcode
         (lon,lat) = from_postcode(location, get="coords")
-    elif type(location) == str:
+    elif type(location) == str:   #city
         loc = Location(location)
         (lon,lat) = (loc.lon, loc.lat)
-    elif type(location) == tuple:
+    elif type(location) == tuple: #(longitude, latitude) tuple
         (lon,lat) = (location)
 
     data_weather = xr.open_dataset(file_dataset)
@@ -468,86 +465,9 @@ def load_dataset_merra2(
 
     return ts
 
-AUS_PROJ = 3112
-NSW_PROJ = 3308
-AUS_BOUNDS = [110.,155.,-45.,-10.]
-AUS_BOUNDS_noWA = [128., 155.,-45.,-10.]
-NSW_BOUNDS = [138.,154.,-38.,-28.]
-colors = {'WA':'red', 'SA':'gold', 'NT':'orange', 'QLD':'maroon', 'VIC':'darkblue', 'NSW':'dodgerblue', 'TAS':'green', 'ACT': 'blue'}
-
-def plot_SolA_locations(
-        file_sites: str = None,
-        showfig: bool = False,
-        savefig: bool = True,
-) -> None:
-
-    if file_sites is None:
-        file_sites = Weather.FILES["SOLA_POSTCODES_INFO"]
-        
-    f_s = 16
-    fig = plt.figure(figsize=(12, 9))
-    ax = fig.add_subplot(111,projection=ccrs.epsg(AUS_PROJ))
-    ax.set_extent(AUS_BOUNDS)
-    ax.set_title("SolA dataset sites. Locations")
-    res='50m'
-    ocean = cf.NaturalEarthFeature('physical', 'ocean', res, edgecolor='face', facecolor= cf.COLORS['water'])
-    lakes = cf.NaturalEarthFeature('physical', 'lakes', res, edgecolor='k', facecolor= cf.COLORS['water'], lw=0.5)
-    borders = cf.NaturalEarthFeature('cultural', 'admin_1_states_provinces', res, facecolor='none', edgecolor='k', lw=0.5)
-    
-    ax.add_feature(borders)
-    ax.add_feature(ocean)
-    ax.add_feature(lakes)
-    ax.add_feature(cf.COASTLINE)
-
-    df_sites = pd.read_csv(file_sites)
-    for state in DEFINITIONS.STATES.keys():
-        df_state = df_sites[df_sites["state"]==state]
-        ax.scatter(
-            df_state["lon"],df_state["lat"],
-            transform=ccrs.PlateCarree(), c = colors[state], s=10,
-            label=f"{state} ({len(df_state)} sites)",
-            )
-    ax.legend()
-    # vmin = var.min()
-    # vmax = var.max()
-    # # vmin = 3
-    # # vmax = 50
-    # levels=10
-    # surf = ax.contourf(var.lon, var.lat, var, 10, transform=ccrs.PlateCarree(), cmap=cm.viridis, vmin=vmin, vmax=vmax,levels=levels)
-    # cb = fig.colorbar(surf, shrink=0.25, aspect=4)
-    # cb.ax.tick_params(labelsize=f_s)
-    # cb.ax.locator_params(nbins=4)
-    if showfig:
-        plt.show()
-    if savefig:
-        fig.savefig(
-            os.path.join("SolA_locations.png"),
-            bbox_inches="tight",
-        )
-    return
-
-
-
-#------------------
-def get_location_SolA_sites() -> pd.DataFrame:
-    df_sitesinfo = pd.read_csv(Weather.FILES["SOLA_CL_INFO"])
-    
-    df_postcodes = pd.read_csv(Weather.FILES["postcodes"])
-    df_postcodes = df_postcodes.groupby("postcode")[["long","lat"]].mean()
-    
-    df_sitesinfo["lon"] = df_postcodes["long"].loc[df_sitesinfo["postcode"]].to_list()
-    df_sitesinfo["lat"] = df_postcodes["lat"].loc[df_sitesinfo["postcode"]].to_list()
-    
-    df_sitesinfo.index = df_sitesinfo["site_id"]
-    df_sitesinfo.to_csv(Weather.FILES["SOLA_POSTCODES_INFO"])
-    return df_sitesinfo
-
-
-
-
 
 if __name__ == "__main__":
-    from tm_solarshift.general_dev import GeneralSetup
+    from tm_solarshift.general import GeneralSetup
     GS = GeneralSetup()
     GS.simulation.YEAR = Variable(2020,"-")
 
@@ -556,9 +476,6 @@ if __name__ == "__main__":
 
     # file_merra2 = os.path.join(Weather.FLDR["MERRA2"], "MERRA2_Processed_2023.nc")
     # plot_SolAsites_merra2(file_merra2=file_merra2, showfig=True)
-
-    get_location_SolA_sites()
-    plot_SolA_locations( Weather.FILES["SOLA_POSTCODES_INFO"], showfig=True )
 
 
     sys.exit()
@@ -642,7 +559,7 @@ def add_to_timeseries(
 
 def main():
     #Creating a timeseries
-    from tm_solarshift.general_dev import GeneralSetup
+    from tm_solarshift.general import GeneralSetup
     from tm_solarshift.devices import Variable
 
     GS = GeneralSetup()
@@ -691,7 +608,7 @@ def main():
 
 def main2():
     #Creating a timeseries
-    from tm_solarshift.general_dev import GeneralSetup
+    from tm_solarshift.general import GeneralSetup
     from tm_solarshift.devices import Variable
 
     GS = GeneralSetup()
