@@ -2,7 +2,10 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from tm_solarshift.general import (HWDP_NAMES, CL_NAMES, MAIN_DIR)
+from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
+DIR_MAIN = DIRECTORY.DIR_MAIN
+HWDP_NAMES = DEFINITIONS.HWDP_NAMES
+CL_NAMES = DEFINITIONS.CL_NAMES
 
 #---------------------------------------
 fs=16
@@ -35,10 +38,10 @@ def plot_storage_efficiency_bars(
         i=0
         for profile_HWD in list_profile_HWD:
             aux = results[
-                (results.location==location)&
-                (results.profile_HWD==profile_HWD)
+                (results["household.location"]==location)&
+                (results["HWDInfo.profile_HWD"]==profile_HWD)
                 ]
-            ax.bar(aux.profile_control + widths[i], aux.eta_stg,
+            ax.bar(aux["household.control_load"] + widths[i], aux.eta_stg,
                    width, color=f'C{i}', alpha=0.8,
                    label=HWDP_NAMES[profile_HWD])
             i+=1
@@ -91,21 +94,21 @@ def plot_heater_energy_bars(
         i=0
         for profile_HWD in list_profile_HWD:
             aux = results[
-                (results.location==location)&
-                (results.profile_HWD==profile_HWD)
+                (results["household.location"]==location)&
+                (results["HWDInfo.profile_HWD"]==profile_HWD)
                 ]
-            ax.bar(aux.profile_control + widths[i], aux.heater_heat_acum,
+            ax.bar(aux["household.control_load"] + widths[i], aux.heater_heat_acum,
                    width, color=f'C{i}', alpha=0.8, 
                    label=HWDP_NAMES[profile_HWD])
             i+=1
         
         E_Heater_baseline = results[
-            (results.location==location)&
-            (results.profile_control==1)
+            (results["household.location"]==location)&
+            (results["household.control_load"]==1)
             ]['heater_heat_acum'].mean()
         E_Heater_CL = results[
-            (results.location==location)
-            ].groupby('profile_control')['heater_heat_acum'].mean()
+            (results["household.location"]==location)
+            ].groupby('household.control_load')['heater_heat_acum'].mean()
         
         E_Heater_pct = E_Heater_CL / E_Heater_baseline - 1
         for i in range(N_CSs):
@@ -118,7 +121,7 @@ def plot_heater_energy_bars(
                 ls=':', c='k',lw=2,
                 label=r'$E_{heater}$ CL1')
         
-        aux = results[(results.location==location)]
+        aux = results[(results["household.location"]==location)]
         ax.set_ylim(0.,3700)
         xmn,xmx = ax.get_xlim()
         E_HWD_min = aux.E_HWD_acum.min()
@@ -170,10 +173,10 @@ def plot_SOC_minimum_scatter(
         i=0
         for profile_HWD in list_profile_HWD:
             aux = results[
-                (results.location==location)&
-                (results.profile_HWD==profile_HWD)
+                (results["household.location"]==location)&
+                (results["HWDInfo.profile_HWD"]==profile_HWD)
                 ]
-            ax.scatter(aux.profile_control, aux.SOC_min,
+            ax.scatter(aux["household.control_load"], aux.SOC_min,
                        s=100,marker=mm[profile_HWD],
                        label=HWDP_NAMES[profile_HWD])
             i+=1
@@ -213,8 +216,8 @@ def plot_annual_energy_in_out(
         i=0
         for profile_HWD in list_profile_HWD:
             aux = results[
-                (results.location==location)&
-                (results.profile_HWD==profile_HWD)
+                (results["household.location"]==location)&
+                (results["HWDInfo.profile_HWD"]==profile_HWD)
                 ]
             lbl = location if profile_HWD==1 else None
             ax.scatter(aux.E_HWD_acum, aux.heater_heat_acum,
@@ -252,8 +255,8 @@ def plot_etastg_vs_SOC(
         i=0
         for profile_HWD in list_profile_HWD:
             aux = results[
-                (results.location==location)&
-                (results.profile_HWD==profile_HWD)
+                (results["household.location"]==location)&
+                (results["HWDInfo.profile_HWD"]==profile_HWD)
                 ]
             if profile_HWD==1:
                 ax.scatter(aux.eta_stg,aux.SOC_min,
@@ -303,8 +306,8 @@ def plot_annual_energy_Tmains(
         i=0
         for profile_HWD in list_profile_HWD:
             aux = results[
-                (results.location==location)&
-                (results.profile_HWD==profile_HWD)
+                (results["household.location"]==location)&
+                (results["HWDInfo.profile_HWD"]==profile_HWD)
                 ]
             if profile_HWD==1:
                 ax.scatter(aux.temp_mains_avg, aux.eta_stg,
@@ -350,10 +353,10 @@ def plot_total_emissions_one_location(
     i=0
     for profile_HWD in list_profile_HWD:
         aux = results[
-            (results.location==location)&
-            (results.profile_HWD==profile_HWD)
+            (results["household.location"]==location)&
+            (results["HWDInfo.profile_HWD"]==profile_HWD)
             ]
-        ax.bar(aux.profile_control + widths[i], aux.emissions_total,
+        ax.bar(aux["household.control_load"] + widths[i], aux.emissions_total,
                width, color=f'C{i}', alpha=0.8,
                label=HWDP_NAMES[profile_HWD])
         i+=1
@@ -398,14 +401,14 @@ def plot_total_emissions_diff_locations(
     i=0
     for location in LIST_LOCATIONS:
         aux = results[
-            (results.location==location)&
-            (results.profile_HWD==profile_HWD)
+            (results["household.location"]==location)&
+            (results["HWDInfo.profile_HWD"]==profile_HWD)
             ]
-        ax.bar(aux.profile_control + widths[i], aux.emissions_total,
+        ax.bar(aux["household.control_load"] + widths[i], aux.emissions_total,
                width, color=f'C{i}', alpha=0.8,
                label=location)
         
-        reduction = 1 - aux[aux.profile_control==4].emissions_total.values[0] /aux[aux.profile_control==1].emissions_total.values[0]
+        reduction = 1 - aux[aux["household.control_load"]==4].emissions_total.values[0] /aux[aux["household.control_load"]==1].emissions_total.values[0]
         print(f'{reduction*100:.1f}%')
         i+=1
     
@@ -433,7 +436,7 @@ def plot_total_emissions_diff_locations(
 def main():
     
     RESULTS_FLDR = os.path.join(
-    MAIN_DIR,
+    DIR_MAIN,
     "results",
     'parametric_ResistiveSingle',
     )
@@ -515,11 +518,11 @@ if __name__=="__main__":
 # for (x,y) in [(x,y) for x in LIST_LOCATIONS for y in CL_NAMES ]:
 #     E_Heater_baseline = results[
 #                         (results.location==x)&
-#                         (results.profile_control==1)
+#                         (results["household.control_load"]==1)
 #                         ]['E_Heater_acum'].mean()
 #     E_Heater_CL = results[
 #                         (results.location==x)&
-#                         (results.profile_control==y)
+#                         (results["household.control_load"]==y)
 #                         ]['E_Heater_acum'].mean()
     
 #     df_varEH.loc[x,y] = (E_Heater_CL / E_Heater_baseline - 1)*100

@@ -14,7 +14,7 @@ class DIRECTORY():
         "SA_processed" : os.path.join(DIR_MAIN, "data", "SA_processed"),
         "samples" : os.path.join(DIR_MAIN, "data", "samples"),
         "specs" : os.path.join(DIR_MAIN, "data", "device_specs"),
-        "tariffs" : os.path.join(DIR_MAIN, "data", "energy_plans"),
+        "tariffs" : os.path.join(DIR_MAIN, "data", "tariffs_json_2023-24"),
         "weather" : os.path.join(DIR_MAIN, "data", "weather"),
         }
     DIR_RESULTS = os.path.join(DIR_MAIN, "results")
@@ -135,7 +135,7 @@ class PROFILES():
         "weather": ["GHI", "Temp_Amb", "Temp_Mains"],
         "control": ["CS"],
         "electric": ["PV_Gen", "Import_Grid", "Import_CL"],
-        "economic": ["Tariff", "Wholesale_Market"],
+        "economic": ["tariff", "rate_type", "Wholesale_Market"],
         "emissions": ["Intensity_Index", "Marginal_Index"],
     }
     COLUMNS = [

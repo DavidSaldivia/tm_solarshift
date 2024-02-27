@@ -264,16 +264,17 @@ class ToUPlan(object):
         Returns:
             [dict]: a dict with info for cost calculation
         """
+        minutes = resolution / 60.      #Added by David
         energy_values = {}
         raw_data["t_stamp"] = pd.to_datetime(raw_data["t_stamp"])
         raw_data["times"] = (
-            raw_data["t_stamp"] - pd.Timedelta(minutes=5)
+            raw_data["t_stamp"] - pd.Timedelta(minutes=minutes)
         ).dt.time
         raw_data["dayofweek"] = (
-            raw_data["t_stamp"] - pd.Timedelta(minutes=5)
+            raw_data["t_stamp"] - pd.Timedelta(minutes=minutes)
         ).dt.dayofweek
         raw_data["month"] = (
-            raw_data["t_stamp"] - pd.Timedelta(minutes=5)
+            raw_data["t_stamp"] - pd.Timedelta(minutes=minutes)
         ).dt.month
         raw_data["t_stamp"] = pd.to_datetime(raw_data["t_stamp"])
 

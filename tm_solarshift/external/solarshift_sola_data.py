@@ -9,7 +9,7 @@ from datetime import (
 import zipfile
 from typing import Optional, List, Dict, Any
 
-from model_constants import SolarShiftConstants
+from tm_solarshift.external.model_constants import SolarShiftConstants
 import numpy as np
 import pandas as pd
 
@@ -66,7 +66,7 @@ class DATA_DIRECTORY(object):
             "data","SA_processed"
             ),
         "energy_plans": os.path.join(
-            os.path.dirname(fileDir),
+            # os.path.dirname(fileDir),
             "data","energy_plans"
             )
         }

@@ -1,0 +1,11 @@
+,control_load,tariff_type,solar,energy_cost
+0,1,CL,False,484.857
+1,0,flat,False,919.8772019999999
+2,0,tou,False,1081.419624
+3,4,flat,False,893.3143140000001
+4,4,tou,False,1193.91795
+5,1,CL,True,484.16158064462695
+6,0,flat,True,812.5078050445693
+7,0,tou,True,953.7841608464682
+8,4,flat,True,456.7340950862671
+9,4,tou,True,610.4268407597697

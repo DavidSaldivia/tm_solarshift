@@ -1,5 +1,5 @@
-# import energy_plan
-from energy_plan import (
+
+from tm_solarshift.external.energy_plan import (
     FlatPlan,
     ToUPlan,
     DemandPlan,
@@ -8,8 +8,8 @@ from energy_plan import (
 )
 
 import json, os
-from SA_Solarshift_data import DATA_DIRECTORY
-from model_constants import SolarShiftConstants
+from tm_solarshift.external.solarshift_sola_data import DATA_DIRECTORY
+from tm_solarshift.external.model_constants import SolarShiftConstants
 from datetime import datetime
 import pandas as pd
 
@@ -165,5 +165,8 @@ def add_wholesale_prices(raw_data: pd.DataFrame, state: str = "NSW"):
 if __name__ == "__main__":
     start_run_time = datetime.now()
     dnsp = "Ausgrid"
-    print(get_energy_plan_for_dnsp(dnsp, "tou", convert=True))
+    type_tariff = "tou"
+    energy_plan = get_energy_plan_for_dnsp(dnsp, type_tariff, convert=True)
+
+
     print(datetime.now() - start_run_time)
