@@ -1,11 +1,7 @@
 import os
 import pandas as pd
 
-from tm_solarshift.constants import (
-    DIRECTORY,
-    DEFINITIONS,
-    PROFILES,
-)
+from tm_solarshift.constants import (DIRECTORY,DEFINITIONS)
 
 DIR_SPOTPRICE = DIRECTORY.DIR_DATA["energy_market"]
 DIR_EMISSIONS = DIRECTORY.DIR_DATA["emissions"]

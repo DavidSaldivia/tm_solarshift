@@ -25,6 +25,8 @@ from pvlib.pvarray import pvefficiency_adr
 from tm_solarshift.constants import DIRECTORY
 DIR_MAIN = DIRECTORY.DIR_MAIN
 
+G_STC = 1000.
+
 #---------------
 def load_trnsys_weather(
     YEAR: int = 2022,
@@ -101,17 +103,19 @@ def plots(
 
 #---------------
 def load_PV_generation(
+    df: pd.DataFrame = None,
     tz: str = 'Australia/Brisbane',
     latitude: float = -33.86,
     longitude: float = 151.21,
     tilt: float = None,
     orient: float = 180.,
     PV_nompower: float = 5000.,
-    G_STC: float = 1000.,
+    G_STC: float = G_STC,
     adr_params: Dict = {},
-):
+) -> pd.DataFrame:
     
-    df = load_trnsys_weather(tz=tz)
+    if df is None:
+        df = load_trnsys_weather(tz=tz)
 
     if tilt is None:
         tilt = abs(latitude)
@@ -129,14 +133,14 @@ def load_PV_generation(
     solpos =loc.get_solarposition(df.index)
     total_irrad = get_total_irradiance(
         tilt, orient,
-        solpos.apparent_zenith, solpos.azimuth,
-        df.dni, df.ghi, df.dhi
+        solpos["apparent_zenith"], solpos["azimuth"],
+        df["dni"], df["ghi"], df["dhi"]
     )
-    df['poa_global'] = total_irrad.poa_global
+    df['poa_global'] = total_irrad["poa_global"]
 
     # Estimate the expected operating temperature of the PV modules
     df['temp_pv'] = pvlib.temperature.faiman(
-        df.poa_global, df.temp_air, df.wind_speed
+        df["poa_global"], df["temp_air"], df["wind_speed"]
     )
 
     #Relative efficiency and module power

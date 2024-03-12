@@ -4,27 +4,22 @@ import warnings
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from typing import Optional, List, Any
+from typing import List, Any
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
 
-from tm_solarshift.constants import (
-    DIRECTORY,
-    PROFILES,
-    UNITS
-)
+from tm_solarshift.constants import ( DIRECTORY, DEFINITIONS )
+from tm_solarshift.units import ( Variable, conversion_factor as CF 
+                                 )
 DIR_DATA = DIRECTORY.DIR_DATA
-FILE_SAMPLES = DIRECTORY.FILE_SAMPLES
-PROFILES_TYPES = PROFILES.TYPES
-CF = UNITS.conversion_factor
-
-from tm_solarshift.devices import Variable
-
-FILE_HWDP_AUSTRALIA = os.path.join(
-    DIR_DATA["HWDP"], "HWDP_Generic_AU_{:0d}.csv",
-)
-FILE_WHOLESALE_PRICES = os.path.join(DIR_DATA["energy_market"], 'SP_2017-2023.csv')
+TS_HWD = DEFINITIONS.TS_TYPES["HWDP"]
+FILES_HWD_SAMPLES = DIRECTORY.FILES_HWD_SAMPLES
+FILE_HWDP_AUSTRALIA = os.path.join( 
+        DIR_DATA["HWDP"], "HWDP_Generic_AU_{:0d}.csv",  #expected int
+    )
+DAILY_DISTRIBUTIONS = [
+    "norm", "unif", "truncnorm", "sample", None
+]
 
 #------------------------------------
 class HWD():
@@ -34,6 +29,7 @@ class HWD():
         self.daily_std = None
         self.daily_min = None
         self.daily_max = None
+        self.random_seed = None
         self.daily_distribution = None
 
     #-------------------------
@@ -43,12 +39,14 @@ class HWD():
 
         standard_case = cls()
         standard_case.profile_HWD = 1
-        daily_avg, unit_avg = 200., "L/d"
+        (daily_avg, unit_avg) = (200., "L/d")
         standard_case.daily_avg = Variable(daily_avg, unit_avg)
         standard_case.daily_std = Variable(daily_avg / 3.0, unit_avg)
         standard_case.daily_min = Variable(0.0, unit_avg)
         standard_case.daily_max = Variable(2*daily_avg , unit_avg)
+        standard_case.random_seed = np.random.SeedSequence().entropy
         standard_case.daily_distribution = "truncnorm"       #Options: (None, "unif", "truncnorm", "sample")
+        
         return standard_case
     
     #----------------------
@@ -73,7 +71,7 @@ class HWD():
     @staticmethod
     def event_file(file_name:str=None, sheet_name="Basic"):
         if file_name is None:
-            file_name = FILE_SAMPLES["HWD_events"]
+            file_name = FILES_HWD_SAMPLES["HWD_events"]
             warnings.warn("No file path for events is given. Sample file is used.")
 
         events = pd.read_excel(
@@ -101,7 +99,9 @@ class HWD():
         daily_max = self.daily_max.get_value("L/d")
         daily_distribution = self.daily_distribution
 
-        DAILY_DISTRIBUTIONS = ["norm", "unif", "truncnorm", "sample", None]
+        rng = np.random.default_rng(self.random_seed)
+        truncnorm.random_state = rng
+
         if daily_distribution not in DAILY_DISTRIBUTIONS:
             raise ValueError(f"daily distribution function not among available options: {DAILY_DISTRIBUTIONS}")
 
@@ -119,7 +119,7 @@ class HWD():
             m_HWD_day = daily_avg * np.ones(DAYS)
 
         elif daily_distribution == "norm":
-            m_HWD_day = np.random.normal(
+            m_HWD_day = rng.normal(
                 loc = daily_avg,
                 scale = daily_std,
                 size = int(np.ceil(DAYS),
@@ -128,7 +128,7 @@ class HWD():
             m_HWD_day = np.where(m_HWD_day > daily_min, m_HWD_day, daily_min)
 
         elif daily_distribution == "unif":
-            m_HWD_day = (daily_max - daily_min) * np.random.rand(DAYS) + daily_min
+            m_HWD_day = (daily_max - daily_min) * rng.rand(DAYS) + daily_min
 
         elif daily_distribution == "truncnorm":
             myclip_a = daily_min
@@ -143,10 +143,10 @@ class HWD():
         
         elif daily_distribution == "sample":
             if sample_file is None:
-                sample_file = FILE_SAMPLES["HWD_daily"]
+                sample_file = FILES_HWD_SAMPLES["HWD_daily"]
             sample = pd.read_csv(sample_file)['m_HWD_day']
             sample = sample[sample>0].to_list()
-            m_HWD_day = np.random.choice(sample, size=DAYS)
+            m_HWD_day = rng.choice(sample, size=DAYS)
             
     
         return pd.DataFrame(m_HWD_day, 
@@ -162,7 +162,7 @@ class HWD():
         interday_dist: pd.DataFrame = None,
         intraday_dist: int = None, 
         event_probs: pd.DataFrame = None,
-        columns: List[str] = PROFILES_TYPES['HWDP'],
+        columns: List[str] = TS_HWD,
     ) -> pd.DataFrame:
 
         if (method == 'standard'):
@@ -187,7 +187,7 @@ class HWD():
         timeseries: pd.DataFrame,
         interday_dist: pd.DataFrame = None,
         intraday_dist: int = None,
-        columns: List[str] = PROFILES_TYPES['HWDP'],
+        columns: List[str] = TS_HWD,
     ) -> pd.DataFrame:
         """
         This function generates a HWDP using the six standard profiles defined in this project.
@@ -253,12 +253,13 @@ class HWD():
         interday_dist: pd.DataFrame = None,
         intraday_dist: int = None,
         event_probs: pd.DataFrame = None,
-        columns: List[str] = PROFILES_TYPES['HWDP'],
+        columns: List[str] = TS_HWD,
     ) -> pd.DataFrame:
         """
         This function generates HWD profiles different for each day, based on daily
         consumption variability (defined by HWD_daily), and event characteristics
         """
+        rng = np.random.default_rng(self.random_seed)
 
         #Checks and some conversions
         if interday_dist is None:
@@ -290,7 +291,7 @@ class HWD():
                 index=list_dates, columns=["N_ev", "HWD_day", "Temp_Amb", "Temp_Mains"]
             )
 
-            df_day["N_ev"] = np.random.randint(N_ev_min, N_ev_max + 1, size=DAYS)
+            df_day["N_ev"] = rng.integers(N_ev_min, N_ev_max + 1, size=DAYS)
             Events_dates = list()
             for idx, row in df_day.iterrows():
                 Events_dates = Events_dates + [idx for i in range(row["N_ev"])]
@@ -319,23 +320,23 @@ class HWD():
             probs = probs / probs.sum()
 
             # Defining the starting and finishing times
-            Events["hour"] = np.random.choice(
+            Events["hour"] = rng.choice(
                 np.arange(t_ini, t_fin + 1),
                 size=N_events_total,
                 p=probs
             )
-            Events["minute"] = np.random.choice(
+            Events["minute"] = rng.choice(
                 np.arange(0, 60, STEP),
                 size=N_events_total
             )
-            Events["duration"] = np.random.choice(
+            Events["duration"] = rng.choice(
                 np.arange(dt_min, dt_max, STEP),
                 size=N_events_total
             )
             Events["datetime"] = pd.to_datetime(
                 Events[["year", "month", "day", "hour", "minute"]]
             )
-            Events["flow"] = np.random.uniform(
+            Events["flow"] = rng.uniform(
                 factor_a, factor_b, size=N_events_total
             )
 
@@ -409,25 +410,24 @@ def main():
     
     from tm_solarshift.general import ThermalSimulation
     simulation = ThermalSimulation()
-    ts = simulation.create_new_profile()
     
     HWDInfo = HWD.standard_case()
     HWDInfo.daily_distribution = "truncnorm"
     
     #Testing different inputs for dates
+    ts = simulation.create_new_profile()
     dates = np.unique(ts.index.date)
-    daily_HWDP = HWDInfo.interday_distribution(dates)       #list of dates
-    daily_HWDP = HWDInfo.interday_distribution(ts)          #pd.DataFrame with DateTimeIndex
-    daily_HWDP = HWDInfo.interday_distribution(ts.index)    #DateTimeIndex
-    print(daily_HWDP)
+    print(HWDInfo.interday_distribution(ts))          #pd.DataFrame with DateTimeIndex
+    print(HWDInfo.interday_distribution(dates))       #list of dates
+    print(HWDInfo.interday_distribution(ts.index))    #DateTimeIndex
 
-    #Two types of generators
-    ts = HWDInfo.generator_standard(ts)
-    ts = HWDInfo.generator_events(ts)
+    #There are two types of generators
+    print(HWDInfo.generator_standard(ts)[TS_HWD])
+    print(HWDInfo.generator_events(ts)[TS_HWD])
 
     #Same generators, but using the wrapper HWD.generator()
-    ts = HWDInfo.generator(ts, method="standard")
-    ts = HWDInfo.generator(ts, method="events")
+    print(HWDInfo.generator(ts, method="standard")[TS_HWD])
+    print(HWDInfo.generator(ts, method="events")[TS_HWD])
 
     return
 
