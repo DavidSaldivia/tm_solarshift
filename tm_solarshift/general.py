@@ -87,21 +87,46 @@ class GeneralSetup():
         if ts is None:
             ts = self.load_timeseries_default()
         
-        if self.DEWH.__class__ in [ ResistiveSingle, HeatPump ]:
+        if ((self.DEWH.__class__ == ResistiveSingle)
+            or (self.DEWH.__class__ == HeatPump)
+            ):
+        
             self.simulation.engine = "trnsys"
-
             import tm_solarshift.thermal_models.trnsys as trnsys
             from tm_solarshift.thermal_models import postprocessing
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_simulation(self, ts, out_all)
             return (out_all, out_overall)
 
-        elif self.DEWH.__class__ in [ 
-            GasHeaterInstantaneous, GasHeaterStorage, SolarThermalGasAuxiliary
-        ]:
+        elif self.DEWH.__class__ == GasHeaterInstantaneous:
             self.simulation.engine = "own"
             out_overall = self.DEWH.run_thermal_model(ts)
             return out_overall
+        
+        elif self.DEWH.__class__ == GasHeaterStorage:
+            #Run trnsys simulation for RS with GS.
+            #Use eta and nom_power from GasHeaterInstantaneous
+            from copy import deepcopy
+            import tm_solarshift.thermal_models.trnsys as trnsys
+            from tm_solarshift.thermal_models import postprocessing
+            
+            heater_aux = ResistiveSingle()
+            heater_aux.nom_power = self.DEWH.nom_power
+            heater_aux.eta = self.DEWH.eta
+
+            GS_aux = deepcopy(self)
+            GS_aux.DEWH = heater_aux
+            self.simulation.engine = "trnsys"
+            out_all = trnsys.run_simulation(GS_aux, ts, verbose=verbose)
+            out_overall = postprocessing.annual_simulation(self, ts, out_all)
+
+
+            return None
+
+        elif self.DEWH.__class__ == SolarThermalGasAuxiliary:
+            #Run trnsys simulation for HP with COP=1 always and GS
+            #Calculate the solar fraction
+            return None
         
         else:
             raise TypeError("DEWH class is not supported with any engine.")
@@ -140,6 +165,17 @@ class ThermalSimulation():
         STEP_h = self.STEP.get_value("hr")
         return Variable( int(np.ceil((STOP - START)/STEP_h)), "-")
 
+    @property
+    def data(self) -> pd.DataFrame:
+
+        START = self.START.get_value("hr")
+        STEP = self.STEP.get_value("min")
+        YEAR = self.YEAR.get_value("-")
+        PERIODS = self.PERIODS.get_value("-")
+        start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
+        idx = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
+
+        return pd.DataFrame(index=idx, columns=TS_COLUMNS_ALL)
 # #-----------------------------
 # def load_timeseries_all(
 #         GS: GeneralSetup,

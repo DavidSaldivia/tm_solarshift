@@ -142,13 +142,12 @@ def calculate_annual_bill(
 
     return annual_bill
 
-def run_simulations():
+def run_simulations(cases):
 
     #General parameters (do not change in this analysis)
     location = "Sydney"
     HWDP = 1
     
-    cases = pd.read_csv(os.path.join(DIR_PROJECT,"cases.csv"), index_col=0)
     cases["energy_cost"] = None
 
     file_cases = os.path.join(DIR_PROJECT, "energy_cost_cases.csv")
@@ -159,16 +158,14 @@ def run_simulations():
 
         print(cases.loc[idx])
 
-        if idx == 11:
-            break
-
     print(cases)
     plot_results(cases, savefig=True, showfig=True)
     return
 
 if __name__ == "__main__":
     
-    # run_simulations()
+    cases = pd.read_csv(os.path.join(DIR_PROJECT,"cases.csv"), index_col=0)
+    run_simulations(cases)
 
     file_cases = os.path.join(DIR_PROJECT, "energy_cost_cases.csv")
     cases = pd.read_csv(os.path.join(DIR_PROJECT,file_cases), index_col=0)

@@ -25,7 +25,21 @@ from pvlib.pvarray import pvefficiency_adr
 from tm_solarshift.constants import DIRECTORY
 DIR_MAIN = DIRECTORY.DIR_MAIN
 
-G_STC = 1000.
+
+lat_default = -33.86
+long_default = 151.21
+tilt_default = abs(lat_default)
+orient_default = 180.
+tz_default = 'Australia/Brisbane'
+G_STC_default = 1000.
+PV_nompower_default = 5000.
+adr_params_default = {
+    'k_a': 0.99924,
+    'k_d': -5.49097,
+    'tc_d': 0.01918,
+    'k_rs': 0.06999,
+    'k_rsh': 0.26144,
+}
 
 #---------------
 def load_trnsys_weather(
@@ -33,7 +47,7 @@ def load_trnsys_weather(
     START: int = 0,
     STOP: int = 8760,
     STEP: int = 3,
-    tz: str = 'Australia/Brisbane',
+    tz: str = tz_default,
 ):
     STEP_h = STEP / 60.
     PERIODS = int(np.ceil((STOP - START)/STEP_h))
@@ -102,47 +116,56 @@ def plots(
     plt.show()
 
 #---------------
-def load_PV_generation(
+def get_solar_position(
+        idx: pd.DatetimeIndex,
+        latitude: float,
+        longitude: float,
+        tz: str = tz_default,
+) -> pd.DataFrame:
+    
+    loc = location.Location(latitude, longitude, tz)
+    return loc.get_solarposition(idx)
+
+#---------------
+def get_irradiance_plane(
+        df: pd.DataFrame,
+        latitude: float,
+        longitude: float,
+        tilt: float,
+        orient: float,
+        tz: str = tz_default,
+) -> pd.Series:
+
+    solpos = get_solar_position(df.index, latitude, longitude, tz)
+    poa_global = get_total_irradiance(
+        tilt, orient,
+        solpos["apparent_zenith"], solpos["azimuth"],
+        df["dni"], df["ghi"], df["dhi"]
+    )["poa_global"]
+
+    return poa_global
+
+#---------------
+def get_PV_generation(
     df: pd.DataFrame = None,
-    tz: str = 'Australia/Brisbane',
-    latitude: float = -33.86,
-    longitude: float = 151.21,
-    tilt: float = None,
-    orient: float = 180.,
-    PV_nompower: float = 5000.,
-    G_STC: float = G_STC,
-    adr_params: Dict = {},
+    tz: str = tz_default,
+    latitude: float = lat_default,
+    longitude: float = long_default,
+    tilt: float = tilt_default,
+    orient: float = orient_default,
+    PV_nompower: float = PV_nompower_default,
+    G_STC: float = G_STC_default,
+    adr_params: Dict = adr_params_default,
 ) -> pd.DataFrame:
     
     if df is None:
         df = load_trnsys_weather(tz=tz)
-
-    if tilt is None:
-        tilt = abs(latitude)
-
-    if adr_params == {}:    
-        adr_params = {
-            'k_a': 0.99924,
-            'k_d': -5.49097,
-            'tc_d': 0.01918,
-            'k_rs': 0.06999,
-            'k_rsh': 0.26144,
-        }
-
-    loc = location.Location(latitude, longitude, tz)
-    solpos =loc.get_solarposition(df.index)
-    total_irrad = get_total_irradiance(
-        tilt, orient,
-        solpos["apparent_zenith"], solpos["azimuth"],
-        df["dni"], df["ghi"], df["dhi"]
-    )
-    df['poa_global'] = total_irrad["poa_global"]
-
+    
+    df['poa_global'] = get_irradiance_plane(df, latitude, longitude, tilt, orient)
     # Estimate the expected operating temperature of the PV modules
     df['temp_pv'] = pvlib.temperature.faiman(
         df["poa_global"], df["temp_air"], df["wind_speed"]
     )
-
     #Relative efficiency and module power
     df['eta_rel'] = pvefficiency_adr(df['poa_global'], df['temp_pv'], **adr_params)
     df["PVPower"] = PV_nompower * df['eta_rel'] * (df['poa_global'] / G_STC)
@@ -152,23 +175,21 @@ def load_PV_generation(
 
 if __name__ == "__main__":
 
-    # (df, metadata) = retrieve_tmy()
+    tz = tz_default
+    lat = lat_default
+    long = long_default
 
-    tz = 'Australia/Brisbane'
-    lat: float = -33.86
-    long: float = 151.21
-
-    tilt = abs(lat)
-    orient = 180.
+    tilt = tilt_default
+    orient = orient_default
     
-    PV_nompower = 5000.   # (W)
-    G_STC = 1000.   # (W/m2)
+    PV_nompower = PV_nompower_default
+    G_STC = G_STC_default
 
     
-    df = load_PV_generation(
+    df = get_PV_generation(
         tz=tz, latitude=lat, longitude=long, tilt=tilt, orient=orient,
         PV_nompower=PV_nompower
     )
-
+    print(df)
 
     pass

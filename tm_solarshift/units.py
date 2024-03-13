@@ -41,7 +41,17 @@ CONVERSIONS = {
     "mass_flowrate": {
         "kg/s": 1e0,
         "g/s": 1e3,
+        "kg/min": 60,
         "kg/hr": 3600,
+    },
+    "volume_flowrate": {
+        "L/s": 1e0,
+        "m3/s": 1e-3,
+        "m3/min": 1e-3*60,
+        "m3/hr": 1e-3*3600,
+        "L/min": 60,
+        "L/hr": 3600,
+        "ml/s": 1e3,
     },
     "energy": {
         "J": 1e0,
@@ -84,7 +94,7 @@ CONVERSIONS = {
     "specific_heat": {
         "J/kgK": 1e0, "J/kg-K": 1e0,
         "kJ/kgK": 1e-3, "kJ/kg-K": 1e-3,
-    }
+    },
 }
 
 UNIT_TYPES = dict()
@@ -173,6 +183,7 @@ class Water():
 def main():
 
     #Examples of conversion factors and Variable usage.
+    print(conversion_factor("L/min","m3/s"))
     print(conversion_factor("W","kJ/hr"))
     print(conversion_factor("W", "kJ/hr"))
 

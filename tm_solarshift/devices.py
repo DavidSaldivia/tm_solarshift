@@ -35,20 +35,21 @@ class SolarSystem():
             unit: str = "kW",
     ) -> pd.DataFrame:
     
-        from tm_solarshift.external.pvlib_utils import (load_PV_generation, load_trnsys_weather)
+        from tm_solarshift.external.pvlib_utils import (get_PV_generation, load_trnsys_weather)
 
         df_sample = load_trnsys_weather()  #Fix this!
-        df_aux = load_PV_generation(tz=tz,
-                                    df = df_sample,
-                                    latitude = self.lat.get_value("-"),
-                                    longitude = self.lon.get_value("-"),
-                                    tilt = self.tilt.get_value("-"),
-                                    orient = self.orient.get_value("-"),
-                                    PV_nompower = self.nom_power.get_value("W"),)
+        df_aux = get_PV_generation(tz=tz,
+                                   df = df_sample,
+                                   latitude = self.lat.get_value("-"),
+                                   longitude = self.lon.get_value("-"),
+                                   tilt = self.tilt.get_value("-"),
+                                   orient = self.orient.get_value("-"),
+                                   PV_nompower = self.nom_power.get_value("W"),)
     
         df_aux.index = df.index
         PVPower =  df_aux["PVPower"] * CF("W", unit)
         return PVPower
+    
 #-------------------------
 #List of heater devices        
 class ResistiveSingle():
@@ -194,6 +195,18 @@ class GasHeaterInstantaneous():
         #control
         self.temp_consump = Variable(45.0, "degC")
 
+    @property
+    def eta(self) -> Variable:
+        
+        nom_power = self.nom_power.get_value("MJ/hr")
+        deltaT_rise = self.deltaT_rise.get_value("dgrC")
+        flow_w = self.flow_water.get_value("m3/s")
+        cp_w = self.fluid.cp.get_value("J/kg-K")
+        rho_w = self.fluid.rho.get_value("kg/m3")
+        
+        HW_energy = (flow_w * rho_w * cp_w) * deltaT_rise * CF("W", "MJ/hr")  #[MJ/hr]
+        return Variable(HW_energy / nom_power, "-")
+
     @classmethod
     def from_model_file(
         cls,
@@ -249,6 +262,18 @@ class GasHeaterStorage():
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
         self.temp_deadband = Variable(10, "degC")
 
+    @property
+    def eta(self) -> Variable:
+        
+        nom_power = self.nom_power.get_value("MJ/hr")
+        deltaT_rise = self.deltaT_rise.get_value("dgrC")
+        flow_w = self.flow_water.get_value("m3/s")
+        cp_w = self.fluid.cp.get_value("J/kg-K")
+        rho_w = self.fluid.rho.get_value("kg/m3")
+
+        HW_energy = (flow_w * rho_w * cp_w) * deltaT_rise * CF("W", "MJ/hr")  #[MJ/hr]
+        return Variable(HW_energy / nom_power, "-")
+    
     @classmethod
     def from_model_file(
         cls,
@@ -279,16 +304,59 @@ class GasHeaterStorage():
     @property
     def area_loss(self):
         return tank_area_loss(self)
+    
+    # def run_thermal_model(self, ts: pd.DataFrame) -> pd.DataFrame:
+
+
+
+    #     return
 
 
 class SolarThermalGasAuxiliary():
     def __init__(self):
         self.nom_power = None
-        self.area = 2.0
-        self.FRta = 0.8
-        self.FRUL = 2.0
-        self.IAM = None
+        self.massflowrate = Variable(1, "kg/s")
+        self.fluid = Water()
+        self.area = Variable(2.0, "m2")
+        self.FRta = Variable(0.8, "-")
+        self.FRUL = Variable(0.9, "W/m2-K")
+        self.IAM = Variable(0.2, "-")
+        self.lat = Variable(-33.86,"-")
+        self.lon = Variable(151.22,"-")
+        self.tilt = Variable(abs(self.lat.get_value("-")),"-")
+        self.orient = Variable(180.0,"-")
 
+    def run_thermal_model(
+            self,
+            ts: pd.DataFrame = None,
+    ) -> pd.DataFrame:
+
+        from tm_solarshift.external.pvlib_utils import get_irradiance_plane
+
+        massflowrate = self.massflowrate.get_value("kg/s")
+        FRta = self.FRta.get_value("-")
+        FRUL = self.FRUL.get_value("W/m2-K")
+        latitude = self.lat.get_value("-")
+        longitude = self.lon.get_value("-")
+        tilt = self.tilt.get_value("-")
+        orient = self.orient.get_value("-")
+        cp = self.fluid.cp.get_value("J/kg-K")
+
+        temp_amb = ts["temp_amb"]
+        total_irrad = get_irradiance_plane(ts, latitude, longitude, tilt, orient)
+        temp_inlet = 30.     #Fix this!
+
+        eta = FRta - FRUL * (temp_inlet - temp_amb) / total_irrad
+        energy_useful = eta * total_irrad
+        temp_outlet = temp_inlet + energy_useful / (massflowrate * cp)
+
+
+        COLS = ["eta", "solar_fraction", "heater_gas", "E_HWD", "emissions"]
+        output = pd.DataFrame(index = ts.index, columns = COLS)
+
+
+
+        return output
 
 
 #-------------------------
