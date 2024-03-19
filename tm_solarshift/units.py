@@ -4,6 +4,12 @@ from typing import List
 #-------------------------
 # Unit conversion factors
 CONVERSIONS = {
+    "adim" : {
+        "-": 1e0,
+        None: 1e0,
+        "": 1e0,
+        " ": 1e0,
+    },
     "length" : {
         "m": 1e0,
         "mm": 1e3,
@@ -140,11 +146,8 @@ class Variable():
         if UNIT_TYPES[unit] == UNIT_TYPES[self.unit]:
             conv_factor = conversion_factor(self.unit, unit)
             return self.value * conv_factor
-        
-        if self.unit != unit: #Check units
-            raise ValueError(
-                f"It is not possible to convert Variable (in {self.unit}) to the specified unit {unit}."
-                )
+        else:
+            raise ValueError( f"Variable unit ({self.unit}) and wanted unit ({unit}) are not compatible.")
 
     def __repr__(self) -> str:
         return f"{self.value:} [{self.unit}]"

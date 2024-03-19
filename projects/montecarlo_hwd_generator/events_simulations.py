@@ -17,15 +17,10 @@ from scipy.stats import norm
 
 from typing import Optional, List, Dict, Any, Union
 
-from tm_solarshift.constants import (
-    DIR_DATA,
-    PROFILES_TYPES,
-)
-
-import tm_solarshift.trnsys as trnsys
-import tm_solarshift.profiles as profiles
+from tm_solarshift.constants import ( DIRECTORY, DEFINITIONS)
 from tm_solarshift.general import GeneralSetup
-from tm_solarshift.devices import conversion_factor
+from tm_solarshift.thermal_models import trnsys
+from tm_solarshift.units import conversion_factor as CF
 
 PROFILES_TYPES = profiles.PROFILES_TYPES
 PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
