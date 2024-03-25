@@ -88,12 +88,12 @@ def storage_fixed_eta(
 ) -> Dict[str, float]:
 
     
-    import tm_solarshift.thermal_models.trnsys as trnsys
-    from tm_solarshift.thermal_models import postprocessing
+    from tm_solarshift.thermal_models import (trnsys, postprocessing)
 
-    if GS.DEWH.__class__ == GasHeaterStorage:
+    DEWH: GasHeaterStorage = GS.DEWH
+    if DEWH.__class__ == GasHeaterStorage:
         kgCO2_TO_kgCH4 = 44. / 16. #Assuming pure methane for gas
-        heat_value = GS.DEWH.heat_value.get_value("MJ/kg_gas")
+        heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
         eta = GS.DEWH.eta.get_value("-")
     else:
         raise ValueError("DEWH type is not compatible with this function.")

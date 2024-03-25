@@ -35,10 +35,13 @@ class DIRECTORY():
     FILE_POSTCODES = os.path.join(DIR_DATA["location"], "australian_postcodes.csv") # https://www.matthewproctor.com/australian_postcodes
     FILE_MERRA2_COORDS = os.path.join(DIR_DATA["location"], "merra2_coord_states.csv")
     
+class DEFAULTS():
+    LOCATION = "Sydney"
+    HWDP = 1
+    NEM_REGION = "NSW1"
 
 # Definitions and mappings
 class DEFINITIONS():
-    LOCATION_DEFAULT = "Sydney"
     LOCATIONS_METEONORM = [
         'Adelaide', 'Brisbane', 'Canberra',
         'Darwin', 'Melbourne', 'Perth',
@@ -46,6 +49,7 @@ class DEFINITIONS():
     ]
     LOCATIONS_FEW = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne']
     NEM_REGIONS = [ "NSW1", "VIC1", "QLD1", "SA1", "TAS1" ]
+    SIMULATION_TYPES = ["annual", "mc", "historical", "hw_only", "forecast"]
     STATES = {
         "SA": "South Australia",
         "NSW": "New South Wales",
@@ -118,11 +122,18 @@ class DEFINITIONS():
         5: "Warm summer, cool winter",
         6: "Mild warm summer, cold winter",
     }
+    WEATHER_SIMULATIONS = {
+        "annual" : "tmy",
+        "mc": "mc",
+        "historical": "historical",
+        "hw_only" : "constant_day",
+        "forecast": "mc",
+    }
     TS_TYPES = {
         "weather": ["GHI", "Temp_Amb", "Temp_Mains"],
         "control": ["CS"],
         "electric": ["PV_Gen", "Import_Grid", "Import_CL"],
-        "HWDP": ["P_HWD", "m_HWD", "Events", "m_HWD_day"],
+        "HWDP": ["P_HWD", "m_HWD", "m_HWD_day"],
         "economic": ["tariff", "rate_type", "Wholesale_Market"],
         "emissions": ["Intensity_Index", "Marginal_Index"],
     }

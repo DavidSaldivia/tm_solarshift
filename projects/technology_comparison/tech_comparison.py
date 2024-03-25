@@ -33,7 +33,7 @@ def main():
 
     # Defining default parameters
     GS = GeneralSetup()
-    ts = GS.create_ts_default()
+    ts = GS.create_ts()
 
     for heater_name in HEATERS.keys():
         

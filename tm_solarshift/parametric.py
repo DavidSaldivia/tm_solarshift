@@ -5,12 +5,12 @@ import copy
 import itertools
 import numpy as np
 import pandas as pd
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import tm_solarshift.general as general
-from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
+from tm_solarshift.constants import DIRECTORY
 from tm_solarshift.units import (Variable, VariableList)
-from tm_solarshift.devices import (HeatPump, ResistiveSingle)
+from tm_solarshift.devices import ResistiveSingle
 from  tm_solarshift.thermal_models import (trnsys, postprocessing)
 
 PARAMS_OUT = [
@@ -28,16 +28,13 @@ showfig = False
 pd.set_option('display.max_columns', None)
 
 #-------------
-def parametric_settings(
+def settings(
         params_in : Dict[str, VariableList] = {},
         params_out: List[str] = PARAMS_OUT,
         ) -> pd.DataFrame:
-    """    This function creates a parametric run. A pandas dataframe with all the runs required.
-    The order of running is "first=outer".
-    It requires 
-    and a list of strings with the desired outputs from out_overall.
-
-    
+    """ 
+    This function creates a parametric run. A pandas dataframe with all the runs required.
+    The order of running for params_in is "first=outer".
 
     Args:
         params_in (Dict[str, VariableList], optional): dictionary with (parameter : values). parameters are str (label), values are List (possible values)
@@ -62,49 +59,9 @@ def parametric_settings(
         runs[col] = np.nan
     return runs
 
-#-------------
-def updating_parameters(
-        GS: general.GeneralSetup,
-        row: pd.Series,
-        params_in: Dict,
-):
-    """updating parameters for those of the specific run.
-    This function update the GS object. It takes the string and converts it into GS attributes.
-
-    Args:
-        GS (general.GeneralSetup): GS object
-        row (pd.Series): values of the specific run (it contains all input and output of the parametric study)
-        params_in (Dict): labels of the parameters (input)
-    """
-    params_row = row[params_in.keys()].to_dict()
-
-    for parameter in params_row:
-        
-        if '.' in parameter:
-            (obj_name, param_name) = parameter.split('.')
-
-            #Retrieving first level attribute (i.e.: DEWH, household, simulation, etc.)
-            object = getattr(GS, obj_name)
-
-            # Defining the attribute value and assigning to first level object
-            if params_in[parameter].__class__ == VariableList:
-                param_value = Variable(params_row[parameter], params_in[parameter].unit)
-            else:
-                param_value = params_row[parameter]
-            setattr(object, param_name, param_value)
-
-            # Reassigning the first level attribute to GS
-            setattr(GS, obj_name, object)
-
-        else:
-            setattr(
-                GS, parameter, params_row[parameter]
-            )
-
-    return
 
 #-----------------------------
-def parametric_analysis(
+def analysis(
     runs_in: pd.DataFrame,
     params_in: Dict,
     params_out: List = PARAMS_OUT,
@@ -160,7 +117,7 @@ def parametric_analysis(
         
         if verbose:
             print("Creating Profiles for Simulation")
-        ts = GS.create_ts_default()
+        ts = GS.create_ts()
 
         if verbose:
             print("Executing TRNSYS simulation")
@@ -213,6 +170,47 @@ def parametric_analysis(
         
     return runs
 
+#-------------
+def updating_parameters(
+        GS: general.GeneralSetup,
+        row: pd.Series,
+        params_in: Dict,
+):
+    """updating parameters for those of the specific run.
+    This function update the GS object. It takes the string and converts it into GS attributes.
+
+    Args:
+        GS (general.GeneralSetup): GS object
+        row (pd.Series): values of the specific run (it contains all input and output of the parametric study)
+        params_in (Dict): labels of the parameters (input)
+    """
+    params_row = row[params_in.keys()].to_dict()
+
+    for parameter in params_row:
+        
+        if '.' in parameter:
+            (obj_name, param_name) = parameter.split('.')
+
+            #Retrieving first level attribute (i.e.: DEWH, household, simulation, etc.)
+            object = getattr(GS, obj_name)
+
+            # Defining the attribute value and assigning to first level object
+            if params_in[parameter].__class__ == VariableList:
+                param_value = Variable(params_row[parameter], params_in[parameter].unit)
+            else:
+                param_value = params_row[parameter]
+            setattr(object, param_name, param_value)
+
+            # Reassigning the first level attribute to GS
+            setattr(GS, obj_name, object)
+
+        else:
+            setattr(
+                GS, parameter, params_row[parameter]
+            )
+
+    return
+
 #------------------------------
 def parametric_run_test():
     
@@ -224,9 +222,9 @@ def parametric_run_test():
     GS_base = general.GeneralSetup()
     GS_base.DEWH = ResistiveSingle.from_model_file(model="491315")
 
-    runs = parametric_settings(params_in, PARAMS_OUT)
+    runs = settings(params_in, PARAMS_OUT)
 
-    runs = parametric_analysis(
+    runs = analysis(
         runs, params_in, PARAMS_OUT,
         GS_base = GS_base,
         save_results_detailed = True,

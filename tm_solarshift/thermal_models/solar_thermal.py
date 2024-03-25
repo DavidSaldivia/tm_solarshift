@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 
-import tm_solarshift.thermal_models.trnsys as trnsys
 from tm_solarshift.general import GeneralSetup
+from tm_solarshift.devices import SolarThermalElecAuxiliary
 from tm_solarshift.units import conversion_factor as CF
-from tm_solarshift.thermal_models import postprocessing
+from tm_solarshift.thermal_models import (trnsys, postprocessing)
 from tm_solarshift.external.pvlib_utils import (
     get_irradiance_plane,
     get_incidence_angle_cosine,
@@ -26,7 +26,7 @@ def run_thermal_model(
     #Calculating energy provided by solar thermal and the solar fraction
     #Emissions and tariffs are recalculated
 
-    DEWH = GS.DEWH
+    DEWH: SolarThermalElecAuxiliary = GS.DEWH
     massflowrate = DEWH.massflowrate.get_value("kg/s")
     area = DEWH.area.get_value("m2")
     FRta = DEWH.FRta.get_value("-")

@@ -11,7 +11,7 @@ import cartopy.feature as cf                 # import features
 from typing import Optional, List, Dict, Union, Any, Tuple
 
 from tm_solarshift.units import Variable
-from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
+from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, DEFAULTS)
 from tm_solarshift.location import (Location, from_postcode)
 
 DIR_DATA = DIRECTORY.DIR_DATA
@@ -57,22 +57,22 @@ SIMS_PARAMS = {
         "dataset": ['METEONORM',],
         "location": LOCATIONS_METEONORM,
     },
-    "montecarlo": {
+    "mc": {
         "dataset": ['METEONORM', 'MERRA2', 'NCI'],
+        "location": DEFAULTS.LOCATION,
         "subset": ['all', 'annual', 'season', 'month', 'date'],
-        "location": DEFINITIONS.LOCATION_DEFAULT,
         "random": [True, False],
         "value": None,
     },
     "historical": {
         "dataset": ['MERRA2', 'NCI', "local"],
-        "list_dates": [pd.DatetimeIndex, pd.Timestamp],
         "location": str,
         "file_path": str,
+        "list_dates": [pd.DatetimeIndex, pd.Timestamp],
     },
     "constant_day": {
         "dataset": [],
-        "random": True,
+        "random": [True, False],
         "values": VARIABLE_DEFAULTS,
         "ranges": VARIABLE_RANGES,
     }
@@ -86,8 +86,11 @@ DATASET_ALL = list(dict.fromkeys( [ x for xs in list_aux for x in xs ] )) #flatt
 def load_day_constant_random(
     timeseries: pd.DataFrame,
     ranges: Optional[Dict[str,tuple]] = None,
+    seed_id: int = np.random.SeedSequence().entropy,
     columns: Optional[List[str]] = TS_WEATHER,
 ) -> pd.DataFrame:
+    
+    rng = np.random.default_rng(seed_id)
 
     if ranges == None:
         ranges = VARIABLE_RANGES
@@ -98,7 +101,7 @@ def load_day_constant_random(
     df_weather_days = pd.DataFrame( index=dates, columns=columns)
     df_weather_days.index = pd.to_datetime(df_weather_days.index)
     for lbl in ranges.keys():
-        df_weather_days[lbl] = np.random.uniform(
+        df_weather_days[lbl] = rng.uniform(
             ranges[lbl][0],
             ranges[lbl][1],
             size=DAYS,
@@ -114,6 +117,7 @@ def load_day_constant_random(
 def random_days_from_dataframe(
     timeseries: pd.DataFrame,
     df_sample: pd.DataFrame,
+    seed_id: int = np.random.SeedSequence().entropy,
     columns: Optional[List[str]] = TS_WEATHER,
 ) -> pd.DataFrame :
     """
@@ -136,11 +140,13 @@ def random_days_from_dataframe(
     timeseries.
 
     """
-    
+
+    rng = np.random.default_rng(seed_id)
+
     df_sample = df_sample.copy()
     list_dates = np.unique(df_sample.index.date)
     DAYS = len(np.unique(timeseries.index.date))
-    list_picked_dates = np.random.choice( list_dates, size=DAYS )
+    list_picked_dates = rng.choice( list_dates, size=DAYS )
     df_sample["date"] = df_sample.index.date
     set_picked_days = [
         df_sample[df_sample["date"]==date] for date in list_picked_dates
@@ -254,7 +260,7 @@ def load_tmy(
     
     YEAR = ts.index.year[0]
     if type(params["location"]) == str:
-        location = params["location"].lower()
+        location = params["location"]
     else:
         location = params["location"]
     dataset = params["dataset"]
@@ -384,7 +390,7 @@ def load_historical(
     return None
 
 #----------
-def add_to_timeseries(
+def load_weather_data(
         ts: pd.DataFrame,
         type_sim: str,
         params: Dict = {},
@@ -393,14 +399,14 @@ def add_to_timeseries(
     
     #Checking
     if type_sim in TYPES_SIMULATION:
-        ... #Check if minimum params are in kwargs.
+        pass #Check if minimum params are in kwargs.
     else:
         raise ValueError(f"{type_sim} not in {TYPES_SIMULATION}")
     
     if type_sim == "tmy":
         return load_tmy(ts, params, columns)
     
-    if type_sim == "montecarlo":
+    if type_sim == "mc":
         return load_montecarlo(ts, params, columns)
 
     if type_sim == "historical":
@@ -416,7 +422,7 @@ def main():
     from tm_solarshift.units import Variable
 
     GS = GeneralSetup()
-    ts = GS.simulation.create_new_profile()
+    ts = GS.create_ts_empty()
 
     #----------------
     type_sim = "tmy"
@@ -424,19 +430,19 @@ def main():
         "dataset": "meteonorm",
         "location": GS.household.location
     }
-    ts = add_to_timeseries(ts, type_sim, params)
+    ts = load_weather_data(ts, type_sim, params)
     print(ts[TS_WEATHER])
 
     #----------------
     type_sim = "tmy"
     GS.simulation.YEAR = Variable(2020,"-")
     GS.simulation.location = Location(2035)
-    ts = GS.simulation.create_new_profile()
+    ts = GS.create_ts_empty()
     params = {
         "dataset": "merra2",
         "location": Location(2035)
     }
-    ts = add_to_timeseries(ts, type_sim, params)
+    ts = load_weather_data(ts, type_sim, params)
     print(ts[TS_WEATHER])
 
     #----------------
@@ -447,12 +453,12 @@ def main():
         "subset": "month",
         "value": 5
     }
-    ts = add_to_timeseries(ts, type_sim, params)
+    ts = load_weather_data(ts, type_sim, params)
     print(ts[TS_WEATHER])
 
     #----------------
     type_sim = "constant_day"
-    ts = add_to_timeseries(ts, type_sim)
+    ts = load_weather_data(ts, type_sim)
     print(ts[TS_WEATHER])
 
     return

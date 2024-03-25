@@ -23,29 +23,31 @@ DAILY_DISTRIBUTIONS = [
 
 #------------------------------------
 class HWD():
-    def __init__(self):
+    def __init__(self, id: int = np.random.SeedSequence().entropy):
+        self.seed_id = id
+        self.method = "standard"
         self.profile_HWD = 1
-        self.daily_avg = None
-        self.daily_std = None
-        self.daily_min = None
-        self.daily_max = None
-        self.random_seed = None
         self.daily_distribution = None
+
+        self.daily_avg: Variable = None
+        self.daily_std: Variable = None
+        self.daily_min: Variable = None
+        self.daily_max: Variable = None
 
     #-------------------------
     #Alternative initialiser
     @classmethod
-    def standard_case(cls):
-
-        case = cls()
+    def standard_case(cls, id: int = np.random.SeedSequence().entropy):
+        case = cls(id=id)
+        case.method = "standard"
         case.profile_HWD = 1
+        case.daily_distribution = "truncnorm"       #Options: (None, "unif", "truncnorm", "sample")
+
         (daily_avg, unit_avg) = (200., "L/d")
         case.daily_avg = Variable(daily_avg, unit_avg)
         case.daily_std = Variable(daily_avg / 3.0, unit_avg)
         case.daily_min = Variable(0.0, unit_avg)
         case.daily_max = Variable(2*daily_avg , unit_avg)
-        case.random_seed = np.random.SeedSequence().entropy
-        case.daily_distribution = "truncnorm"       #Options: (None, "unif", "truncnorm", "sample")
         
         return case
     
@@ -99,8 +101,7 @@ class HWD():
         daily_max = self.daily_max.get_value("L/d")
         daily_distribution = self.daily_distribution
 
-        rng = np.random.default_rng(self.random_seed)
-        truncnorm.random_state = rng
+        rng = np.random.default_rng(self.seed_id)
 
         if daily_distribution not in DAILY_DISTRIBUTIONS:
             raise ValueError(f"daily distribution function not among available options: {DAILY_DISTRIBUTIONS}")
@@ -128,7 +129,7 @@ class HWD():
             m_HWD_day = np.where(m_HWD_day > daily_min, m_HWD_day, daily_min)
 
         elif daily_distribution == "unif":
-            m_HWD_day = (daily_max - daily_min) * rng.rand(DAYS) + daily_min
+            m_HWD_day = (daily_max - daily_min) * rng.uniform(size=DAYS) + daily_min
 
         elif daily_distribution == "truncnorm":
             myclip_a = daily_min
@@ -137,6 +138,7 @@ class HWD():
             scale = daily_std
             # This step is counterintuitive (See scipy's documentation for truncnorm)
             a, b = (myclip_a - loc) / scale, (myclip_b - loc) / scale
+            truncnorm.random_state = rng
             m_HWD_day = truncnorm.rvs(
                 a, b, loc=loc, scale=scale, size=DAYS
                 )
@@ -265,7 +267,7 @@ class HWD():
         This function generates HWD profiles different for each day, based on daily
         consumption variability (defined by interday_dist), and event characteristics
         """
-        rng = np.random.default_rng(self.random_seed)
+        rng = np.random.default_rng(self.seed_id)
 
         #Checks and some conversions
         if interday_dist is None:

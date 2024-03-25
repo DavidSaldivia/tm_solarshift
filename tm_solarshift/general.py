@@ -28,12 +28,12 @@ TS_COLUMNS_ALL = DEFINITIONS.TS_COLUMNS_ALL
 class GeneralSetup():
 
     def __init__(self):
+        self.id = np.random.SeedSequence().entropy
         self.household = Household()
         self.DEWH = ResistiveSingle()
         self.solar_system = SolarSystem()
-        self.HWDInfo = HWD.standard_case()
+        self.HWDInfo = HWD.standard_case( id=self.id )
         self.simulation = ThermalSimulation()
-
 
     def create_ts_empty(
         self,
@@ -44,35 +44,50 @@ class GeneralSetup():
         STEP = self.simulation.STEP.get_value("min")
         YEAR = self.simulation.YEAR.get_value("-")
         PERIODS = self.simulation.PERIODS.get_value("-")
+
         start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
         idx = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
-
         return pd.DataFrame(index=idx, columns=ts_columns)
 
 
-    def create_ts_default(
+    def create_ts(
         self,
         ts_columns: List[str] = TS_COLUMNS_ALL,
     ) -> pd.DataFrame:
+        """
+        Create a timeseries dataframe (ts) using the information in self.
+        Check the specific functions to get more information about definition process.
+
+        Args:
+            ts_columns (List[str], optional): columns to show in ts. Defaults to TS_COLUMNS_ALL.
+
+        Returns:
+            pd.DataFrame: ts, the timeseries dataframe.
+        """
+        
         location = self.household.location
         control_load = self.household.control_load
         random_control = self.household.control_random_on
         solar_system = self.solar_system
-        
+        type_sim = self.simulation.type_sim
         YEAR = self.simulation.YEAR.get_value("-")
+        HWD_method = self.HWDInfo.method
+        type_sim_weather = DEFINITIONS.WEATHER_SIMULATIONS[type_sim]
+        params_weather = self.simulation.params_weather
 
         ts = self.create_ts_empty(ts_columns = ts_columns)
-        ts = self.HWDInfo.generator(ts, method = "standard")
-        
-        file_path = weather.FILES_WEATHER["METEONORM_TEMPLATE"].format(location)
-        ts = weather.from_file( ts, file_path )
 
+        ts = self.HWDInfo.generator(ts, method = HWD_method)
+        ts = weather.load_weather_data( ts, type_sim = type_sim_weather, params = params_weather )
         ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
         ts = circuits.load_PV_generation(ts, solar_system = solar_system)
         ts = circuits.load_elec_consumption(ts, profile_elec = 0)
         ts = external_data.load_wholesale_prices(ts, location)
         ts = external_data.load_emission_index_year(
             ts, index_type= 'total', location = location, year = YEAR,
+        )
+        ts = external_data.load_emission_index_year(
+            ts, index_type= 'marginal', location = location, year = YEAR,
         )
         return ts[ts_columns]
     
@@ -82,22 +97,32 @@ class GeneralSetup():
             ts: pd.DataFrame = None,
             verbose: bool = False,
     ) -> Tuple[pd.DataFrame, Dict]:
+        """Run a thermal simulation using the data provided in self.
+
+        Args:
+            ts (pd.DataFrame, optional): timeseries dataframe. If not given is calculated with self. Defaults to None.
+            verbose (bool, optional): Print stage of simulation. Defaults to False.
+
+        Raises:
+            TypeError: _description_
+
+        Returns:
+            Tuple[pd.DataFrame, Dict]: (out_all, out_overall) = (detailed results, overall results)
+        """
         
         if ts is None:
-            ts = self.create_ts_default()
+            ts = self.create_ts()
         
         DEWH = self.DEWH
         
         if (DEWH.__class__ == ResistiveSingle):
-            import tm_solarshift.thermal_models.trnsys as trnsys
-            from tm_solarshift.thermal_models import postprocessing
+            from tm_solarshift.thermal_models import (trnsys, postprocessing)
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_simulation(self, ts, out_all)
         
         elif (DEWH.__class__ == HeatPump):
-            import tm_solarshift.thermal_models.trnsys as trnsys
-            from tm_solarshift.thermal_models import postprocessing
+            from tm_solarshift.thermal_models import (trnsys, postprocessing)
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_simulation(self, ts, out_all)
@@ -136,12 +161,24 @@ class Household():
 #------------------------------------
 class ThermalSimulation():
     def __init__(self):
+
+        #general
+        self.type_sim = "annual"
         self.location = Location()
         self.engine = "trnsys"
         self.START = Variable(0, "hr")
         self.STOP = Variable(8760, "hr")
         self.STEP = Variable(3, "min")
         self.YEAR = Variable(2022, "-")
+
+        #weather
+        self.params_weather = {
+            "dataset": "meteonorm",
+            "location": "Sydney",
+            "subset" : None,
+            "random" : False,
+            "value" : np.nan,
+        }
 
     @property
     def DAYS(self):
@@ -167,44 +204,13 @@ class ThermalSimulation():
         idx = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
 
         return pd.DataFrame(index=idx, columns=TS_COLUMNS_ALL)
-# #-----------------------------
-# def load_timeseries_all(
-#         GS: GeneralSetup,
-# ) -> pd.DataFrame:
-    
-#     import tm_solarshift.circuits as circuits
-#     import tm_solarshift.control as control
-#     import tm_solarshift.external_data as external_data
-#     import tm_solarshift.weather as weather
-    
-#     location = GS.household.location
-#     control_load = GS.household.control_load
-#     random_control = GS.household.control_random_on
-#     solar_system = GS.solar_system
-    
-#     YEAR = GS.simulation.YEAR.get_value("-")
-
-#     ts = GS.simulation.create_new_profile()
-#     ts = GS.HWDInfo.generator(ts, method="standard")
-    
-#     file_path = weather.FILES_WEATHER["METEONORM_TEMPLATE"].format(location)
-#     ts = weather.from_file( ts, file_path )
-
-#     ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
-#     ts = circuits.load_PV_generation(ts, solar_system = solar_system)
-#     ts = circuits.load_elec_consumption(ts, profile_elec = 0)
-#     ts = external_data.load_wholesale_prices(ts, location)
-#     ts = external_data.load_emission_index_year(
-#         ts, index_type= 'total', location = location, year=YEAR,
-#     )
-#     return ts
 
 #-----------
 def main():
 
     GS = GeneralSetup()
     ts = GS.create_ts_empty()
-    ts = GS.create_ts_default()
+    ts = GS.create_ts()
 
     print(ts.head(20))
     print(ts[TS_TYPES["HWDP"]])

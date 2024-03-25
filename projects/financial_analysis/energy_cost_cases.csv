@@ -1,13 +1,13 @@
 case_id,name,tariff_type,has_solar,control_type,control_load,energy_cost
-0,CL1 Ausgrid,CL,False,CL,1,483.0822000000001
-1,GS flat,flat,False,GS,0,931.731714
-2,GS tou,tou,False,GS,0,1087.429212
-3,timer flat,flat,False,timer,4,864.0622079999997
-4,timer tou,tou,False,timer,4,1168.97895
-5,CL1 w solar,CL,True,CL,1,483.29993292774265
-6,GS flat w solar,flat,True,GS,0,854.460808337914
-7,GS tou w solar,tou,True,GS,0,998.8396403835909
-8,timer flat w solar,flat,True,timer,4,526.5205892490816
-9,timer tou w solar,tou,True,timer,4,721.501460158353
-10,diverter w C1,CL,True,diverter,1,270.8171849328338
-11,diverter w flat,flat,True,diverter,10,409.7490120000001
+10,diverter with C1,CL,True,diverter,1,276.1727092250543
+11,diverter with flat,flat,True,diverter,10,402.3399420000001
+0,CL1 Ausgrid,CL,False,CL,1,483.11280000000005
+1,GS flat,flat,False,GS,0,930.0303719999999
+2,GS tou,tou,False,GS,0,1096.9627140000002
+3,timer flat,flat,False,timer,4,865.4342580000001
+4,timer tou,tou,False,timer,4,1143.45315
+5,CL1 with solar,CL,True,CL,1,476.2110351112233
+6,GS flat w solar,flat,True,GS,0,838.3781043122591
+7,GS tou w solar,tou,True,GS,0,984.1842358566195
+8,timer flat w solar,flat,True,timer,4,524.0340970411629
+9,timer tou w solar,tou,True,timer,4,714.2032046056975
