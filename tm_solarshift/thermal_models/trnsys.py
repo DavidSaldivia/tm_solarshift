@@ -14,6 +14,8 @@ from tm_solarshift.general import GeneralSetup
 from tm_solarshift.devices import (
     ResistiveSingle, 
     HeatPump,
+    GasHeaterStorage,
+    SolarThermalElecAuxiliary,
     SolarSystem,
 )
 
@@ -27,7 +29,8 @@ FILES_TRNSYS_INPUT = {
     "m_HWD": "0-Input_HWD.csv",
     "CS": "0-Input_Control_Signal.csv",
     "weather": "0-Input_Weather.csv",
-    "HP": "0-Reclaim_HP_Data.dat"
+    "HP": "0-Reclaim_HP_Data.dat",
+    "TH": "0-SolarThermal_Data_ones.dat",
 }
 FILES_TRNSYS_OUTPUT = {
     "RESULTS_DETAILED" : "TRNSYS_Out_Detailed.dat",
@@ -85,7 +88,7 @@ METEONORM_FILES = {
 #------------------------------
 #### DEFINING TRNSYS CLASSES
 class TrnsysSetup():
-    def __init__(self, GS, **kwargs):
+    def __init__(self, GS: GeneralSetup, **kwargs):
         # Directories
         self.tempDir = None
 
@@ -98,9 +101,9 @@ class TrnsysSetup():
         self.solar_system = GS.solar_system
 
         # Trnsys layout configurations
-        if self.DEWH.__class__ == ResistiveSingle:
+        if self.DEWH.__class__ in [ResistiveSingle, GasHeaterStorage]:
             self.layout_DEWH = "RS"
-        elif self.DEWH.__class__ == HeatPump:
+        elif self.DEWH.__class__ in [HeatPump, SolarThermalElecAuxiliary]:
             self.layout_DEWH = "HPF"
         else:
             raise ValueError("DEWH object is not a valid one for TRNSYS simulation")
@@ -137,8 +140,13 @@ def editing_dck_general(
         nom_power = DEWH.nom_power.get_value("W")
     elif DEWH.__class__ == HeatPump:
         nom_power = DEWH.nom_power_th.get_value("W")
+    elif DEWH.__class__ == GasHeaterStorage:
+        nom_power = DEWH.nom_power.get_value("W")
+    elif DEWH.__class__ == SolarThermalElecAuxiliary:
+        nom_power = DEWH.nom_power.get_value("W")
     else:
         raise ValueError("DEWH type is not among accepted classes.")
+    
     eta = DEWH.eta.get_value("-")
     temp_max = DEWH.temp_max.get_value("degC")
     temp_min = DEWH.temp_min.get_value("degC")
@@ -244,7 +252,7 @@ def editing_dck_tank(
     }
 
     #Defining specific parameters for each type of heater
-    if DEWH.__class__ == ResistiveSingle:
+    if DEWH.__class__ in [ResistiveSingle, GasHeaterStorage]:
         height = DEWH.height.get_value("m")
         f_inlet = DEWH.height_inlet.get_value("m") / height
         f_outlet = DEWH.height_outlet.get_value("m") / height
@@ -258,7 +266,7 @@ def editing_dck_tank(
             "18 Height fraction of auxiliary input": f_heater,
         }
 
-    elif DEWH.__class__ == HeatPump:    
+    elif DEWH.__class__ in [HeatPump, SolarThermalElecAuxiliary]:
         params_specific = {
             "10 Height fraction of inlet 1": 1.0, # HP inlet, not implemented yet
             "11 Height fraction of outlet 1": 0.0, #HP outlet, not implemented yet
@@ -400,10 +408,14 @@ def creating_timeseries_files(
     
     #Adding information for specific components
     if layout_DEWH == "HPF":
-        file_HP_data = FILES_TRNSYS_INPUT["HP"]
+        if trnsys_setup.DEWH.__class__ == HeatPump:
+            lbl = "HP"
+        elif trnsys_setup.DEWH.__class__ == SolarThermalElecAuxiliary:
+            lbl = "TH"
+        file_lbl_data = FILES_TRNSYS_INPUT[lbl]
         shutil.copyfile(
-            os.path.join(DIR_DATA["specs"], file_HP_data),
-            os.path.join(tempDir, file_HP_data)
+            os.path.join(DIR_DATA["specs"], file_lbl_data),
+            os.path.join(tempDir, FILES_TRNSYS_INPUT["HP"])
         )
 
     if layout_WF == "W15":
@@ -539,13 +551,9 @@ def run_simulation(
 
 #------------------------------
 def main():
-    from tm_solarshift.general import load_timeseries_default
-    from tm_solarshift.general import load_timeseries_all
 
     GS = GeneralSetup()
-    # GS.DEWH = HeatPump()
-    ts = GS.simulation.create_new_profile()
-    ts = load_timeseries_all(GS)
+    ts = GS.create_ts_default()
     out_all = run_simulation(GS, ts, verbose=True)
     print(out_all)
 

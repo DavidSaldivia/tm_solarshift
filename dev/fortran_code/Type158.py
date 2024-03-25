@@ -176,7 +176,7 @@ def main():
     STEP = GS.simulation.STEP.get_value("min")
 
     #DEHW specifications
-
+    #number of components
     N_NODES = DEWH.nodes
     N_THERMOSTATS = len(DEWH.f_thermostat)
     N_HEATERS = len(DEWH.f_heater)
@@ -206,7 +206,7 @@ def main():
     time = None
 
     #get the initial values for the nodes
-    S = DEWH.states
+    S = DEWH.states.copy()
     temp_avg_tank = S["temp_initial"].mean()
     temp_tank = S["temp_avg"]
     
@@ -258,6 +258,7 @@ def main():
     #STARTING THE LOOP!!
     converge = False
     while not(converge):
+        
         S["AA"] = 0.
         S["BB"] = 0.
 
@@ -298,70 +299,68 @@ def main():
         print(temp_load_in)
         print(massflow_load_in)
         print(massflow_load_out)
-        converge = True
 
         # Set the AA and BB terms for the nodal differential equation for the inlet flows
-        for  i  in range(N_PORTS):
+        for i in range(N_PORTS):
             for j in range(N_NODES):
                
                if (N_NODES==1):
                     S["AA"][j] = S["AA"][j] - (massflow_mains[i,j] * cp / S["capacitance"][j])
                     S["BB"][j] = S["BB"][j] + (
-                        massflow_mains[i,j] * cp * ports[i]["temp_in"] / S["capacitance"][j]
+                        massflow_mains[i,j] * cp * temp_in[i] / S["capacitance"][j]
                     )
 
                elif ( j != nodes["ports_outlet"][i] ):
                     S["AA"][j] = S["AA"][j] - (massflow_load_out[i,j]*cp/S["capacitance"][j])
                     S["BB"][j] = S["BB"][j] + (
-                        massflow_mains[i,j] * cp * ports[i]["temp_in"] 
+                        massflow_mains[i,j] * cp * temp_in[i]       #Check this and other ports[i]["temp_in"]
                         + massflow_load_in[i,j] * cp * temp_load_in[i,j]
                     )/S["capacitance"][j]
 
                else:
-                    if (j==1):
-                        massflow_load_out[i,j] = ports[i]["massflow_in"]
+                    if (j==0):
+                        massflow_load_out[i,j] = massflow_in[i]
                         massflow_load_in[i,j] = massflow_load_out[i,j+1]
                         
                         temp_load_in[i,j] = temp_tank[j+1]
 
                         S["AA"][j]=S["AA"][j] - (massflow_load_out[i,j] * cp / S["capacitance"][j])
                         S["BB"][j]=S["BB"][j] + (
-                            massflow_mains[i,j] * cp * ports[i]["temp_in"]
+                            massflow_mains[i,j] * cp * temp_in[i]
                             + massflow_load_in[i,j] * cp * temp_load_in[i,j]
                         )/S["capacitance"][j]
                 
-                    elif (j==N_NODES):
-                        massflow_load_out[i,j] = ports[i]["massflow_in"]
+                    elif (j==N_NODES-1):
+                        massflow_load_out[i,j] = massflow_in[i]
                         massflow_load_in[i,j] = massflow_load_out[i,j-1]
                         temp_load_in[i,j] = temp_tank[j-1]
 
                         S["AA"][j] = S["AA"][j] - (massflow_load_out[i,j] * cp / S["capacitance"][j])
                         S["BB"][j] = S["BB"][j] + (
-                            massflow_mains[i,j] * cp * ports[i]["temp_in"]
+                            massflow_mains[i,j] * cp * temp_in[i]
                             + massflow_load_in[i,j] * cp * temp_load_in[i,j]
                         )/S["capacitance"][j]
 
                     else:
-                        massflow_load_out[i,j] = ports[i]["massflow_in"]
+                        massflow_load_out[i,j] = massflow_in[i]
                         massflow_load_in[i,j] = massflow_load_out[i,j-1] + massflow_load_out[i,j+1]
                     
+                        if ( massflow_in[i]>0. and 
+                            ( (massflow_load_out[i,j-1] + massflow_load_out[i,j+1] ) >0. )
+                        ):
+                            temp_load_in[i,j] = (
+                                temp_tank[j-1] * massflow_load_out[i,j-1]
+                                + temp_tank[j+1] * massflow_load_out[i,j+1]
+                            ) / ( massflow_load_out[i,j-1] + massflow_load_out[i,j+1] )
+                        else:
+                            temp_load_in[i,j]=temp_tank[j]
 
-                    if ( (ports[i]["massflow_in"]>0.) and 
-                        ( (massflow_load_out[i,j-1] + massflow_load_out[i,j+1] ) >0. )
-                    ):
-                        temp_load_in[i,j] = (
-                            temp_tank[j-1] * massflow_load_out[i,j-1]
-                            + temp_tank[j+1] * massflow_load_out[i,j+1]
-                        ) / ( massflow_load_out[i,j-1] + massflow_load_out[i,j+1] )
-                    else:
-                        temp_load_in[i,j]=temp_tank[j]
-
-                    S["AA"][j] = S["AA"][j] - massflow_load_out[i,j] * cp / S["capacitance"][j]
-                    S["BB"][j] = S["BB"][j] + (
-                        massflow_mains[i,j] * cp * ports[i]["temp_in"]
-                        + massflow_load_out[i,j-1] * cp * temp_tank[j-1]
-                        + massflow_load_out[i,j+1] * cp * temp_tank[j+1]
-                    )/S["capacitance"][j]
+                        S["AA"][j] = S["AA"][j] - massflow_load_out[i,j] * cp / S["capacitance"][j]
+                        S["BB"][j] = S["BB"][j] + (
+                            massflow_mains[i,j] * cp * temp_in[i]
+                            + massflow_load_out[i,j-1] * cp * temp_tank[j-1]
+                            + massflow_load_out[i,j+1] * cp * temp_tank[j+1]
+                        )/S["capacitance"][j]
     
 
         # Set the AA and BB terms for the nodal differential equation for the auxiliary heaters
@@ -408,10 +407,10 @@ def main():
         #Set the AA and BB terms for the nodal differential equation for conduction between nodes
         if (N_NODES > 1):
             for j in range(N_NODES):
-                if (j==1):
+                if (j==0):
                     S["AA"][j] = S["AA"][j] - (k_th * S["area_cond"][j] / S["dz"][j] / S["capacitance"][j])
                     S["BB"][j] = S["BB"][j] + (k_th * S["area_cond"][j] / S["dz"][j] * temp_tank[j+1] / S["capacitance"][j])
-                elif (j==N_NODES):
+                elif (j==N_NODES-1):
                     S["AA"][j] = S["AA"][j] - (k_th * S["area_cond"][j-1] / S["dz"][j-1] / S["capacitance"][j] )
                     S["BB"][j] = S["BB"][j] + (k_th * S["area_cond"][j-1] / S["dz"][j-1] * temp_tank[j-1] / S["capacitance"][j])
                 else:
@@ -423,7 +422,9 @@ def main():
                         k_th * S["area_cond"][j] / S["dz"][j] * temp_tank[j+1] / S["capacitance"][j]
                         + k_th * S["area_cond"][j-1] / S["dz"][j-1] * temp_tank[j-1] / S["capacitance"][j]
                     )
-                    
+
+
+        converge = True
     return
 
 if __name__ == "__main__":

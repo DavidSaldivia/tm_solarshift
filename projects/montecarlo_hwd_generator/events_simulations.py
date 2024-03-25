@@ -19,160 +19,107 @@ from typing import Optional, List, Dict, Any, Union
 
 from tm_solarshift.constants import ( DIRECTORY, DEFINITIONS)
 from tm_solarshift.general import GeneralSetup
-from tm_solarshift.thermal_models import trnsys
-from tm_solarshift.units import conversion_factor as CF
+from tm_solarshift.thermal_models import (trnsys, postprocessing)
+from tm_solarshift.units import (
+    conversion_factor as CF,
+    Variable,
+)
 
-PROFILES_TYPES = profiles.PROFILES_TYPES
-PROFILES_COLUMNS = profiles.PROFILES_COLUMNS
+PROFILES_TYPES = DEFINITIONS.TS_TYPES
+TS_COLUMNS_ALL = DEFINITIONS.TS_COLUMNS_ALL
 WEATHER_TYPES = [
     'day_constant', 
     'meteonorm_random', 
     'meteonorm_month', 
     'meteonorm_date'
     ]
-DIR_RESULTS = "results/event_simulations"
+DIR_DATA = DIRECTORY.DIR_DATA
+DIR_PROJECT = os.path.join(DIRECTORY.DIR_PROJECTS,os.path.dirname(__file__))
+DIR_RESULTS = os.path.join(DIR_PROJECT, "results")
 
-#-------------------------
+
+
 def loading_timeseries(
-    general_setup = GeneralSetup(),
-    HWD_generator_method: str = 'events',
-    HWDP_dist: int = 0,
-    weather_type: str = 'day_constant'
-    ) -> pd.DataFrame:
+    GS: GeneralSetup,
+    params_weather: Dict,
+    HWDG_method: str = "events",
+    ts_columns: List[str] = TS_COLUMNS_ALL,
+) -> pd.DataFrame:
+    
+    import tm_solarshift.weather as weather
+    import tm_solarshift.circuits as circuits
+    import tm_solarshift.control as control
+    import tm_solarshift.external_data as external_data
+    
+    location = GS.household.location
+    control_load = GS.household.control_load
+    random_control = GS.household.control_random_on
+    solar_system = GS.solar_system
+    
+    YEAR = GS.simulation.YEAR.get_value("-")
 
-    #Getting the required data from GeneralSetup
-    location = general_setup.location
-    profile_control = general_setup.profile_control
-    random_control = general_setup.random_control
+    ts = GS.create_ts_empty(ts_columns = ts_columns)
+    ts = GS.HWDInfo.generator( ts, method = HWDG_method,)
+    ts = weather.load_montecarlo(ts, params = params_weather)
 
-    # creating and loading timeseries
-    timeseries = profiles.new_profile(general_setup)
-    
-    #Hot water draw daily distribution
-    HWD_daily_dist = profiles.HWD_daily_distribution(
-        general_setup, 
-        timeseries
+    ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
+    ts = circuits.load_PV_generation(ts, solar_system = solar_system)
+    ts = circuits.load_elec_consumption(ts, profile_elec = 0)
+    ts = external_data.load_wholesale_prices(ts, location)
+    ts = external_data.load_emission_index_year(
+        ts, index_type= 'total', location = location, year = YEAR,
     )
-    if HWD_generator_method == 'events':
-        event_probs = profiles.events_file(
-            file_name = os.path.join(
-                DIR_DATA["samples"], "HWD_events.xlsx",
-                ),
-            sheet_name="Custom"
-            )
-    else:
-        event_probs = None
-    timeseries = profiles.HWDP_generator(
-            timeseries,
-            method = HWD_generator_method,
-            HWD_daily_dist = HWD_daily_dist,
-            HWD_hourly_dist = HWDP_dist,
-            event_probs = event_probs,
-        )
-    
-    #Weather
-    weather_subsets = {
-        'meteonorm_random': ('all', None),
-        'meteonorm_season': ('season', 'summer'),
-        'meteonorm_month' : ('month', 1),
-        'meteonorm_date' : ('date', pd.Timestamp("2022/02/07")),
-        'day_constant': (None, None)
-    }
-    (subset_random, subset_value) = weather_subsets[weather_type]
-    
-    if weather_type == 'day_constant':
-        timeseries = profiles.load_weather_day_constant_random(
-            timeseries,
-        )
-    else:
-        file_weather = os.path.join(
-            DIR_DATA["weather"],
-            "meteonorm_processed",
-            f"meteonorm_{location}.csv",
-        )
-        timeseries = profiles.load_weather_from_file(
-            timeseries,
-            file_weather,
-            columns = PROFILES_TYPES['weather'],
-            subset_random = subset_random,
-            subset_value = subset_value,
-        )
-    
-    #Electric
-    timeseries = profiles.load_PV_generation(timeseries)
-    timeseries = profiles.load_elec_consumption(timeseries)
-    
-    #Control Load
-    timeseries = profiles.load_control_load(
-        timeseries, 
-        profile_control = profile_control, 
-        random_ON = random_control
-    )
-    return timeseries
+    return ts[ts_columns]
 
 #-------------------------
 def run_or_load_simulation(
-        general_setup: GeneralSetup,
-        timeseries: pd.DataFrame,
+        GS: GeneralSetup,
+        ts: pd.DataFrame,
         runsim: bool = True,
         savefile: bool = True
         ):
     
-    HWDP_dist = general_setup.profile_HWD
+    HWD_profile = GS.HWDInfo.profile_HWD
 
     if runsim:
-        out_data = trnsys.run_trnsys_simulation(
-            general_setup, timeseries, verbose=True
-        )
-        df = trnsys.postprocessing_events_simulation(
-            general_setup, timeseries, out_data,
-        )
+        out_data = trnsys.run_simulation( GS, ts, verbose=False )
+        df = postprocessing.events_simulation( GS, ts, out_data)
     else:
-        df = pd.read_csv(
-            os.path.join(
-                DIR_RESULTS, 
-                f"0-Results_HWDP_dist_{HWDP_dist}.csv"
-                ),
-            index_col=0,
-        )
-        out_data = pd.read_csv(
-            os.path.join(
-                DIR_RESULTS, 
-                f"0-Results_HWDP_dist_{HWDP_dist}_detailed.csv",
-                ),
-            index_col=0,
-        )
-        df.index = [pd.to_datetime(i).date() for i in df.index]
-        out_data.index = pd.to_datetime(out_data.index)
+        pass
+        # df = pd.read_csv(
+        #     os.path.join(DIR_RESULTS, f"0-Results_HWDP_dist_{HWD_profile}.csv"),
+        #     index_col=0,
+        # )
+        # out_data = pd.read_csv(
+        #     os.path.join( DIR_RESULTS, f"0-Results_HWDP_dist_{HWD_profile}_detailed.csv",),
+        #     index_col=0,
+        # )
+        # df.index = [pd.to_datetime(i).date() for i in df.index]
+        # out_data.index = pd.to_datetime(out_data.index)
     
     #Saving the results if needed
     if not os.path.exists(DIR_RESULTS):
         os.mkdir(DIR_RESULTS)
     if savefile:
         df.to_csv(
-            os.path.join(
-                DIR_RESULTS,
-                f"0-Results_HWDP_dist_{HWDP_dist}.csv",
-                )
+            os.path.join( DIR_RESULTS, f"0-Results_HWDP_dist_{HWD_profile}.csv",)
             )
         out_data.to_csv(
-            os.path.join(
-                DIR_RESULTS,
-                f"0-Results_HWDP_dist_{HWDP_dist}_detailed.csv",
-                )
+            os.path.join( DIR_RESULTS, f"0-Results_HWDP_dist_{HWD_profile}_detailed.csv",)
             )
 
     return (out_data, df)
 
 #-------------------------
 def plot_histogram_end_of_day(
-        values,
-        xlim = (0,1),
-        xlbl = None,
-        ylbl = None,
-        file_name = None,
-        fldr_rslt = DIR_RESULTS,
-        savefig = False,
+        values: pd.DataFrame,
+        xlim: tuple = (0,1),
+        xlbl: str = None,
+        ylbl: str = None,
+        file_name: str = None,
+        fldr_rslt: str = DIR_RESULTS,
+        savefig: bool = False,
+        showfig: bool = False,
 ):
     fs = 16
     fig, ax = plt.subplots(figsize=(9, 6))
@@ -188,7 +135,9 @@ def plot_histogram_end_of_day(
             os.path.join(fldr_rslt, file_name),
             bbox_inches="tight",
         )
-    plt.show()
+    if showfig:
+        plt.show()
+    plt.close()
     return
 
 #-------------------------
@@ -196,7 +145,8 @@ def plots_histogram_end_of_days(
         df: pd.DataFrame,
         include: List,
         case: Union[int, str],
-        savefig: bool=False,
+        savefig: bool = False,
+        showfig: bool = False,
 ):
     for lbl in include:
         if lbl == "SOC_end":
@@ -206,7 +156,7 @@ def plots_histogram_end_of_days(
             file_name = f"Case_{case}_hist_SOC.png"
         if lbl == "TempTh_end":
             xlim = (20,65)
-            xlbl = "State of Charge (-)"
+            xlbl = "Thermostat Temperature (degC)"
             ylbl = "Frequency (-)"
             file_name = f"Case_{case}_hist_TempTh.png"
         if lbl=="E_HWD_day":
@@ -226,7 +176,8 @@ def plots_histogram_end_of_days(
             xlbl = xlbl,
             ylbl = ylbl,
             file_name = file_name,
-            savefig = savefig
+            savefig = savefig,
+            showfig = showfig,
             )
     return
 
@@ -235,6 +186,7 @@ def additional_plots(
         df : pd.DataFrame,
         case: Union[int, str] = None,
         savefig: bool = False,
+        showfig: bool = False,
 ):
 
     #Plot of distribution function of daily HWD
@@ -255,7 +207,9 @@ def additional_plots(
                 os.path.join(DIR_RESULTS, f"Case_{case}_HWD_Flow_ascending.png"),
                 bbox_inches="tight",
             )
-        plt.show()
+        if showfig:
+            plt.show()
+    plt.close()
 
     # SOC as function of Daily HWD
     fig, ax = plt.subplots(figsize=(9, 6))
@@ -269,7 +223,9 @@ def additional_plots(
             os.path.join(DIR_RESULTS, f"Case_{case}_HWD_SOC.png"),
             bbox_inches="tight",
         )
-    plt.show()
+    if showfig:
+        plt.show()
+    plt.close()
 
     # SOC as function of Thermostat Temp
     fig, ax = plt.subplots(figsize=(9, 6))
@@ -283,20 +239,24 @@ def additional_plots(
             os.path.join(DIR_RESULTS, f"Case_{case}_TempTh_SOC.png"),
             bbox_inches="tight",
         )
-    plt.show()
+    if showfig:
+        plt.show()
+    plt.close()
+    
     return
 
 #-------------------------
 def plot_histogram_2D(
-    general_setup: GeneralSetup,
+    GS: GeneralSetup,
     df : pd.DataFrame,
     out_data: pd.DataFrame,
     case: Union[int, str] = None,
     savefig: bool = False,
+    showfig: bool = False,
 ):
     
-    STEP = general_setup.STEP
-    DAYS = general_setup.DAYS
+    STEP = GS.simulation.STEP.get_value("min")
+    DAYS = GS.simulation.DAYS.get_value("d")
     
     # Probabilities of SOC through the day
     Nx = 24
@@ -329,26 +289,28 @@ def plot_histogram_2D(
     cb = fig.colorbar(surf, shrink=0.5, aspect=4)
     cb.ax.tick_params(labelsize=fs-2)
     ax.tick_params(axis="both", which="major", labelsize=fs)
+    ax.grid()
     if savefig:
         fig.savefig(
             os.path.join(DIR_RESULTS, f"Case_{case}_SOC_map.png"),
             bbox_inches="tight",
         )
-    plt.grid()
-    plt.show()
+    if showfig:
+        plt.show()
     plt.close(fig)
     return
 
 #-------------------------
 def plots_sample_simulations(
-    general_setup: GeneralSetup,
+    GS: GeneralSetup,
     out_data : pd.DataFrame,
     df: pd.DataFrame,
     case: Union[int, str],
     savefig: bool = False,
+    showfig: bool = False,
     t_ini: float = 3
 ):
-    DAYS = general_setup.DAYS
+    DAYS = GS.simulation.DAYS.get_value("d")
 
     # Plot with a sample of 10% of days
 
@@ -372,7 +334,9 @@ def plots_sample_simulations(
             os.path.join(DIR_RESULTS, f"Case_{case}_sample_SOC.png"),
             bbox_inches="tight",
         )
-    plt.show()
+    if showfig:
+        plt.show()
+    plt.close()
 
     # Thermostat temperature
     fig, ax = plt.subplots(figsize=(9, 6))
@@ -408,22 +372,25 @@ def plots_sample_simulations(
             os.path.join(DIR_RESULTS, f"Case_{case}_sample_TempTh.png"),
             bbox_inches="tight",
         )
-    plt.show()
+    if showfig:
+        plt.show()
+    plt.close()
 
 #-------------------------
 def regression_analysis_and_plots(
-    general_setup: GeneralSetup,
-    timeseries : pd.DataFrame,
+    GS: GeneralSetup,
+    ts : pd.DataFrame,
     df : pd.DataFrame,
     case: Union[int, str] = None,
     savefig: bool = False,
+    showfig: bool = False,
 ):
     
-    HWDP_dist = general_setup.profile_HWD
+    HWDP_dist = GS.HWDInfo.profile_HWD
     
     # Histogram of generated HWDP
-    HWDP_generated = timeseries.groupby(
-        timeseries.index.hour
+    HWDP_generated = ts.groupby(
+        ts.index.hour
         )["m_HWD"].sum()
     HWDP_generated = HWDP_generated / HWDP_generated.sum()
     list_hours = np.arange(0, 23 + 1)
@@ -457,7 +424,9 @@ def regression_analysis_and_plots(
                 os.path.join(DIR_RESULTS, f"Case_{case}_HWDP_methods_comparison.png"),
                 bbox_inches="tight",
             )
-        plt.show()
+        if showfig:
+            plt.show()
+        plt.close()
     
         fig, ax = plt.subplots(figsize=(9, 6))
         ax.bar(HWDP_generated.index, HWDP_template,
@@ -466,7 +435,9 @@ def regression_analysis_and_plots(
                 width=-0.4, align="edge",)
         ax.grid()
         ax.tick_params(axis="both", which="major", labelsize=fs)
-        plt.show()
+        if showfig:
+            plt.show()
+        plt.close()
 
     #Regresion
     for lbl in ["SOC_end", "TempTh_end"]:
@@ -486,8 +457,7 @@ def regression_analysis_and_plots(
 
         Y_pred = regr.predict(X)
 
-        show_plot = True
-        if show_plot:
+        if showfig:
             fig, ax = plt.subplots(figsize=(9, 6))
             ax.scatter(Y, Y_pred, s=2)
             Ymax = Y.max()
@@ -503,74 +473,123 @@ def regression_analysis_and_plots(
             plt.show()
 
     return [R2_SOC, R2_TempTh]
-    
-#-------------------------
-def main():
 
-    ## DEFINING CASES
-    # Cases are:
-    #    1: Only varying the initial time of event.
-    #    2: Only varying the ambient and mains temperature.
-    #    3: Only varying the duration and flow rate
-    #    4: Including different number of events
-    #    5: Varying everything
-    #    6: Selecting days randomnly from Sydney weather file
-
-    # Cases = [5,1,2,3,4]
-
-    load_profiles = True
+#---------------------
+def influence_sample_size():
     runsim = True
     savefig = True
     savefile = True
     DAYS = 100
-    t_ini = 3.0
-    #Profile Control
-    profile_control = 10
+    control_load = 10
     random_control = False
+    HWD_profile = 1
+    HWD_generator_method = 'events'
+    HWD_daily_dist = 'sample'
+    COLS_OUTPUT = ["DAYS", "time_presim", "time_sim", "time_total", "E_HWD_day", "m_HWD_day"]
+    data = pd.DataFrame( columns = COLS_OUTPUT )
+    data["DAYS"] = [10, 100, 500, 1000, 5000, 10000]
 
-    #Which HWDP will be used 
-    HWDP_dists = [1, 2, 3, 4, 5, 6, None]
-    HWDP_dist = 1
+    for (idx, row) in data.iterrows():
 
-    # HWDG_method = 'standard'
+        DAYS = row["DAYS"]
+
+        start_time = time.time()
+
+        GS = GeneralSetup()
+        GS.household.control_load = control_load
+        GS.household.control_random_on = random_control
+        GS.HWDInfo.profile_HWD = HWD_profile
+        GS.HWDInfo.daily_distribution = HWD_daily_dist
+        GS.simulation.STOP = Variable(int(24 * DAYS), "hr")
+
+        params_weather = {
+            "dataset":"meteonorm",
+            "location": GS.household.location,
+            "subset": "month",
+            "value": 1,
+        }
+        ts = loading_timeseries(
+            GS = GS,
+            params_weather = params_weather,
+            HWDG_method = HWD_generator_method,
+        )
+
+        time_presim = time.time() - start_time
+        
+        start_time = time.time()
+        (out_data, df) = run_or_load_simulation(
+            GS, ts, runsim = runsim, savefile=savefile
+        )
+        time_sim = time.time() - start_time
+
+        time_total = time_presim + time_sim
+
+        data.loc[idx,"time_presim"] = time_presim
+        data.loc[idx,"time_sim"] = time_sim
+        data.loc[idx,"time_total"] = time_total
+        data.loc[idx,"E_HWD_day"] = df["E_HWD_day"].mean()
+        data.loc[idx,"m_HWD_day"] = df["m_HWD_day"].mean()
+        print(data)
+    
+    print(data)
+    return
+
+#-------------------------
+def main():
+
+    load_profiles = True
+    runsim = True
+    savefig = True
+    showfig = False
+    savefile = True
+    t_ini = 3.0
+
+    DAYS = 1000
+    control_load = 10
+    random_control = False
+    HWD_profile = 1
     HWD_generator_method = 'events'
     HWD_daily_dist = 'sample'
 
-    CASES = [0, 1, 2, 3]
-    CASES = [1,]
+    # CASES = [0, 1, 2, 3]
+    CASES = [1,2,3,4,5,6]
     data = []
     for case in CASES:
         
         s_time = time.time()
 
-        weather_type = WEATHER_TYPES[case]
-        general_setup = GeneralSetup(
-            STOP = int(24 * DAYS),
-            STEP = 3,
-            YEAR = 2022,
-            profile_control = profile_control,
-            profile_HWD = HWDP_dist,
-            random_control = random_control,
-            weather_source = "local_file",
-            HWD_daily_dist = HWD_daily_dist,
-        )
-        timeseries = loading_timeseries(
-            general_setup = general_setup,
-            HWD_generator_method = HWD_generator_method,
-            HWDP_dist = HWDP_dist,
-            weather_type = weather_type
+        GS = GeneralSetup()
+        GS.household.control_load = control_load
+        GS.household.control_random_on = random_control
+        GS.HWDInfo.profile_HWD = case
+        GS.HWDInfo.daily_distribution = HWD_daily_dist
+
+        GS.simulation.STOP = Variable(int(24 * DAYS), "hr")
+        GS.simulation.STEP = Variable(3, "min")
+        GS.simulation.YEAR = Variable(2022, "-")
+
+        params_weather = {
+            "dataset":"meteonorm",
+            "location": GS.household.location,
+            "subset": "month",
+            "value": 1,
+        }
+
+        ts = loading_timeseries(
+            GS = GS,
+            params_weather = params_weather,
+            HWDG_method = HWD_generator_method,
         )
         (out_data, df) = run_or_load_simulation(
-            general_setup, timeseries, runsim = runsim, savefile=savefile
+            GS, ts, runsim = runsim, savefile=savefile
         )
-        trnsys.detailed_plots(
-                general_setup,
-                out_data,
+        postprocessing.detailed_plots(
+                GS, out_data,
                 fldr_results_detailed = DIR_RESULTS,
                 case = 'simple_event',
                 save_plots_detailed = False,
                 tmax = 120.
-                )
+        )
         time_simulation = time.time() - s_time
         print(f"Time spent in thermal simulation={time_simulation}")
 
@@ -578,15 +597,13 @@ def main():
         plots_histogram_end_of_days(
             df,
             ["SOC_end", "TempTh_end", "E_HWD_day", "m_HWD_day"],
-            case, savefig
+            case, savefig, showfig
         )        
-        additional_plots(df, case, savefig)
-        plot_histogram_2D(
-            general_setup, df, out_data, case, savefig
-        )
-        plots_sample_simulations(general_setup, out_data, df, case, savefig)
+        additional_plots(df, case, savefig, showfig)
+        plot_histogram_2D( GS, df, out_data, case, savefig, showfig )
+        plots_sample_simulations(GS, out_data, df, case, savefig, showfig)
         R2_SOC, R2_TempTh = regression_analysis_and_plots(
-            general_setup, timeseries, df, case, savefig
+            GS, ts, df, case, savefig, showfig
         )
         
         Risk_Shortage01 = len(df[df["SOC_end"] <= 0.1]) / len(df)
@@ -594,7 +611,7 @@ def main():
         Risk_Shortage02 = len(df[df["SOC_end"] <= 0.2]) / len(df)
         print(f"Fraction with SOC<0.2 at the end of the day: {Risk_Shortage02*100}%")
 
-        data_row = [HWDP_dist, Risk_Shortage01, Risk_Shortage02, R2_SOC, R2_TempTh]
+        data_row = [HWD_profile, Risk_Shortage01, Risk_Shortage02, R2_SOC, R2_TempTh]
         data.append(data_row)
 
     elapsed_time = time.time() - s_time
@@ -606,4 +623,7 @@ def main():
 
 
 if __name__ == '__main__':
+
+    # influence_sample_size()
+
     main()

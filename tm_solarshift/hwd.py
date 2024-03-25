@@ -37,17 +37,17 @@ class HWD():
     @classmethod
     def standard_case(cls):
 
-        standard_case = cls()
-        standard_case.profile_HWD = 1
+        case = cls()
+        case.profile_HWD = 1
         (daily_avg, unit_avg) = (200., "L/d")
-        standard_case.daily_avg = Variable(daily_avg, unit_avg)
-        standard_case.daily_std = Variable(daily_avg / 3.0, unit_avg)
-        standard_case.daily_min = Variable(0.0, unit_avg)
-        standard_case.daily_max = Variable(2*daily_avg , unit_avg)
-        standard_case.random_seed = np.random.SeedSequence().entropy
-        standard_case.daily_distribution = "truncnorm"       #Options: (None, "unif", "truncnorm", "sample")
+        case.daily_avg = Variable(daily_avg, unit_avg)
+        case.daily_std = Variable(daily_avg / 3.0, unit_avg)
+        case.daily_min = Variable(0.0, unit_avg)
+        case.daily_max = Variable(2*daily_avg , unit_avg)
+        case.random_seed = np.random.SeedSequence().entropy
+        case.daily_distribution = "truncnorm"       #Options: (None, "unif", "truncnorm", "sample")
         
-        return standard_case
+        return case
     
     #----------------------
     @staticmethod
@@ -69,7 +69,7 @@ class HWD():
         return event_basic
     
     @staticmethod
-    def event_file(file_name:str=None, sheet_name="Basic"):
+    def event_file(file_name: str=None, sheet_name="Basic"):
         if file_name is None:
             file_name = FILES_HWD_SAMPLES["HWD_events"]
             warnings.warn("No file path for events is given. Sample file is used.")
@@ -162,6 +162,8 @@ class HWD():
         interday_dist: pd.DataFrame = None,
         intraday_dist: int = None, 
         event_probs: pd.DataFrame = None,
+        file_name: str = FILES_HWD_SAMPLES["HWD_events"],
+        sheet_name: str = "Custom",
         columns: List[str] = TS_HWD,
     ) -> pd.DataFrame:
 
@@ -175,6 +177,8 @@ class HWD():
                                                interday_dist, 
                                                intraday_dist,
                                                event_probs,
+                                               file_name,
+                                               sheet_name,
                                                columns,)
         else:
             print(f"{method} is not a valid method for HWDP generator")
@@ -253,11 +257,13 @@ class HWD():
         interday_dist: pd.DataFrame = None,
         intraday_dist: int = None,
         event_probs: pd.DataFrame = None,
+        file_name: str = FILES_HWD_SAMPLES["HWD_events"],
+        sheet_name: str = "Basic",
         columns: List[str] = TS_HWD,
     ) -> pd.DataFrame:
         """
         This function generates HWD profiles different for each day, based on daily
-        consumption variability (defined by HWD_daily), and event characteristics
+        consumption variability (defined by interday_dist), and event characteristics
         """
         rng = np.random.default_rng(self.random_seed)
 
@@ -267,7 +273,7 @@ class HWD():
         if intraday_dist is None:
             intraday_dist = self.profile_HWD
         if event_probs is None:
-            event_probs = self.event_file()
+            event_probs = self.event_file(file_name=file_name, sheet_name=sheet_name)
 
         STEP = timeseries.index.freq.n
         STEP_h = STEP * CF("min","hr")

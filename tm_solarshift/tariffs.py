@@ -43,7 +43,7 @@ def get_import_rate(
                                                tariff_type = tariff_type,
                                                convert = True,)
         ts2["tariff"] = energy_plan["flat_rate"]
-        ts2["rate_type"] = "flat_rate"
+        ts2["rate_type"] = "flat"
 
     elif tariff_type == "tou":
         file_tou = os.path.join(DIR_TARIFFS, "tou_cache.csv")
@@ -81,10 +81,18 @@ def get_import_rate(
         )
         ts2["tariff"] = energy_plan["CL_rate"]
         ts2["rate_type"] = "CL"
+    
+    elif tariff_type == "gas":
+
+        # values for AGL's Residential Value Saver (standard). Average value is given
+        ts2["tariff"] = 0.033 * CF("MJ", "kWh")      #3.3 [cent/MJ]
+        ts2["rate_type"] = "gas"
+
 
     #Output
     ts["tariff"] = ts2["tariff"]
     ts["rate_type"] = ts2["rate_type"]
+
     if return_energy_plan:
         return (ts, energy_plan)
     else:

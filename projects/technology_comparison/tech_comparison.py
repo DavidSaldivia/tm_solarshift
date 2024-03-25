@@ -9,16 +9,16 @@ from tm_solarshift.devices import (
     HeatPump,
     GasHeaterInstantaneous,
     GasHeaterStorage,
-    SolarThermalGasAuxiliary
-    )
+    SolarThermalElecAuxiliary,
+)
 
 #Initializing all the heaters:
 HEATERS = {
+    "solar_thermal": SolarThermalElecAuxiliary(),
+    "gas_storage": GasHeaterStorage(),
+    "gas_instant": GasHeaterInstantaneous(),
     "resistive": ResistiveSingle(),
     "heat_pump": HeatPump(),
-    "gas_instant": GasHeaterInstantaneous(),
-    "gas_storage": GasHeaterStorage(),
-    "solar_thermal": SolarThermalGasAuxiliary(),        
 }
 
 HEATERS_COLORS = {
@@ -37,19 +37,12 @@ def main():
 
     for heater_name in HEATERS.keys():
         
-        GS.DEWH = HEATERS[heater_name]
-        output = GS.run_thermal_simulation( ts, verbose=True )
-        
-        import tm_solarshift.thermal_models.postprocessing as postprocessing
-        overall = postprocessing.annual_simulation(GS, ts, output)
-
         print(heater_name)
-        print(output)
-        print(overall)
-        print()
+        GS.DEWH = HEATERS[heater_name]
+        (out_all, out_overall) = GS.run_thermal_simulation( ts, verbose=True )
 
-        if heater_name == "gas_instant":
-            break
+        print(out_overall)
+        print()
 
     return
 

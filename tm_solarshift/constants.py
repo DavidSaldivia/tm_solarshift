@@ -18,10 +18,11 @@ class DIRECTORY():
         "weather" : os.path.join(DIR_MAIN, "data", "weather"),
         }
     DIR_RESULTS = os.path.join(DIR_MAIN, "results")
+    DIR_PROJECTS = os.path.join(DIR_MAIN, "projects")
     
     #FILES
     FILES_HWD_SAMPLES ={
-        "HWD_daily" : os.path.join(DIR_DATA["samples"], "HWD_Daily_Sample_site.csv"),
+        "HWD_daily" : os.path.join(DIR_DATA["samples"], "HWD_daily_sample_site.csv"),
         "HWD_events": os.path.join(DIR_DATA["samples"], "HWD_events.xlsx"),
         }
     FILES_SOLA = {

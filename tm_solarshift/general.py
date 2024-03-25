@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import List
+from typing import (List, Tuple, Dict)
 
 from tm_solarshift.constants import DEFINITIONS
 from tm_solarshift.units import Variable
@@ -17,7 +17,7 @@ from tm_solarshift.devices import (
     HeatPump,
     GasHeaterInstantaneous,
     GasHeaterStorage,
-    SolarThermalGasAuxiliary,
+    SolarThermalElecAuxiliary,
     SolarSystem,
 )
 
@@ -76,60 +76,51 @@ class GeneralSetup():
         )
         return ts[ts_columns]
     
-    
     #-------------------
     def run_thermal_simulation(
             self,
             ts: pd.DataFrame = None,
             verbose: bool = False,
-    ) -> pd.DataFrame:
+    ) -> Tuple[pd.DataFrame, Dict]:
         
         if ts is None:
-            ts = self.load_timeseries_default()
+            ts = self.create_ts_default()
         
-        if ((self.DEWH.__class__ == ResistiveSingle)
-            or (self.DEWH.__class__ == HeatPump)
-            ):
+        DEWH = self.DEWH
         
-            self.simulation.engine = "trnsys"
+        if (DEWH.__class__ == ResistiveSingle):
             import tm_solarshift.thermal_models.trnsys as trnsys
             from tm_solarshift.thermal_models import postprocessing
+            self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_simulation(self, ts, out_all)
-            return (out_all, out_overall)
-
-        elif self.DEWH.__class__ == GasHeaterInstantaneous:
-            self.simulation.engine = "own"
-            out_overall = self.DEWH.run_thermal_model(ts)
-            return out_overall
         
-        elif self.DEWH.__class__ == GasHeaterStorage:
-            #Run trnsys simulation for RS with GS.
-            #Use eta and nom_power from GasHeaterInstantaneous
-            from copy import deepcopy
+        elif (DEWH.__class__ == HeatPump):
             import tm_solarshift.thermal_models.trnsys as trnsys
             from tm_solarshift.thermal_models import postprocessing
-            
-            heater_aux = ResistiveSingle()
-            heater_aux.nom_power = self.DEWH.nom_power
-            heater_aux.eta = self.DEWH.eta
-
-            GS_aux = deepcopy(self)
-            GS_aux.DEWH = heater_aux
             self.simulation.engine = "trnsys"
-            out_all = trnsys.run_simulation(GS_aux, ts, verbose=verbose)
+            out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_simulation(self, ts, out_all)
 
+        elif (DEWH.__class__ == GasHeaterInstantaneous):
+            self.simulation.engine = "own"
+            import tm_solarshift.thermal_models.gas_heater as gas_heater
+            (out_all, out_overall) = gas_heater.instantaneous_fixed_eta(DEWH, ts, verbose=verbose)
+        
+        elif (DEWH.__class__ == GasHeaterStorage):
+            self.simulation.engine = "trnsys"
+            import tm_solarshift.thermal_models.gas_heater as gas_heater
+            (out_all, out_overall) = gas_heater.storage_fixed_eta(self, ts, verbose=verbose)
 
-            return None
-
-        elif self.DEWH.__class__ == SolarThermalGasAuxiliary:
-            #Run trnsys simulation for HP with COP=1 always and GS
-            #Calculate the solar fraction
-            return None
+        elif self.DEWH.__class__ == SolarThermalElecAuxiliary:
+            self.simulation.engine = "trnsys"
+            import tm_solarshift.thermal_models.solar_thermal as solar_thermal
+            (out_all, out_overall) = solar_thermal.run_thermal_model(self, ts, verbose=verbose)
         
         else:
             raise TypeError("DEWH class is not supported with any engine.")
+
+        return (out_all, out_overall)
 
 #------------------------------------
 class Household():

@@ -112,14 +112,14 @@ def events_simulation(
     ].mean()
     idx = np.unique(timeseries.index.date)
     df_aux = out_data.groupby(out_data.index.date)
-    df.loc[ df.index == idx, "SOC_end"] = df_aux.tail(1)["SOC"].values
+    df.loc[df.index == idx, "SOC_end"] = df_aux.tail(1)["SOC"].values
     df.loc[df.index == idx,"TempTh_end"] = df_aux.tail(1)["TempBottom"].values
     df.loc[df.index == idx,"EL_end"] = df_aux.tail(1)["E_Level"].values
 
     E_HWD_acum = (
         (out_data["Tank_FlowRate"] * STEP_h * cp
          * (out_data["TempTop"] - out_data["T_mains"])
-         * CF("J/h", "kW")
+         * CF("J", "kWh")
          ).groupby(out_data.index.date)
         .sum()
     )

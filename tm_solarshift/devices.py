@@ -130,6 +130,7 @@ class HeatPump():
         self.height_inlet = Variable(0.113, "m")
         self.height_outlet = Variable(1.317, "m")
         self.height_heater = Variable(0.103, "m")
+        self.height_thermostat = Variable(0.103, "m")
         self.U = Variable(0.9, "W/m2-K")
         self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
         self.temps_ini = 3  # [-] Initial temperature of the tank. Check editing_dck_tank() below for the options
@@ -141,6 +142,7 @@ class HeatPump():
         self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
         self.temp_deadband = Variable(10, "degC")
+
         
     @property
     def thermal_cap(self):
@@ -227,17 +229,17 @@ class GasHeaterInstantaneous():
                 pass          
             setattr(output, lbl, Variable(value, unit) )
         return output
-    
-    def run_thermal_model(self, ts: pd.DataFrame):
-        hw_flow = ts["m_HWD"]
-        return tm_heater_gas_instantaneuos(self, hw_flow)
 
 #-------------------------
 class GasHeaterStorage():
     def __init__(self):
-        # Default data from:
+
+        # Gas heater data are from GasInstantaneous:
         # https://www.rheem.com.au/rheem/products/Residential/Gas-Continuous-Flow/Continuous-Flow-%2812---27L%29/Rheem-12L-Gas-Continuous-Flow-Water-Heater-%3A-50%C2%B0C-preset/p/876812PF#collapse-1-2-1
         # Data from model Rheim 20
+
+        # Tank data are from ResistiveSingle default
+
         #heater
         self.nom_power = Variable(157., "MJ/hr")
         self.flow_water = Variable(20., "L/min")
@@ -250,6 +252,7 @@ class GasHeaterStorage():
         self.height_inlet = Variable(0.113, "m")
         self.height_outlet = Variable(1.317, "m")
         self.height_heater = Variable(0.103, "m")
+        self.height_thermostat = Variable(0.103, "m")
         self.U = Variable(0.9, "W/m2-K")
         self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
         self.temps_ini = 3  # [-] Initial temperature of the tank. Check editing_dck_tank() below for the options
@@ -304,63 +307,82 @@ class GasHeaterStorage():
     @property
     def area_loss(self):
         return tank_area_loss(self)
-    
-    # def run_thermal_model(self, ts: pd.DataFrame) -> pd.DataFrame:
 
-
-
-    #     return
-
-
-class SolarThermalGasAuxiliary():
+#-------------------
+class SolarThermalElecAuxiliary():
     def __init__(self):
-        self.nom_power = None
-        self.massflowrate = Variable(1, "kg/s")
+
+        #Nominal values
+        self.massflowrate = Variable(0.05, "kg/s")
         self.fluid = Water()
         self.area = Variable(2.0, "m2")
-        self.FRta = Variable(0.8, "-")
-        self.FRUL = Variable(0.9, "W/m2-K")
-        self.IAM = Variable(0.2, "-")
+        self.FRta = Variable(0.6, "-")
+        self.FRUL = Variable(3.0, "W/m2-K")
+        self.IAM = Variable(0.05, "-")
         self.lat = Variable(-33.86,"-")
         self.lon = Variable(151.22,"-")
         self.tilt = Variable(abs(self.lat.get_value("-")),"-")
         self.orient = Variable(180.0,"-")
+    
+        # tank
+        self.vol = Variable(0.315,"m3")
+        self.height = Variable(1.45, "m")  # It says 1.640 in specs, but it is external height, not internal
+        self.height_inlet = Variable(0.113, "m")
+        self.height_outlet = Variable(1.317, "m")
+        self.height_heater = Variable(0.103, "m")
+        self.height_thermostat = Variable(0.103, "m")
+        self.U = Variable(0.9, "W/m2-K")
+        self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
+        self.temps_ini = 3  # [-] Initial temperature of the tank. Check editing_dck_tank() below for the options
+        self.fluid = Water()
 
-    def run_thermal_model(
-            self,
-            ts: pd.DataFrame = None,
-    ) -> pd.DataFrame:
+        #control
+        self.temp_max = Variable(63.0, "degC")  #Maximum temperature in the tank
+        self.temp_min = Variable(45.0,"degC")  # Minimum temperature in the tank
+        self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
+        self.temp_consump = Variable(45.0, "degC") #Consumption temperature
+        self.temp_deadband = Variable(10, "degC")
 
-        from tm_solarshift.external.pvlib_utils import get_irradiance_plane
+        # Auxiliary resistive heater
+        self.nom_power = Variable(3600.0, "W")
+        self.eta = Variable(1.0, "-")
 
-        massflowrate = self.massflowrate.get_value("kg/s")
-        FRta = self.FRta.get_value("-")
-        FRUL = self.FRUL.get_value("W/m2-K")
-        latitude = self.lat.get_value("-")
-        longitude = self.lon.get_value("-")
-        tilt = self.tilt.get_value("-")
-        orient = self.orient.get_value("-")
-        cp = self.fluid.cp.get_value("J/kg-K")
+    @property
+    def thermal_cap(self):
+        return tank_thermal_capacity(self)
+    @property
+    def diam(self):
+        return tank_diameter(self)
+    @property
+    def area_loss(self):
+        return tank_area_loss(self)
 
-        temp_amb = ts["temp_amb"]
-        total_irrad = get_irradiance_plane(ts, latitude, longitude, tilt, orient)
-        temp_inlet = 30.     #Fix this!
-
-        eta = FRta - FRUL * (temp_inlet - temp_amb) / total_irrad
-        energy_useful = eta * total_irrad
-        temp_outlet = temp_inlet + energy_useful / (massflowrate * cp)
-
-
-        COLS = ["eta", "solar_fraction", "heater_gas", "E_HWD", "emissions"]
-        output = pd.DataFrame(index = ts.index, columns = COLS)
-
-
+    @classmethod
+    def from_model_file(
+        cls,
+        file_path: str = FILE_MODELS_TH,
+        model:str = "",
+        ):
+        
+        df = pd.read_csv(file_path, index_col=0)
+        specs = df.loc[model]
+        units = df.loc["units"]
+        
+        output = cls()
+        for (lbl,value) in specs.items():
+            unit = units[lbl]
+            try:
+                value = float(value)
+            except:
+                pass          
+            setattr(output, lbl, Variable(value, unit) )
 
         return output
 
-
 #-------------------------
-def tank_thermal_capacity(tank):
+def tank_thermal_capacity(
+        tank: ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
+) -> Variable:
     vol = tank.vol.get_value("m3")
     rho = tank.fluid.rho.get_value("kg/m3")
     cp = tank.fluid.cp.get_value("J/kg-K")
@@ -369,81 +391,29 @@ def tank_thermal_capacity(tank):
     thermal_cap = vol * (rho * cp) * (temp_max - temp_min) / 3.6e6
     return Variable( thermal_cap, "kWh")
 
-def tank_diameter(tank):
+def tank_diameter(
+        tank: ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
+) -> Variable:
     vol = tank.vol.get_value("m3")
     height = tank.height.get_value("m")
     diam = (4 * vol / np.pi / height) ** 0.5
     return Variable( diam , "m" )
 
-def tank_area_loss(tank):
+def tank_area_loss(
+        tank: ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
+) -> Variable:
     diam = tank.diam.get_value("m")
     height = tank.height.get_value("m")
     area_loss = np.pi * diam * (diam / 2 + height)
     return Variable( area_loss, "m2" ) 
 
-def tank_temp_high_control(tank):
+def tank_temp_high_control(
+        tank: ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
+) -> Variable:
     temp_max = tank.temp_max.get_value("degC")
     temp_deadband = tank.temp_deadband.get_value("degC")
     temp_high_control = temp_max - temp_deadband / 2.0
     return Variable(temp_high_control, "degC")
-
-# ----------------------
-def tm_heater_gas_instantaneuos(
-        heater: Any = GasHeaterInstantaneous(),
-        hw_flow: List = [200.,],
-        STEP_h: float = 3/60.
-) -> dict:
-    
-    if type(hw_flow) == list:
-        hw_flow = np.array(hw_flow)
-
-    kgCO2_TO_kgCH4 = 44. / 16.
-
-    nom_power = heater.nom_power.get_value("MJ/hr")
-    deltaT_rise = heater.deltaT_rise.get_value("dgrC")
-    flow_water = heater.flow_water.get_value("L/min")
-
-    #Assuming pure methane for gas
-    heat_value = heater.heat_value.get_value("MJ/kg_gas")
-    cp_water = heater.fluid.cp.get_value("J/kg-K")
-    rho_water = heater.fluid.rho.get_value("kg/m3")
-
-    #Calculations
-    flow_gas = nom_power / heat_value         #[kg/hr]
-    HW_energy = ((flow_water / CF("min", "s") * CF("L", "m3") )
-                 * rho_water * cp_water 
-                 * deltaT_rise
-                 * CF("W", "MJ/hr")
-                 )  #[MJ/hr]
-
-    eta = HW_energy / nom_power #[-]
-    specific_energy = (nom_power / flow_water
-                       * CF("min", "hr") * CF("MJ", "kWh")) #[kWh/L]
-
-    specific_emissions = (kgCO2_TO_kgCH4 
-                     / (heat_value * CF("MJ", "kWh"))
-                     / eta
-                    ) #[kg_CO2/kWh_thermal]
-
-    E_HWD = specific_energy * hw_flow * STEP_h   #[kWh]
-
-    annual_energy = E_HWD.sum()                                 #[kWh]
-    emissions = E_HWD * specific_emissions * CF("kg", "ton")    #[tonCO2]
-    annual_emissions = emissions.sum()                          #[tonCO2_annual]
-
-    output = {
-        "flow_gas" : flow_gas,
-        "HW_energy" : HW_energy,
-        "eta" : eta,
-        "specific_energy" : specific_energy,
-        "specific_emissions" : specific_emissions,
-        "annual_energy" : annual_energy,
-        "annual_emissions": annual_emissions,
-        "E_HWD" : E_HWD,
-        "emissions" : emissions,
-    }
-
-    return output
 
 #-------------------------
 def main():
@@ -464,10 +434,18 @@ def main():
     print(heater.temp_high_control)
     print()
 
-    #Example of Gas Heater usage and running its thermal model
+    #Example of Gas Heater Instantenous
     heater = GasHeaterInstantaneous()
-    output = heater.run_simple_thermal_model([200,100])
-    print(output)
+    print(heater.nom_power)
+    print(heater.eta)
+    print(heater.vol)
+    print()
+
+    #Example of Gas Heater Instantenous
+    heater = GasHeaterStorage()
+    print(heater.nom_power)
+    print(heater.eta)
+    print(heater.vol)
 
     return
 

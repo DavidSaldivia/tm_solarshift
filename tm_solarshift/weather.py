@@ -136,11 +136,11 @@ def random_days_from_dataframe(
     timeseries.
 
     """
+    
+    df_sample = df_sample.copy()
     list_dates = np.unique(df_sample.index.date)
     DAYS = len(np.unique(timeseries.index.date))
-    list_picked_dates = np.random.choice(
-        list_dates, size=DAYS
-    )
+    list_picked_dates = np.random.choice( list_dates, size=DAYS )
     df_sample["date"] = df_sample.index.date
     set_picked_days = [
         df_sample[df_sample["date"]==date] for date in list_picked_dates
@@ -269,7 +269,14 @@ def load_tmy(
     return from_tmy( ts, df_dataset, columns=columns )
 
 # -------------
-def load_dataset_meteonorm(location: str, YEAR: int = 2022) -> pd.DataFrame:
+def load_dataset_meteonorm(
+        location: str,
+        YEAR: int = 2022
+) -> pd.DataFrame:
+
+    if location not in DEFINITIONS.LOCATIONS_METEONORM:
+        raise ValueError(f"location {location} not in available METEONORM files")
+    
     df_dataset = pd.read_csv(
         os.path.join(
             DIR_METEONORM,

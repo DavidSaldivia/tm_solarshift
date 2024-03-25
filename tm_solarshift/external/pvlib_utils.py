@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from typing import Tuple, Dict
 import pvlib
 from pvlib import iotools, location
-from pvlib.irradiance import get_total_irradiance
+from pvlib.irradiance import (get_total_irradiance, aoi_projection)
 from pvlib.pvarray import pvefficiency_adr
 
 from tm_solarshift.constants import DIRECTORY
@@ -144,6 +144,19 @@ def get_irradiance_plane(
     )["poa_global"]
 
     return poa_global
+
+def get_incidence_angle_cosine(
+        df: pd.DataFrame,
+        latitude: float,
+        longitude: float,
+        tilt: float,
+        orient: float,
+        tz: str = tz_default,
+) -> pd.Series:
+    
+    solpos = get_solar_position(df.index, latitude, longitude, tz)
+    cosine_aoi = aoi_projection(tilt, orient, solpos["apparent_zenith"], solpos["azimuth"])
+    return cosine_aoi
 
 #---------------
 def get_PV_generation(

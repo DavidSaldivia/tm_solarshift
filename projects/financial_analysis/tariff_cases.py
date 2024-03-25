@@ -20,39 +20,58 @@ def plot_results(
     width: float = 0.1,
 )-> None:
 
+    # creating the main objects (fix, ax) and some constants
     fig, ax = plt.subplots(figsize=(9,6))
     fs = 16
     width = 0.25
+    N_COLS = 5
+    #--------------------------
+    #plotting non-solar results
     aux1 = results[~results["has_solar"]]
+    
+    # main pandas' comparison operators: and is &; or is |, not is ~
+    # aux = results[ (results["energy_cost"] > 500.) (results["type_tariff"] == "flat") ]
+
     lbls = aux1["name"].to_list() + ["diverter w C1", "diverter w flat"]
-    aux1["x"] = np.arange(5) - width/2.
+    aux1["x"] = np.arange(N_COLS) - width/2.
+
     ax.bar(
         aux1["x"], aux1["energy_cost"], width, alpha=0.8, color="C0", label="No Solar",
     )
-    
+
+    #--------------------------
+    #plotting solar results
     aux2 = results[results["has_solar"]]
-    aux2.loc[5,"energy_cost"] = aux1.loc[0,"energy_cost"]
+    aux2.loc[N_COLS,"energy_cost"] = aux1.loc[0,"energy_cost"]
     aux2["x"] = np.arange(7) + width/2.
     ax.bar(
         aux2["x"], aux2["energy_cost"], width, alpha=0.8, color="C1", label="Solar",
     )
     
+    # ------------------------
+    # adding percentage annotation
     for i in range(5):
         pct_change = (
-            aux2.loc[i+5, "energy_cost"] - aux1.loc[i, "energy_cost"]
+            aux2.loc[i+N_COLS, "energy_cost"] - aux1.loc[i, "energy_cost"]
             )/aux1.loc[i, "energy_cost"]
         txt = f"{pct_change:.2%}"
-        ax.annotate(txt, (aux2.loc[i+5,"x"]-width/2.,aux2.loc[i+5,"energy_cost"]))
+        location = ( aux2.loc[i+N_COLS,"x"]-width/2., aux2.loc[i+N_COLS,"energy_cost"] )
+        ax.annotate(txt, location )
 
-    ax.legend(fontsize=fs-2)
+    #--------------------------
+    # formatting the plot
+    ax.legend(loc=0, fontsize=fs-2)
     ax.grid()
-    
     # ax.set_ylim(0.5,0.8)
     ax.set_xticks(np.arange(7))
+    # ax.set_yticks(numbers)
     ax.set_xticklabels(lbls, rotation=45)
     ax.set_xlabel( 'Cases of interest', fontsize=fs)
     ax.set_ylabel( 'Annual energy cost (AUD)', fontsize=fs)
     ax.tick_params(axis='both', which='major', labelsize=fs)
+
+    #--------------------------
+    # saving the plot
     if savefig:
         fig.savefig(
             os.path.join(DIR_PROJECT, '0-energy_cost.png'),
@@ -60,6 +79,7 @@ def plot_results(
     if showfig:
         plt.show()
     plt.close()
+
     return
 
 #--------------
@@ -161,6 +181,8 @@ def run_simulations(cases):
     print(cases)
     plot_results(cases, savefig=True, showfig=True)
     return
+
+#------------------------
 
 if __name__ == "__main__":
     
