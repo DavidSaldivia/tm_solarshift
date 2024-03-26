@@ -35,11 +35,20 @@ class GeneralSetup():
         self.HWDInfo = HWD.standard_case( id=self.id )
         self.simulation = ThermalSimulation()
 
+    #---------------
     def create_ts_empty(
         self,
         ts_columns: List[str] = TS_COLUMNS_ALL,
     ) -> pd.DataFrame:
+        """Create an empty timeseries dataframe (ts).
+        Useful to populate ts manually
 
+        Args:
+            ts_columns (List[str], optional): columns to include. Defaults to TS_COLUMNS_ALL.
+
+        Returns:
+            pd.DataFrame: ts (timeseries dataframe)
+        """
         START = self.simulation.START.get_value("hr")
         STEP = self.simulation.STEP.get_value("min")
         YEAR = self.simulation.YEAR.get_value("-")
@@ -50,6 +59,7 @@ class GeneralSetup():
         return pd.DataFrame(index=idx, columns=ts_columns)
 
 
+    #---------------
     def create_ts(
         self,
         ts_columns: List[str] = TS_COLUMNS_ALL,
@@ -104,7 +114,7 @@ class GeneralSetup():
             verbose (bool, optional): Print stage of simulation. Defaults to False.
 
         Raises:
-            TypeError: _description_
+            TypeError: DEWH object and thermal model engine are not compatible
 
         Returns:
             Tuple[pd.DataFrame, Dict]: (out_all, out_overall) = (detailed results, overall results)
