@@ -1,20 +1,17 @@
 # -*- coding: utf-8 -*-
-
 import pandas as pd
 import tm_solarshift.general as general
-from tm_solarshift.units import VariableList
-
 import tm_solarshift.parametric as parametric
 PARAMS_OUT = parametric.PARAMS_OUT
 
 #------------------------------
-def parametric_analysis_tank():
+def parametric_analysis_tank() -> pd.DataFrame:
     """
     Example of a parametric analysis over parameters in the tank.
     """
-    
-    GS_base = general.GeneralSetup()
+    from tm_solarshift.units import VariableList
 
+    GS_base = general.GeneralSetup()
     params_in = {
         'DEWH.nom_power' : VariableList([2400., 3600., 4800.], "W"),
         'DEWH.temp_max'  : VariableList([55., 65., 75.], 'degC'),
@@ -34,9 +31,10 @@ def parametric_analysis_tank():
         file_results_general  = '0-parametric_tank.csv',
         append_results_general = False       #If false, create new file
         )
+    return runs
 
 #------------------------
-def parametric_analysis_HP():
+def parametric_analysis_HP() -> pd.DataFrame:
     """
     Example of a parametric analysis using a heat pump heater
     """
@@ -63,12 +61,13 @@ def parametric_analysis_HP():
         file_results_general  = '0-parametric_ResistiveSingle.csv',
         append_results_general = False       #If false, create new file
         )
+    return runs
 
 #------
 if __name__ == "__main__":
 
-    parametric_analysis_tank()
+    runs = parametric_analysis_tank()
 
-    # parametric_analysis_HP()
+    # runs = parametric_analysis_HP()
     
     pass
