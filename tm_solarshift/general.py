@@ -82,6 +82,8 @@ class GeneralSetup():
         type_sim = self.simulation.type_sim
         YEAR = self.simulation.YEAR.get_value("-")
         HWD_method = self.HWDInfo.method
+
+        self.simulation.params_weather["location"] = location
         type_sim_weather = DEFINITIONS.WEATHER_SIMULATIONS[type_sim]
         params_weather = self.simulation.params_weather
 
@@ -184,7 +186,7 @@ class ThermalSimulation():
         #weather
         self.params_weather = {
             "dataset": "meteonorm",
-            "location": "Sydney",
+            "location": None,
             "subset" : None,
             "random" : False,
             "value" : np.nan,

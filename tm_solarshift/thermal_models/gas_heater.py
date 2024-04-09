@@ -53,6 +53,7 @@ def instantaneous_fixed_eta(
     E_HWD_acum = E_HWD.sum()                                    #[kWh]
     emissions = E_HWD * specific_emissions * CF("kg", "ton")    #[tonCO2]
     emissions_total = emissions.sum()                           #[tonCO2_annual]
+    emissions_marginal = emissions.sum()                        #[tonCO2_annual]
 
     heater_heat_acum = E_HWD_acum / eta
     m_HWD_avg = (hw_flow * STEP_h).sum() / DAYS
@@ -65,6 +66,7 @@ def instantaneous_fixed_eta(
         "temp_amb_avg": temp_amb_avg,
         "temp_mains_avg": temp_mains_avg,
         "emissions_total": emissions_total,
+        "emissions_marginal": emissions_marginal,
         "solar_ratio": 0.0,
         "t_SOC0": 0.0,
 
@@ -103,7 +105,10 @@ def storage_fixed_eta(
     sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
 
     emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
+    emissions_marginal = emissions_total
+    
     out_overall["emissions_total"] = emissions_total
+    out_overall["emissions_marginal"] = emissions_marginal
     out_overall["solar_ratio"] = 0.0
 
     return (out_all, out_overall)

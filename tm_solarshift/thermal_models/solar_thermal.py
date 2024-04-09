@@ -79,6 +79,10 @@ def run_thermal_model(
         (out_all["HeaterPower_no_solar"] * CF("kJ/h", "MW")) * STEP_h
         * ts["Intensity_Index"]
         ).sum()
+    out_overall["emissions_marginal"] = (
+        (out_all["HeaterPower_no_solar"] * CF("kJ/h", "MW")) * STEP_h
+        * ts["Marginal_Index"]
+        ).sum()
     out_overall["heater_power_acum"] = (out_overall["heater_power_acum"] - out_overall["solar_energy_u"])
 
     # print(out_overall)

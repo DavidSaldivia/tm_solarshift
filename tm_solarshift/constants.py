@@ -15,6 +15,7 @@ class DIRECTORY():
         "samples" : os.path.join(DIR_MAIN, "data", "samples"),
         "specs" : os.path.join(DIR_MAIN, "data", "device_specs"),
         "tariffs" : os.path.join(DIR_MAIN, "data", "tariffs_json_2023-24"),
+        "gas" : os.path.join(DIR_MAIN, "data", "tariffs_gas"),
         "weather" : os.path.join(DIR_MAIN, "data", "weather"),
         }
     DIR_RESULTS = os.path.join(DIR_MAIN, "results")

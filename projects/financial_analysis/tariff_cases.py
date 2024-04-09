@@ -107,7 +107,6 @@ def plot_results_ruby(
 
     lbls = aux1["name"].to_list() + ["diverter w C1", "diverter w flat"]
     aux1["x"] = np.arange(N_COLS) - width/2.
-
     ax.bar(
         aux1["x"], aux1["energy_cost"], width, alpha=0.8, color="C0", label="No Solar",
     )

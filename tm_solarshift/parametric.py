@@ -5,12 +5,12 @@ import copy
 import itertools
 import numpy as np
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import tm_solarshift.general as general
 from tm_solarshift.constants import DIRECTORY
 from tm_solarshift.units import (Variable, VariableList)
-from tm_solarshift.devices import ResistiveSingle
+from tm_solarshift.devices import (ResistiveSingle, GasHeaterInstantaneous)
 from  tm_solarshift.thermal_models import (trnsys, postprocessing)
 
 PARAMS_OUT = [
@@ -18,7 +18,7 @@ PARAMS_OUT = [
     'E_HWD_acum', 'eta_stg', 'cycles_day', 'SOC_avg',
     'm_HWD_avg', 'temp_amb_avg', 'temp_mains_avg',
     'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
-    'emissions_total','solar_ratio',
+    'emissions_total', 'emissions_marginal', 'solar_ratio',
 ]
 
 DIR_DATA = DIRECTORY.DIR_DATA
@@ -30,8 +30,7 @@ pd.set_option('display.max_columns', None)
 #-------------
 def settings(
         params_in : Dict[str, VariableList] = {},
-        params_out: List[str] = PARAMS_OUT,
-        ) -> pd.DataFrame:
+        ) -> Tuple[pd.DataFrame, Dict]:
     """ 
     This function creates a parametric run. A pandas dataframe with all the runs required.
     The order of running for params_in is "first=outer".
@@ -42,28 +41,31 @@ def settings(
 
     Returns:
         pd.DataFrame: set with simulation runs to be performed in the parametric analysis
+        Dict: dictionary with units for each parameter
+
     """
     cols_in = params_in.keys()
     params_values = []
+    params_units = {}
     for lbl in params_in:
         values = params_in[lbl]
         if type(values)==VariableList:
             values = values.get_values(values.unit)
+            params_units[lbl] = values.unit
+        else:
+            params_units[lbl] = None
         params_values.append(values)
 
     runs = pd.DataFrame(
         list(itertools.product(*params_values)), 
         columns=cols_in,
         )
-    for col in params_out:
-        runs[col] = np.nan
-    return runs
-
+    return (runs, params_units)
 
 #-----------------------------
 def analysis(
-    runs_in: pd.DataFrame,
-    params_in: Dict,
+    cases_in: pd.DataFrame,
+    units_in: Dict[str,str],
     params_out: List = PARAMS_OUT,
     GS_base = general.GeneralSetup(),
     save_results_detailed: bool = False,
@@ -80,8 +82,8 @@ def analysis(
     The combination of all possible values is performed.
 
     Args:
-        runs_in (pd.DataFrame): a dataframe with all the runs. If not given, it'll be created from params_in and params_out.
-        params_in (Dict): dictionary where the keys are the parameter name and values are list of values (see example)
+        cases_in (pd.DataFrame): a dataframe with all the inputss.
+        units_in (Dict): list of units with params_units[lbl] = unit
         params_out (List): list of labels of expected output. Defaults to PARAMS_OUT.
         GS_base (_type_, optional): GS object used as base case. Defaults to general.GeneralSetup().
         save_results_detailed (bool, optional): Defaults to False.
@@ -97,34 +99,39 @@ def analysis(
     Returns:
         pd.DataFrame: An updated version of the runs_in dataframe, with the output values.
     """
-    runs = runs_in.copy()
+
+    params_in = cases_in.columns
+    runs_out = cases_in.copy()
+    for col in params_out:
+        runs_out[col] = np.nan
     
     if append_results_general:
         runs_old = pd.read_csv(
             os.path.join(
-                DIR_RESULTS, fldr_results_general, file_results_general
+                fldr_results_general, file_results_general
                 )
             ,index_col=0
             )
       
-    for index, row in runs.iterrows():
+    for index, row in runs_out.iterrows():
         
         if verbose:
-            print(f'RUNNING SIMULATION {index+1}/{len(runs)}')
+            print(f'RUNNING SIMULATION {index+1}/{len(runs_out)}')
         GS = copy.copy(GS_base)
 
-        updating_parameters( GS, row, params_in )
+        updating_parameters( GS, row[params_in], units_in )
         
         if verbose:
-            print("Creating Profiles for Simulation")
+            print("Creating Timeseries for simulation")
         ts = GS.create_ts()
 
         if verbose:
-            print("Executing TRNSYS simulation")
-        out_data = trnsys.run_simulation(GS, ts)
-        out_overall = postprocessing.annual_simulation(GS, ts, out_data)
+            print("Executing thermal simulation")
+        (out_data,out_overall) = GS.run_thermal_simulation(ts, verbose=verbose)
+        # out_data = trnsys.run_simulation(GS, ts)
+        # out_overall = postprocessing.annual_simulation(GS, ts, out_data)
         values_out = [out_overall[lbl] for lbl in params_out]
-        runs.loc[index, params_out] = values_out
+        runs_out.loc[index, params_out] = values_out
         
         #----------------
         #General results?
@@ -134,17 +141,21 @@ def analysis(
                 os.mkdir(fldr)
                 
             if append_results_general:
-                runs_save = pd.concat( [runs_old,runs], ignore_index=True )
+                runs_save = pd.concat( [runs_old, runs_out], ignore_index=True )
                 runs_save.to_csv(
                     os.path.join(fldr, file_results_general)
                 )
             else:
-                runs.to_csv(
+                runs_out.to_csv(
                     os.path.join(fldr, file_results_general)
                 )
                 
+
         #-----------------
         #Detailed results?
+        if out_data is None:
+            continue
+        
         case = f'case_{index}'
         if save_results_detailed:
             fldr = os.path.join(DIR_RESULTS,fldr_results_detailed)
@@ -166,16 +177,16 @@ def analysis(
                 showfig = showfig
                 )
             
-        print(runs.loc[index])
+        print(runs_out.loc[index])
         
-    return runs
+    return runs_out
 
 #-------------
 def updating_parameters(
         GS: general.GeneralSetup,
-        row: pd.Series,
-        params_in: Dict,
-):
+        row_in: pd.Series,
+        units_in: List = [],
+) -> None:
     """updating parameters for those of the specific run.
     This function update the GS object. It takes the string and converts it into GS attributes.
 
@@ -184,48 +195,67 @@ def updating_parameters(
         row (pd.Series): values of the specific run (it contains all input and output of the parametric study)
         params_in (Dict): labels of the parameters (input)
     """
-    params_row = row[params_in.keys()].to_dict()
 
-    for parameter in params_row:
-        
-        if '.' in parameter:
-            (obj_name, param_name) = parameter.split('.')
+    for (key, value) in row_in.items():
+        if '.' in key:
+            (obj_name, param_name) = key.split('.')
 
             #Retrieving first level attribute (i.e.: DEWH, household, simulation, etc.)
             object = getattr(GS, obj_name)
-
-            # Defining the attribute value and assigning to first level object
-            if params_in[parameter].__class__ == VariableList:
-                param_value = Variable(params_row[parameter], params_in[parameter].unit)
+            
+            unit = units_in[key]
+            if unit is not None:
+                param_value = Variable(value, unit)
             else:
-                param_value = params_row[parameter]
+                param_value = value
             setattr(object, param_name, param_value)
 
             # Reassigning the first level attribute to GS
             setattr(GS, obj_name, object)
 
         else:
-            setattr(
-                GS, parameter, params_row[parameter]
-            )
+            setattr(GS, key, value)
+    return None
 
-    return
+    # params_row = row_in.to_dict()
+
+    # for parameter in params_row:
+        
+    #     if '.' in parameter:
+    #         (obj_name, param_name) = parameter.split('.')
+
+    #         #Retrieving first level attribute (i.e.: DEWH, household, simulation, etc.)
+    #         object = getattr(GS, obj_name)
+
+    #         # Defining the attribute value and assigning to first level object
+    #         if params_in[parameter].__class__ == VariableList:
+    #             param_value = Variable(params_row[parameter], params_in[parameter].unit)
+    #         else:
+    #             param_value = params_row[parameter]
+    #         setattr(object, param_name, param_value)
+
+    #         # Reassigning the first level attribute to GS
+    #         setattr(GS, obj_name, object)
+
+    #     else:
+    #         setattr(
+    #             GS, parameter, params_row[parameter]
+    #         )
 
 #------------------------------
 def parametric_run_test():
     
+    GS_base = general.GeneralSetup()
+    GS_base.DEWH = ResistiveSingle.from_model_file(model="491315")
+
     params_in = {
         'household.location' : ["Sydney",],
         'household.control_load'  : [0,1,2],
         }
-    
-    GS_base = general.GeneralSetup()
-    GS_base.DEWH = ResistiveSingle.from_model_file(model="491315")
-
-    runs = settings(params_in, PARAMS_OUT)
+    (runs, params_units) = settings(params_in)
 
     runs = analysis(
-        runs, params_in, PARAMS_OUT,
+        runs, params_units, PARAMS_OUT,
         GS_base = GS_base,
         save_results_detailed = True,
         gen_plots_detailed    = True,

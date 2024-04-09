@@ -74,7 +74,11 @@ def annual_simulation(
         (heater_power * CF("kJ/h", "MW")) * STEP_h
         * timeseries["Intensity_Index"]
         ).sum()
-
+    emissions_marginal = (
+        (heater_power * CF("kJ/h", "MW")) * STEP_h
+        * timeseries["Marginal_Index"]
+        ).sum()
+    
     out_overall = {
         "heater_heat_acum": heater_heat_acum,
         "heater_power_acum": heater_power_acum,
@@ -92,6 +96,7 @@ def annual_simulation(
         "SOC_050": SOC_050,
         "t_SOC0": t_SOC0,
         "emissions_total": emissions_total,
+        "emissions_marginal": emissions_marginal,
         "solar_ratio": solar_ratio,
     }
 

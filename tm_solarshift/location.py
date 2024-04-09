@@ -18,7 +18,7 @@ LOCATIONS_COORDINATES = DEFINITIONS.LOCATIONS_COORDINATES
 
 #------------------
 class Location():
-    def __init__(self, value: str|int|Tuple[float,float] = "Sydney"):
+    def __init__(self, value: str|int|Tuple[float,float] = "Sydney",):
         self.value = value
         
         if type(value) == str:
@@ -76,72 +76,6 @@ class Location():
     def lat(self) -> float:
         return self.coords[1]
 
-# #------------------
-# class Location_Old():
-#     def __init__(self, value: str|int|Tuple[float,float] = "Sydney"):
-#         self.value = value
-
-#     @property
-#     def state(self) -> str:
-#         if self.value in LOCATIONS_STATE:
-#             return LOCATIONS_STATE[self.value]
-#         else:
-#             warnings.warn(f"location {self.value} has not a state associated. Check constants.DEFINITIONS.LOCATIONS_STATE. return None")
-#             return None
-#     @property
-#     def coords(self) -> Tuple[float,float]:
-#         return LOCATIONS_COORDINATES[self.value]
-#     @property
-#     def postcode(self) -> int:
-#         coords = self.coords
-#         return from_coords(coords, get="postcode")
-#     @property
-#     def lon(self) -> float:
-#         return self.coords[0]
-#     @property
-#     def lat(self) -> float:
-#         return self.coords[1]
-
-# #---------
-# class Postcode_Old():
-#     def __init__(self, value: int = 2035):
-#         self.value = value
-
-#     @property
-#     def state(self) -> str:
-#         return from_postcode(self.value, get = "state")
-#     @property
-#     def postcode(self) -> int:
-#         return self.value
-#     @property
-#     def coords(self) -> Tuple[float,float]:
-#         return from_postcode(self.value, get = "coords")
-#     @property
-#     def long(self) -> float:
-#         return self.coords[0]
-#     @property
-#     def lat(self) -> float:
-#         return self.coords[1]
-
-# #---------
-# class Coords_Old():
-#     def __init__(self, value: Tuple[float,float] = (150., -33.) ):
-#         self.lon = value[0]
-#         self.lat = value[1]
-    
-#     @property
-#     def value(self) -> Tuple[float,float]:
-#         return (self.lon, self.lat)
-#     @property
-#     def coords(self) -> Tuple[float,float]:
-#         return (self.lon, self.lat)
-#     @property
-#     def state(self) -> str:
-#         return from_coords(self.value, get="state")
-#     @property
-#     def postcode(self) -> str:
-#         return from_coords(self.value, get="postcode")
-
 #---------------
 def from_postcode(
     postcode: int = 2035,
@@ -197,7 +131,7 @@ def from_coords(
         warnings.warn(f"{get} is not a valid value for 'get'. Returning None")
         return None
 
-
+#------------------
 def main():
     
     # location = Location("Sydney")

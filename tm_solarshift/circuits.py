@@ -3,10 +3,10 @@ import sys
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from typing import Optional, List, Any
 
 from tm_solarshift.constants import DIRECTORY, DEFINITIONS
+from tm_solarshift.devices import SolarSystem
 DIR_DATA = DIRECTORY.DIR_DATA
 DEFINITION_SEASON = DEFINITIONS.SEASON
 TS_TYPES = DEFINITIONS.TS_TYPES
@@ -29,10 +29,22 @@ def profile_step(df:pd.DataFrame, t1:float, t2:float, A1:float, A0:float=0)-> pd
 #---------------
 def load_PV_generation(
         timeseries: pd.DataFrame,
-        solar_system: Any,
+        solar_system: SolarSystem,
         columns: List[str] = ["PV_Gen"],
         ) -> pd.DataFrame:
+    """Function to create/load simple gaussian profile for PV generation.
 
+    Args:
+        timeseries (pd.DataFrame): timeseries dataframe
+        solar_system (SolarSystem): devices.SolarSystem object
+        columns (List[str], optional): Columns to be replaced in ts. Defaults to ["PV_Gen"].
+
+    Raises:
+        ValueError: type of PV profile is not valid
+
+    Returns:
+        pd.DataFrame: updated timeseries dataframe
+    """
     profile_PV = solar_system.profile_PV
     nom_power = solar_system.nom_power.get_value("kJ/hr")
     df_PV = pd.DataFrame(index=timeseries.index, columns=columns)
@@ -72,7 +84,7 @@ def main():
     
     from tm_solarshift.general import GeneralSetup
     GS = GeneralSetup()
-    ts = GS.simulation.create_new_profile()
+    ts = GS.create_ts()
     solar_system = GS.solar_system
     
     COLS = TS_TYPES["electric"]

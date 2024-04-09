@@ -16,6 +16,7 @@ from tm_solarshift.external.energy_plan_utils import (
 )
 
 DIR_TARIFFS = DIRECTORY.DIR_DATA["tariffs"]
+GAS_TARIFF_SAMPLE_FILE = os.path.join(DIRECTORY.DIR_DATA["gas"],"energyaustralia_basic.json")
 
 #-----------
 def get_import_rate(
@@ -38,56 +39,58 @@ def get_import_rate(
     ts2["pv_energy"] = 0.       #Not used, defined to avoid error inside Rui's code
     ts2["load_energy"] = 0.     #Not used, defined to avoid error inside Rui's code
     
-    if tariff_type == "flat":
-        energy_plan = get_energy_plan_for_dnsp(dnsp,
-                                               tariff_type = tariff_type,
-                                               convert = True,)
-        ts2["tariff"] = energy_plan["flat_rate"]
-        ts2["rate_type"] = "flat"
-
-    elif tariff_type == "tou":
-        file_tou = os.path.join(DIR_TARIFFS, "tou_cache.csv")
-        
-        if os.path.isfile(file_tou):
+    match tariff_type:
+        case "flat":
+    # if tariff_type == "flat":
             energy_plan = get_energy_plan_for_dnsp(dnsp,
-                                                   tariff_type = tariff_type,
-                                                   convert=True
-            )
-            ts3 = pd.read_csv(file_tou, index_col=0)
-            ts3.index = pd.to_datetime(ts3.index)
-        else:
+                                                tariff_type = tariff_type,
+                                                convert = True,)
+            ts2["tariff"] = energy_plan["flat_rate"]
+            ts2["rate_type"] = "flat"
+        case "tou":
+    # elif tariff_type == "tou":
+            file_tou = os.path.join(DIR_TARIFFS, "tou_cache.csv")
+            
+            if os.path.isfile(file_tou):
+                energy_plan = get_energy_plan_for_dnsp(dnsp,
+                                                    tariff_type = tariff_type,
+                                                    convert=True
+                )
+                ts3 = pd.read_csv(file_tou, index_col=0)
+                ts3.index = pd.to_datetime(ts3.index)
+            else:
+                energy_plan = get_energy_plan_for_dnsp(
+                    dnsp, tariff_type=tariff_type, convert=True
+                )
+                    
+                (_, ts3) = get_energy_breakdown(
+                    tariff_type=tariff_type,
+                    tariff_structure=energy_plan,
+                    raw_data=ts2,
+                    resolution=180,
+                    return_raw_data=True)
+                ts3.to_csv(file_tou)
+
+            ts2["tariff"] = ts3["import_rate"]
+            ts2["rate_type"] = ts3["rate_type"]
+        
+        case "CL":
+    # elif tariff_type == "CL":
             energy_plan = get_energy_plan_for_dnsp(
-                dnsp, tariff_type=tariff_type, convert=True
+                dnsp,
+                tariff_type="flat",
+                convert=True,
+                controlled_load_num = control_load,
+                switching_cl = True,
             )
-                
-            (_, ts3) = get_energy_breakdown(
-                tariff_type=tariff_type,
-                tariff_structure=energy_plan,
-                raw_data=ts2,
-                resolution=180,
-                return_raw_data=True)
-            ts3.to_csv(file_tou)
-
-        ts2["tariff"] = ts3["import_rate"]
-        ts2["rate_type"] = ts3["rate_type"]
-    
-    elif tariff_type == "CL":
-        energy_plan = get_energy_plan_for_dnsp(
-            dnsp,
-            tariff_type="flat",
-            convert=True,
-            controlled_load_num = control_load,
-            switching_cl = True,
-        )
-        ts2["tariff"] = energy_plan["CL_rate"]
-        ts2["rate_type"] = "CL"
-    
-    elif tariff_type == "gas":
-
-        # values for AGL's Residential Value Saver (standard). Average value is given
-        ts2["tariff"] = 0.033 * CF("MJ", "kWh")      #3.3 [cent/MJ]
-        ts2["rate_type"] = "gas"
-
+            ts2["tariff"] = energy_plan["CL_rate"]
+            ts2["rate_type"] = "CL"
+        case "gas":
+            # values for AGL's Residential Value Saver (standard). Average value is given
+            ts2["tariff"] = 0.033 * CF("MJ", "kWh")      #3.3 [cent/MJ]
+            ts2["rate_type"] = "gas"
+        case _:
+            raise ValueError("type tariff not among the available options.")
 
     #Output
     ts["tariff"] = ts2["tariff"]
@@ -98,7 +101,7 @@ def get_import_rate(
     else:
         return ts
 
-
+#------------------------
 # @lru_cache(maxsize=20)
 def calculate_energy_cost(
         row: pd.Series,
@@ -118,7 +121,7 @@ def calculate_energy_cost(
         GS.household.tariff_type = tariff_type
         GS.household.control_type = control_type
         GS.household.control_load = control_load
-        ts = GS.create_ts_default()
+        ts = GS.create_ts()
         GS.run_thermal_simulation(ts)
 
     else:
@@ -205,7 +208,6 @@ def plot_results(
         plt.show()
     plt.close()
     return
-    return
 
 #--------------------
 def test_get_import_rate():
@@ -273,10 +275,54 @@ def test_calculate_energy_cost():
     
     return
 
-#--------------------
+#-------------
+def get_gas_rate(
+        ts: pd.DataFrame,
+        tariff_type: str = "gas",
+        file_path: str = GAS_TARIFF_SAMPLE_FILE,
+
+) -> pd.DataFrame:
+
+    import json
+
+    with open(file_path) as f:
+        plan = json.load(f)
+    
+    #use pandas pd.cut
+    rate_details = plan["charges"]["energy_charges"]["rate_details"]
+    rates = []
+    edges = [0,]
+    for bin in rate_details:
+        rates.append(bin["rate"])
+        edges.append(bin["ceil"])
+
+    print(edges)
+    
+    rng = np.random.default_rng()
+    ts["aux_rand"] = rng.uniform(0,200, size=len(ts))
+
+    ts["tariff"] = pd.cut(ts["aux_rand"], bins=edges,labels=rates)
+
+    return ts
+
+def test_get_gas_rate():
+    
+    COLS = DEFINITIONS.TS_TYPES["economic"]
+    GS = general.GeneralSetup()
+    GS.household.tariff_type = "gas"
+    ts = GS.create_ts_empty()
+    ts = get_gas_rate( ts, tariff_type=GS.household.tariff_type, )
+    print(ts[["aux_rand","tariff"]])
+    print(np.unique(ts["tariff"]))
+
+    return
+
+#-------------
 if __name__ == "__main__":
 
-    test_get_import_rate()
+    test_get_gas_rate()
+
+    # test_get_import_rate()
 
     # test_calculate_energy_cost()
 

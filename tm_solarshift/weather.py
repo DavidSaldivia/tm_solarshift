@@ -10,7 +10,6 @@ import cartopy.feature as cf                 # import features
 
 from typing import Optional, List, Dict, Union, Any, Tuple
 
-from tm_solarshift.units import Variable
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, DEFAULTS)
 from tm_solarshift.location import (Location, from_postcode)
 
