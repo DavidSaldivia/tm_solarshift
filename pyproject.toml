@@ -20,6 +20,8 @@ cartopy = "^0.22.0"
 requests = "^2.31.0"
 pydap = "^3.4.1"
 pvlib = "^0.10.3"
+nemosis = "^3.4.0"
+mypy = "^1.9.0"
 
 
 [build-system]

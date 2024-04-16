@@ -368,6 +368,29 @@ def period_definitions(profile_control):
                 "random_off": 0,  # [mins]
             },
         ]
+
+    if profile_control == 6:
+        # Timer using off-peak periods
+        periods = [
+            {
+                "label": "null",  # only used as reference
+                "month_start": 1,  # inclusive
+                "month_stop": 12,  # inclusive
+                "time_start": 22.0,  # inclusive
+                "time_stop": 24.0,  # inclusive
+                "random_on": 0,  # [mins]
+                "random_off": 0,  # [mins]
+            },
+            {
+                "label": "null",  # only used as reference
+                "month_start": 1,  # inclusive
+                "month_stop": 12,  # inclusive
+                "time_start": 0.0,  # inclusive
+                "time_stop": 7.0,  # inclusive
+                "random_on": 0,  # [mins]
+                "random_off": 0,  # [mins]
+            },
+        ]
     
     if profile_control == 10:
         # Only 3 hours at beginning of day (for Event's analysis)
@@ -394,7 +417,7 @@ def main():
     GS = GeneralSetup()
 
     control_load = GS.household.control_load
-    ts = GS.simulation.create_new_profile()
+    ts = GS.create_ts()
     
     #Creating a schedule Control timeseries
     ts_CL1 = control.load_schedule(ts, control_load = control_load)

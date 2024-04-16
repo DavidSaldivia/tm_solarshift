@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import (List, Dict)
+from typing import (Dict, Tuple)
 
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.units import conversion_factor as CF
@@ -14,7 +14,7 @@ def instantaneous_fixed_eta(
         ts: pd.DataFrame,
         STEP_h: float = 3/60.,
         verbose: bool = False,
-) -> Dict[str, float]:
+) -> Tuple[None, Dict[str, float]]:
     
     hw_flow = ts["m_HWD"]
     temp_amb_avg = ts["Temp_Amb"].mean()
@@ -87,7 +87,7 @@ def storage_fixed_eta(
         GS: GeneralSetup,
         ts: pd.DataFrame,
         verbose: bool = False,
-) -> Dict[str, float]:
+) -> Tuple[pd.DataFrame,Dict[str, float]]:
 
     
     from tm_solarshift.thermal_models import (trnsys, postprocessing)

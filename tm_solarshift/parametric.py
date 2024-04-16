@@ -150,7 +150,6 @@ def analysis(
                     os.path.join(fldr, file_results_general)
                 )
                 
-
         #-----------------
         #Detailed results?
         if out_data is None:

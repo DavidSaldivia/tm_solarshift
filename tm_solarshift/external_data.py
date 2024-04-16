@@ -68,7 +68,7 @@ def main():
 
     from tm_solarshift.general import GeneralSetup
     GS = GeneralSetup()
-    ts = GS.simulation.create_new_profile()
+    ts = GS.create_ts()
     
     location = GS.household.location
     ts = load_emission_index_year( ts, location, index_type='total', year=2022 )

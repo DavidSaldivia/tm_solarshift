@@ -155,6 +155,50 @@ def plot_results_ruby(
     return
 
 #--------------
+def plot_results_timers(
+    results: pd.DataFrame,
+    savefig: bool = False,
+    showfig: bool = False,
+    width: float = 0.1,
+)-> None:
+
+    # creating the main objects (fix, ax) and some constants
+    fig, ax = plt.subplots(figsize=(9,6))
+    fs = 16
+    width = 0.25
+    N_COLS = 6
+    #--------------------------
+    #plotting non-solar results
+    aux1 = results[~results["has_solar"]]
+    aux1["x"] = np.arange(N_COLS) - width/2.
+    ax.bar(
+        aux1["x"], aux1["energy_cost"], width, alpha=0.8, color="C0", label="No Solar",
+    )
+    #--------------------------
+    # formatting the plot
+    ax.legend(loc=0, fontsize=fs-2)
+    ax.grid()
+    # ax.set_ylim(0.5,0.8)
+    ax.set_xticks(np.arange(N_COLS), labels = aux1["name"], rotation=45)
+    # ax.set_yticks(numbers)
+    # ax.set_xticklabels(aux1["name"], rotation=45)
+    ax.set_xlabel( 'Cases of interest', fontsize=fs)
+    ax.set_ylabel( 'Annual energy cost (AUD)', fontsize=fs)
+    ax.tick_params(axis='both', which='major', labelsize=fs)
+
+    #--------------------------
+    # saving the plot
+    if savefig:
+        fig.savefig(
+            os.path.join(DIR_PROJECT, '0-energy_cost_timers.png'),
+            bbox_inches='tight')
+    if showfig:
+        plt.show()
+    plt.close()
+
+    return
+
+#--------------
 def calculate_annual_bill(
         case: pd.Series,
         verbose: bool = True,
@@ -172,8 +216,10 @@ def calculate_annual_bill(
             control_load = 1
         case "GS":
             control_load = 0
-        case "timer":
+        case "timer_SS":
             control_load = 4
+        case "timer_OP":
+            control_load = 6
         case "diverter":
             control_load = 1 if type_tariff == "CL" else (10 if type_tariff == "flat" else None)
 
@@ -207,7 +253,7 @@ def calculate_annual_bill(
     if verbose:
         print(f"Calculate annual bill with {type_tariff}")
 
-    if type_control in ["GS", "CL1", "timer"]:
+    if type_control in ["GS", "CL1", "timer_SS", "timer_OP"]:
         ( out_all, _ ) = GS.run_thermal_simulation(ts, verbose=True)
         STEP_h = ts.index.freq.n * CF("min","hr")
         heater_power = out_all["HeaterPower"] * CF("kJ/h", "kW")
@@ -259,6 +305,25 @@ def run_simulations():
     plot_results_cases(cases, savefig=True, showfig=True)
     return
 
+#-----------------
+def run_simulations_timers(file_path: str = "cases_timers.csv"):
+
+    #General parameters (do not change in this analysis)
+    cases = pd.read_csv(os.path.join(DIR_PROJECT,file_path), index_col=0)
+    cases["energy_cost"] = None
+
+    file_output = os.path.join(DIR_PROJECT, file_path[:-4]+"_annual_bill.csv")
+    for (idx,case) in cases.iterrows():
+        annual_bill = calculate_annual_bill(case, verbose = True)
+        cases.loc[idx, "energy_cost"] = annual_bill
+        cases.to_csv(file_output)
+
+        print(cases.loc[idx])
+
+    print(cases)
+    plot_results_timers(cases, savefig=True, showfig=True)
+    return
+
 #------------------
 def run_simulations_ruby(file_path: str = "test_case_one.csv"):
 
@@ -281,7 +346,14 @@ def run_simulations_ruby(file_path: str = "test_case_one.csv"):
 
 if __name__ == "__main__":
     
-    run_simulations_ruby()
+    # run_simulations_timers()
+
+
+    cases = pd.read_csv(os.path.join(DIR_PROJECT,"cases_timers_annual_bill.csv"), index_col=0)
+    plot_results_timers(cases, savefig=True, showfig=True)
+    
+    # run_simulations_ruby()
+
 
     # file_cases = os.path.join(DIR_PROJECT, "energy_cost_cases.csv")
     # cases = pd.read_csv(os.path.join(DIR_PROJECT,file_cases), index_col=0)

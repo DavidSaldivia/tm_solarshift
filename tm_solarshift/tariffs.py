@@ -8,7 +8,10 @@ from functools import lru_cache
 import tm_solarshift.general as general
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
 from tm_solarshift.units import conversion_factor as CF
-from tm_solarshift.devices import SolarSystem
+from tm_solarshift.devices import (
+    SolarSystem,
+    GasHeaterInstantaneous,
+)
 
 from tm_solarshift.external.energy_plan_utils import (
     get_energy_breakdown,
@@ -41,14 +44,12 @@ def get_import_rate(
     
     match tariff_type:
         case "flat":
-    # if tariff_type == "flat":
             energy_plan = get_energy_plan_for_dnsp(dnsp,
                                                 tariff_type = tariff_type,
                                                 convert = True,)
             ts2["tariff"] = energy_plan["flat_rate"]
             ts2["rate_type"] = "flat"
         case "tou":
-    # elif tariff_type == "tou":
             file_tou = os.path.join(DIR_TARIFFS, "tou_cache.csv")
             
             if os.path.isfile(file_tou):
@@ -75,7 +76,6 @@ def get_import_rate(
             ts2["rate_type"] = ts3["rate_type"]
         
         case "CL":
-    # elif tariff_type == "CL":
             energy_plan = get_energy_plan_for_dnsp(
                 dnsp,
                 tariff_type="flat",
@@ -86,6 +86,7 @@ def get_import_rate(
             ts2["tariff"] = energy_plan["CL_rate"]
             ts2["rate_type"] = "CL"
         case "gas":
+            
             # values for AGL's Residential Value Saver (standard). Average value is given
             ts2["tariff"] = 0.033 * CF("MJ", "kWh")      #3.3 [cent/MJ]
             ts2["rate_type"] = "gas"
@@ -100,6 +101,45 @@ def get_import_rate(
         return (ts, energy_plan)
     else:
         return ts
+
+#-------------
+def get_gas_rate(
+        ts: pd.DataFrame,
+        heater: GasHeaterInstantaneous,
+        tariff_type: str = "gas",
+        file_path: str = GAS_TARIFF_SAMPLE_FILE,
+) -> pd.DataFrame:
+
+    import json
+
+    with open(file_path) as f:
+        plan = json.load(f)
+    
+    #use pandas pd.cut
+    rate_details = plan["charges"]["energy_charges"]["rate_details"]
+    rates = []
+    edges = [0,]
+    for bin in rate_details:
+        rates.append(bin["rate"])
+        edges.append(bin["ceil"])
+
+    nom_power = heater.nom_power.get_value("MJ/hr")
+    flow_water = heater.flow_water.get_value("L/min")
+    specific_energy = (nom_power / flow_water * CF("min", "hr")) #[MJ/L]
+
+    hw_flow = ts["m_HWD"]
+    STEP_h = ts.index.freq.n * CF("min", "hr")
+
+    output = ts.copy()
+    output["E_HWD"] = specific_energy * hw_flow * STEP_h         #[MJ]
+    output["E_HWD_cum_day"] = output.groupby(output.index.date)['E_HWD'].cumsum()
+    output["tariff"] = pd.cut(
+        output["E_HWD_cum_day"],
+        bins = edges, labels = rates, right = False
+    ).astype("float")
+    output["rate_type"] = tariff_type
+
+    return output
 
 #------------------------
 # @lru_cache(maxsize=20)
@@ -275,45 +315,21 @@ def test_calculate_energy_cost():
     
     return
 
-#-------------
-def get_gas_rate(
-        ts: pd.DataFrame,
-        tariff_type: str = "gas",
-        file_path: str = GAS_TARIFF_SAMPLE_FILE,
 
-) -> pd.DataFrame:
-
-    import json
-
-    with open(file_path) as f:
-        plan = json.load(f)
-    
-    #use pandas pd.cut
-    rate_details = plan["charges"]["energy_charges"]["rate_details"]
-    rates = []
-    edges = [0,]
-    for bin in rate_details:
-        rates.append(bin["rate"])
-        edges.append(bin["ceil"])
-
-    print(edges)
-    
-    rng = np.random.default_rng()
-    ts["aux_rand"] = rng.uniform(0,200, size=len(ts))
-
-    ts["tariff"] = pd.cut(ts["aux_rand"], bins=edges,labels=rates)
-
-    return ts
-
+#------------------------
 def test_get_gas_rate():
-    
+
     COLS = DEFINITIONS.TS_TYPES["economic"]
     GS = general.GeneralSetup()
+    GS.DEWH = GasHeaterInstantaneous()
     GS.household.tariff_type = "gas"
-    ts = GS.create_ts_empty()
-    ts = get_gas_rate( ts, tariff_type=GS.household.tariff_type, )
-    print(ts[["aux_rand","tariff"]])
-    print(np.unique(ts["tariff"]))
+
+    ts = GS.create_ts()
+
+    output = get_gas_rate( ts, heater = GS.DEWH )
+    energy_bill = (output["E_HWD"] * output["tariff"]).sum()
+    print(output)
+    print(energy_bill)
 
     return
 

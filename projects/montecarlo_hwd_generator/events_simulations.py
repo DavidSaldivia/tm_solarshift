@@ -259,7 +259,7 @@ def plot_histogram_2D(
     DAYS = GS.simulation.DAYS.get_value("d")
     
     # Probabilities of SOC through the day
-    Nx = 24
+    Nx = 96
     Ny = 20
     xmin = 0
     xmax = 24
@@ -449,7 +449,6 @@ def regression_analysis_and_plots(
         regr = linear_model.LinearRegression()
         regr.fit(X, Y)
         R2 = regr.score(X, Y)
-        print(R2)
         if lbl == "SOC_end":
             R2_SOC = R2
         if lbl == "TempTh_end":
@@ -478,6 +477,7 @@ def regression_analysis_and_plots(
 def influence_sample_size():
     runsim = True
     savefig = True
+    showfig = False
     savefile = True
     DAYS = 100
     control_load = 10
@@ -485,7 +485,8 @@ def influence_sample_size():
     HWD_profile = 1
     HWD_generator_method = 'events'
     HWD_daily_dist = 'sample'
-    COLS_OUTPUT = ["DAYS", "time_presim", "time_sim", "time_total", "E_HWD_day", "m_HWD_day"]
+    COLS_OUTPUT = ["DAYS", "time_presim", "time_sim", "time_total",
+                   "E_HWD_day", "m_HWD_day", "SOC_end_avg"]
     data = pd.DataFrame( columns = COLS_OUTPUT )
     data["DAYS"] = [10, 100, 500, 1000, 5000, 10000]
 
@@ -529,101 +530,202 @@ def influence_sample_size():
         data.loc[idx,"time_total"] = time_total
         data.loc[idx,"E_HWD_day"] = df["E_HWD_day"].mean()
         data.loc[idx,"m_HWD_day"] = df["m_HWD_day"].mean()
+        data.loc[idx,"SOC_end_avg"] = df["SOC_end"].mean()
         print(data)
-    
-    print(data)
-    return
 
+    return data
+
+def plotting_sample_size(data: pd.DataFrame,
+                         savefig: bool = False,
+                         showfig: bool = False):
+        #-----------------
+    fs = 16
+    fig, ax = plt.subplots(figsize=(9, 6))
+    ax2 = ax.twinx()
+
+    ax.plot(data["DAYS"], data["SOC_end_avg"], marker="s")
+    ax2.plot(data["DAYS"], data["time_total"], marker="o")
+    ax.set_xlabel("Number of simulated days", fontsize=fs)
+    ax.set_ylabel("Average SOC end of day.", fontsize=fs)
+    ax2.set_ylabel("Total simulation time.", fontsize=fs)
+    ax.set_xlim(0,10000)
+    ax.set_ylim(0,60)
+    ax.tick_params(axis="both", which="major", labelsize=fs)
+    # ax.set_xticks(np.arange(0, 1.01, 0.1))
+    ax.grid()
+    if savefig:
+        fig.savefig(
+            os.path.join(DIR_PROJECT, "sample_size.png"),
+            bbox_inches="tight",
+        )
+    if showfig:
+        plt.show()
+
+    plt.close()
+    return None
 #-------------------------
-def main():
+def function_with_all(case: int) -> List:
 
-    load_profiles = True
+
+    s_time = time.time()
     runsim = True
-    savefig = True
+    savefig = False
     showfig = False
-    savefile = True
-    t_ini = 3.0
+    savefile = False
+    verbose = False
 
-    DAYS = 1000
+    t_start = 0.0
+    t_reset = 3.0
+
+    DAYS = 365
     control_load = 10
     random_control = False
     HWD_profile = 1
     HWD_generator_method = 'events'
     HWD_daily_dist = 'sample'
 
-    # CASES = [0, 1, 2, 3]
+    GS = GeneralSetup()
+    GS.HWDInfo.profile_HWD = case
+    GS.household.control_load = control_load
+    GS.household.control_random_on = random_control
+    GS.HWDInfo.daily_distribution = HWD_daily_dist
+
+    GS.simulation.STOP = Variable(int(24 * DAYS), "hr")
+    GS.simulation.STEP = Variable(3, "min")
+    GS.simulation.YEAR = Variable(2022, "-")
+
+    params_weather = {
+        "dataset":"meteonorm",
+        "location": GS.household.location,
+        "subset": "month",
+        "value": 1,
+    }
+
+    ts = loading_timeseries(
+        GS = GS,
+        params_weather = params_weather,
+        HWDG_method = HWD_generator_method,
+    )
+    (out_data, df) = run_or_load_simulation(
+        GS, ts, runsim = runsim, savefile=savefile
+    )
+    postprocessing.detailed_plots(
+            GS, out_data,
+            fldr_results_detailed = DIR_RESULTS,
+            case = f'case_{case}',
+            save_plots_detailed = False,
+            showfig = False,
+            tmax = 120.
+    )
+    time_simulation = time.time() - s_time
+    # print(f"Time spent in thermal simulation={time_simulation}")
+
+    #Different plottings
+    plots_histogram_end_of_days(
+        df,
+        ["SOC_end", "TempTh_end", "E_HWD_day", "m_HWD_day"],
+        case, savefig, showfig
+    )        
+    additional_plots(df, case, savefig, showfig)
+    plot_histogram_2D( GS, df, out_data, case, savefig, showfig )
+    plots_sample_simulations(GS, out_data, df, case, savefig, showfig)
+    R2_SOC, R2_TempTh = regression_analysis_and_plots(
+        GS, ts, df, case, savefig, showfig
+    )
+    
+    Risk_Shortage01 = len(df[df["SOC_end"] <= 0.1]) / len(df)
+    if verbose:
+        print(f"Fraction with SOC<0.1 at the end of the day: {Risk_Shortage01*100}%")
+    Risk_Shortage02 = len(df[df["SOC_end"] <= 0.2]) / len(df)
+    if verbose:
+        print(f"Fraction with SOC<0.2 at the end of the day: {Risk_Shortage02*100}%")
+
+    elapsed_time = time.time() - s_time
+    data_row = [HWD_profile, Risk_Shortage01, Risk_Shortage02, R2_SOC, R2_TempTh, elapsed_time]
+    return data_row
+
+
+
+
+#-------------------------
+def main_linear():
+
     CASES = [1,2,3,4,5,6]
     data = []
     for case in CASES:
-        
-        s_time = time.time()
-
-        GS = GeneralSetup()
-        GS.household.control_load = control_load
-        GS.household.control_random_on = random_control
-        GS.HWDInfo.profile_HWD = case
-        GS.HWDInfo.daily_distribution = HWD_daily_dist
-
-        GS.simulation.STOP = Variable(int(24 * DAYS), "hr")
-        GS.simulation.STEP = Variable(3, "min")
-        GS.simulation.YEAR = Variable(2022, "-")
-
-        params_weather = {
-            "dataset":"meteonorm",
-            "location": GS.household.location,
-            "subset": "month",
-            "value": 1,
-        }
-
-        ts = loading_timeseries(
-            GS = GS,
-            params_weather = params_weather,
-            HWDG_method = HWD_generator_method,
-        )
-        (out_data, df) = run_or_load_simulation(
-            GS, ts, runsim = runsim, savefile=savefile
-        )
-        postprocessing.detailed_plots(
-                GS, out_data,
-                fldr_results_detailed = DIR_RESULTS,
-                case = 'simple_event',
-                save_plots_detailed = False,
-                tmax = 120.
-        )
-        time_simulation = time.time() - s_time
-        print(f"Time spent in thermal simulation={time_simulation}")
-
-        #Different plottings
-        plots_histogram_end_of_days(
-            df,
-            ["SOC_end", "TempTh_end", "E_HWD_day", "m_HWD_day"],
-            case, savefig, showfig
-        )        
-        additional_plots(df, case, savefig, showfig)
-        plot_histogram_2D( GS, df, out_data, case, savefig, showfig )
-        plots_sample_simulations(GS, out_data, df, case, savefig, showfig)
-        R2_SOC, R2_TempTh = regression_analysis_and_plots(
-            GS, ts, df, case, savefig, showfig
-        )
-        
-        Risk_Shortage01 = len(df[df["SOC_end"] <= 0.1]) / len(df)
-        print(f"Fraction with SOC<0.1 at the end of the day: {Risk_Shortage01*100}%")
-        Risk_Shortage02 = len(df[df["SOC_end"] <= 0.2]) / len(df)
-        print(f"Fraction with SOC<0.2 at the end of the day: {Risk_Shortage02*100}%")
-
-        data_row = [HWD_profile, Risk_Shortage01, Risk_Shortage02, R2_SOC, R2_TempTh]
-        data.append(data_row)
-
-    elapsed_time = time.time() - s_time
-    print(DAYS, elapsed_time)
+        data_row = function_with_all(case)
+        data = data.append(data_row)
     columns = ["HWDP_dist", "Risk_Shortage01",
                     "Risk_Shortage02", "R2_SOC", "R2_TempTh",]
     df_data = pd.DataFrame(data, columns=columns,)
     print(df_data)
+    return df_data
 
+
+#-------------------------
+def main_multiprocessing(processes:int = 2):
+
+    from multiprocessing import Pool
+
+    t_start = time.time()
+    CASES = [1,2,3,4,5,6]
+    with Pool(processes) as p:
+        data = p.map(function_with_all, CASES)
+    
+    columns = [
+        "HWDP_dist",
+        "Risk_Shortage01", "Risk_Shortage02",
+        "R2_SOC", "R2_TempTh",
+        "sim_time",
+    ]
+    df_data = pd.DataFrame(data, columns=columns,)
+    print(df_data)
+    return (time.time()-t_start)
+
+
+def plot_simulation_times(
+        savefig : bool = False,
+        showfig: bool = False
+):
+
+    df = pd.read_csv(
+        os.path.join(DIR_PROJECT,"multiprocessing_times.csv"),
+        columns=["proc","time_sim"]
+        )
+    df["time_one_year"] = df["time_sim"] / 12
+
+    fs = 16
+    fig, ax = plt.subplots(figsize=(9, 6))
+    ax.plot(df["proc"], df["time_one_year"], marker="s")
+    ax.set_xlabel("Number of paralel processes", fontsize=fs)
+    ax.set_ylabel("Avg. comp. time for 1-year simulation (secs).", fontsize=fs)
+    ax.tick_params(axis="both", which="major", labelsize=fs)
+    ax.set_xlim(0,7)
+    ax.set_ylim(0,60)
+    # ax.set_xticks(np.arange(0, 1.01, 0.1))
+    ax.grid()
+    if savefig:
+        fig.savefig(
+            os.path.join(DIR_PROJECT, "multiprocessing_times.png"),
+            bbox_inches="tight",
+        )
+    if showfig:
+        plt.show()
+    plt.close()
+
+    return
 
 if __name__ == '__main__':
 
-    # influence_sample_size()
+    influence_sample_size()
 
-    main()
+    # main_linear()
+
+    # plot_simulation_times(savefig=True)
+
+    # sim_times = []
+    # for processes in [6,4,3,2,1]:
+    #     sim_time = main_multiprocessing(processes=processes)
+    #     sim_times.append([processes,sim_time])
+    #     print(sim_times[-1])
+    pass

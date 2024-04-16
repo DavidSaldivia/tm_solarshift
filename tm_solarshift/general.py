@@ -5,7 +5,7 @@ from typing import (List, Tuple, Dict)
 from tm_solarshift.constants import DEFINITIONS
 from tm_solarshift.units import Variable
 from tm_solarshift.hwd import HWD
-from tm_solarshift.weather import Location
+from tm_solarshift.location import Location
 
 import tm_solarshift.circuits as circuits
 import tm_solarshift.control as control
