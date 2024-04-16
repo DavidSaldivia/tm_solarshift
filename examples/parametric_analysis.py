@@ -2,6 +2,8 @@
 import pandas as pd
 import tm_solarshift.general as general
 import tm_solarshift.parametric as parametric
+from tm_solarshift.units import VariableList
+
 PARAMS_OUT = parametric.PARAMS_OUT
 
 #------------------------------
@@ -9,7 +11,6 @@ def parametric_analysis_tank() -> pd.DataFrame:
     """
     Example of a parametric analysis over parameters in the tank.
     """
-    from tm_solarshift.units import VariableList
 
     GS_base = general.GeneralSetup()
     params_in = {
@@ -18,9 +19,9 @@ def parametric_analysis_tank() -> pd.DataFrame:
         'DEWH.U'  : VariableList([0.5, 1.0, 2.0], 'W/m2-K'),
         'DEWH.vol': VariableList([0.2, 0.3, 0.4], "m3")
         }
-    runs = parametric.settings(params_in, PARAMS_OUT)
+    (runs, params_units) = parametric.settings(params_in)
     runs = parametric.analysis(
-        runs, params_in, PARAMS_OUT,
+        runs, params_units, PARAMS_OUT,
         GS_base = GS_base,
         save_results_detailed = True,
         gen_plots_detailed    = True,
@@ -47,10 +48,10 @@ def parametric_analysis_HP() -> pd.DataFrame:
         'household.location' : ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne'],
         'HWDInfo.profile_HWD' : [1,2,3,4,5,6],
         'household.control_load' : [0,1,2,3,4],
-        }
-    runs = parametric.settings(params_in, PARAMS_OUT)
+    }
+    (runs, params_units) = parametric.settings(params_in)
     runs = parametric.analysis(
-        runs, params_in, PARAMS_OUT,
+        runs, params_units, PARAMS_OUT,
         GS_base = GS_base,
         save_results_detailed = True,
         gen_plots_detailed    = True,
@@ -66,8 +67,8 @@ def parametric_analysis_HP() -> pd.DataFrame:
 #------
 if __name__ == "__main__":
 
-    runs = parametric_analysis_tank()
+    # runs = parametric_analysis_tank()
 
-    # runs = parametric_analysis_HP()
+    runs = parametric_analysis_HP()
     
     pass

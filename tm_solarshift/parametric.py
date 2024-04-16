@@ -50,8 +50,8 @@ def settings(
     for lbl in params_in:
         values = params_in[lbl]
         if type(values)==VariableList:
-            values = values.get_values(values.unit)
             params_units[lbl] = values.unit
+            values = values.get_values(values.unit)
         else:
             params_units[lbl] = None
         params_values.append(values)
