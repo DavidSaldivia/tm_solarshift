@@ -16,7 +16,6 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from typing import Tuple, Dict
 import pvlib
 from pvlib import iotools, location
 from pvlib.irradiance import (get_total_irradiance, aoi_projection)
@@ -168,7 +167,7 @@ def get_PV_generation(
     orient: float = orient_default,
     PV_nompower: float = PV_nompower_default,
     G_STC: float = G_STC_default,
-    adr_params: Dict = adr_params_default,
+    adr_params: dict = adr_params_default,
 ) -> pd.DataFrame:
     
     if df is None:

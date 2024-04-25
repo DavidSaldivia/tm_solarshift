@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import os
-import copy
-import itertools
-import numpy as np
 import pandas as pd
-from typing import Any, Dict, List
 
 import tm_solarshift.general as general
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
-from tm_solarshift.units import VariableList
+from tm_solarshift.utils.units import VariableList
 from tm_solarshift.devices import (HeatPump, ResistiveSingle)
 
-from tm_solarshift.parametric import (
+from tm_solarshift.utils.parametric import (
     parametric_settings,
     parametric_run,
 )

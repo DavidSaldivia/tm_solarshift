@@ -1,18 +1,16 @@
 import os
-import sys
 import warnings
 
 import pandas as pd
 import numpy as np
-from typing import List, Any
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
 
-from tm_solarshift.constants import ( DIRECTORY, DEFINITIONS )
-from tm_solarshift.units import ( Variable, conversion_factor as CF 
+from tm_solarshift.constants import ( DIRECTORY, SIMULATIONS_IO )
+from tm_solarshift.utils.units import ( Variable, conversion_factor as CF 
                                  )
 DIR_DATA = DIRECTORY.DIR_DATA
-TS_HWD = DEFINITIONS.TS_TYPES["HWDP"]
+TS_HWD = SIMULATIONS_IO.TS_TYPES["HWDP"]
 FILES_HWD_SAMPLES = DIRECTORY.FILES_HWD_SAMPLES
 FILE_HWDP_AUSTRALIA = os.path.join( 
         DIR_DATA["HWDP"], "HWDP_Generic_AU_{:0d}.csv",  #expected int
@@ -85,7 +83,7 @@ class HWD():
     #----------------------
     def interday_distribution(
         self,
-        list_dates: List|pd.DataFrame|pd.DatetimeIndex,
+        list_dates: list|pd.DataFrame|pd.DatetimeIndex,
         sample_file: str = None,
     ) -> pd.DataFrame:
         """
@@ -166,7 +164,7 @@ class HWD():
         event_probs: pd.DataFrame = None,
         file_name: str = FILES_HWD_SAMPLES["HWD_events"],
         sheet_name: str = "Custom",
-        columns: List[str] = TS_HWD,
+        columns: list[str] = TS_HWD,
     ) -> pd.DataFrame:
 
         if (method == 'standard'):
@@ -193,7 +191,7 @@ class HWD():
         timeseries: pd.DataFrame,
         interday_dist: pd.DataFrame = None,
         intraday_dist: int = None,
-        columns: List[str] = TS_HWD,
+        columns: list[str] = TS_HWD,
     ) -> pd.DataFrame:
         """
         This function generates a HWDP using the six standard profiles defined in this project.
@@ -261,7 +259,7 @@ class HWD():
         event_probs: pd.DataFrame = None,
         file_name: str = FILES_HWD_SAMPLES["HWD_events"],
         sheet_name: str = "Basic",
-        columns: List[str] = TS_HWD,
+        columns: list[str] = TS_HWD,
     ) -> pd.DataFrame:
         """
         This function generates HWD profiles different for each day, based on daily

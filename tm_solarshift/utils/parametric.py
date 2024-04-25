@@ -5,22 +5,14 @@ import copy
 import itertools
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple
 
 import tm_solarshift.general as general
-from tm_solarshift.constants import DIRECTORY
-from tm_solarshift.units import (Variable, VariableList)
+from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
+from tm_solarshift.utils.units import (Variable, VariableList)
 from tm_solarshift.devices import (ResistiveSingle, GasHeaterInstantaneous)
-from  tm_solarshift.thermal_models import (trnsys, postprocessing)
+from  tm_solarshift.utils import postprocessing
 
-PARAMS_OUT = [
-    'heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
-    'E_HWD_acum', 'eta_stg', 'cycles_day', 'SOC_avg',
-    'm_HWD_avg', 'temp_amb_avg', 'temp_mains_avg',
-    'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
-    'emissions_total', 'emissions_marginal', 'solar_ratio',
-]
-
+PARAMS_OUT = DEFINITIONS.PARAMS_OUT
 DIR_DATA = DIRECTORY.DIR_DATA
 DIR_RESULTS = DIRECTORY.DIR_RESULTS
 showfig = False
@@ -29,19 +21,19 @@ pd.set_option('display.max_columns', None)
 
 #-------------
 def settings(
-        params_in : Dict[str, VariableList] = {},
-        ) -> Tuple[pd.DataFrame, Dict]:
+        params_in : dict[str, VariableList] = {},
+        ) -> tuple[pd.DataFrame, dict]:
     """ 
     This function creates a parametric run. A pandas dataframe with all the runs required.
     The order of running for params_in is "first=outer".
 
     Args:
-        params_in (Dict[str, VariableList], optional): dictionary with (parameter : values). parameters are str (label), values are List (possible values)
-        params_out (List[str], optional): List of expected output values. Defaults to PARAMS_OUT.
+        params_in (dict[str, VariableList], optional): dictionary with (parameter : values). parameters are str (label), values are List (possible values)
+        params_out (list[str], optional): List of expected output values. Defaults to PARAMS_OUT.
 
     Returns:
         pd.DataFrame: set with simulation runs to be performed in the parametric analysis
-        Dict: dictionary with units for each parameter
+        dict: dictionary with units for each parameter
 
     """
     cols_in = params_in.keys()
@@ -65,8 +57,8 @@ def settings(
 #-----------------------------
 def analysis(
     cases_in: pd.DataFrame,
-    units_in: Dict[str,str],
-    params_out: List = PARAMS_OUT,
+    units_in: dict[str,str],
+    params_out: list = PARAMS_OUT,
     GS_base = general.GeneralSetup(),
     save_results_detailed: bool = False,
     fldr_results_detailed: bool = None,
@@ -83,7 +75,7 @@ def analysis(
 
     Args:
         cases_in (pd.DataFrame): a dataframe with all the inputss.
-        units_in (Dict): list of units with params_units[lbl] = unit
+        units_in (dict): list of units with params_units[lbl] = unit
         params_out (List): list of labels of expected output. Defaults to PARAMS_OUT.
         GS_base (_type_, optional): GS object used as base case. Defaults to general.GeneralSetup().
         save_results_detailed (bool, optional): Defaults to False.
@@ -192,7 +184,7 @@ def updating_parameters(
     Args:
         GS (general.GeneralSetup): GS object
         row (pd.Series): values of the specific run (it contains all input and output of the parametric study)
-        params_in (Dict): labels of the parameters (input)
+        params_in (dict): labels of the parameters (input)
     """
 
     for (key, value) in row_in.items():

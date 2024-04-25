@@ -1,15 +1,5 @@
 import os
 import sys
-import random
-from datetime import datetime
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    TypedDict,
-)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -86,7 +76,7 @@ CF = UNITS.conversion_factor
 
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.devices import Variable
-from tm_solarshift.weather import (
+from tm_solarshift.timeseries.weather import (
         Weather,
         load_dataset_merra2,
         )

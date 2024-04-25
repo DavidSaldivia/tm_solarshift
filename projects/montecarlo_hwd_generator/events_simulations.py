@@ -7,21 +7,19 @@ Created on Mon Oct 23 15:20:46 2023
 
 import time
 import os
-import sys
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from sklearn import linear_model
-from scipy.stats import norm
 
-from typing import Optional, List, Dict, Any, Union
+from typing import List, Dict, Union
 
 from tm_solarshift.constants import ( DIRECTORY, DEFINITIONS)
 from tm_solarshift.general import GeneralSetup
-from tm_solarshift.thermal_models import (trnsys, postprocessing)
-from tm_solarshift.units import (
-    conversion_factor as CF,
+from tm_solarshift.utils import postprocessing
+from tm_solarshift.thermal_models import (trnsys)
+from tm_solarshift.utils.units import (
     Variable,
 )
 
@@ -46,10 +44,10 @@ def loading_timeseries(
     ts_columns: List[str] = TS_COLUMNS_ALL,
 ) -> pd.DataFrame:
     
-    import tm_solarshift.weather as weather
-    import tm_solarshift.circuits as circuits
-    import tm_solarshift.control as control
-    import tm_solarshift.external_data as external_data
+    import tm_solarshift.timeseries.weather as weather
+    import tm_solarshift.timeseries.circuits as circuits
+    import tm_solarshift.timeseries.control as control
+    import tm_solarshift.timeseries.market as market
     
     location = GS.household.location
     control_load = GS.household.control_load
@@ -65,8 +63,8 @@ def loading_timeseries(
     ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
     ts = circuits.load_PV_generation(ts, solar_system = solar_system)
     ts = circuits.load_elec_consumption(ts, profile_elec = 0)
-    ts = external_data.load_wholesale_prices(ts, location)
-    ts = external_data.load_emission_index_year(
+    ts = market.load_wholesale_prices(ts, location)
+    ts = market.load_emission_index_year(
         ts, index_type= 'total', location = location, year = YEAR,
     )
     return ts[ts_columns]

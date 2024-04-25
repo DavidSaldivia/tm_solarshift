@@ -2,7 +2,7 @@ import os
 import sys
 import pandas as pd
 import numpy as np
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, dict, Any, Union
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
 
@@ -105,7 +105,7 @@ class TimeSeries():
             HWD_daily_dist: pd.DataFrame = pd.DataFrame(),
             HWD_hourly_dist: int = 0,
             event_probs: pd.DataFrame = pd.DataFrame(),
-            columns: List[str] = PROFILES_TYPES['HWDP']
+            columns: list[str] = PROFILES_TYPES['HWDP']
             ):
         
         self.df = HWDP_generator(self,
@@ -119,7 +119,7 @@ class TimeSeries():
 #---------------------------------
 def new_profile(
     general_setup: Any,
-    profile_columns: List[str] = PROFILES_COLUMNS,
+    profile_columns: list[str] = PROFILES_COLUMNS,
 ) -> pd.DataFrame:
 
     START = general_setup.START
@@ -265,7 +265,7 @@ def HWDP_generator_standard(
     Profiles: pd.DataFrame,
     HWD_daily_dist: pd.DataFrame,
     HWD_hourly_dist: int = 0,
-    columns: List[str] = PROFILES_TYPES['HWDP'],
+    columns: list[str] = PROFILES_TYPES['HWDP'],
 ) -> pd.DataFrame:
     """
     This function generates a HWDP using the six standard profiles defined in this project.
@@ -281,7 +281,7 @@ def HWDP_generator_standard(
         DESCRIPTION.
     HWD_hourly_dist : int, optional
         DESCRIPTION. The default is 0.
-    columns : List[str], optional
+    columns : list[str], optional
         DESCRIPTION. The default is PROFILES_TYPES['HWDP'].
     Returns
     -------
@@ -349,7 +349,7 @@ def HWDP_generator_events(
     HWD_daily_dist: Optional[pd.DataFrame] = None,
     HWD_hourly_dist: int = 0,
     event_probs: pd.DataFrame = events_basic(),
-    columns: List[str] = PROFILES_TYPES['HWDP'],
+    columns: list[str] = PROFILES_TYPES['HWDP'],
 ) -> pd.DataFrame:
     """
     This function generates HWD profiles different for each day, based on daily
@@ -365,7 +365,7 @@ def HWDP_generator_events(
         DESCRIPTION. The default is 0.
     event_probs : pd.DataFrame, optional
         DESCRIPTION. The default is events_basic().
-    columns : List[str], optional
+    columns : list[str], optional
         DESCRIPTION. The default is PROFILES_TYPES['HWDP'].
 
     Returns
@@ -532,7 +532,7 @@ def HWDP_generator(
     HWD_daily_dist: pd.DataFrame = pd.DataFrame(),
     HWD_hourly_dist: int = 0,
     event_probs: pd.DataFrame = events_basic(),
-    columns: List[str] = PROFILES_TYPES['HWDP'],
+    columns: list[str] = PROFILES_TYPES['HWDP'],
 ) -> pd.DataFrame:
     
     if (method == 'standard'):
@@ -556,8 +556,8 @@ def HWDP_generator(
 
 def load_weather_day_constant_random(
     Profiles: pd.DataFrame,
-    ranges: Optional[Dict[str,tuple]] = None,
-    columns: Optional[List[str]] = PROFILES_TYPES['weather'],
+    ranges: Optional[dict[str,tuple]] = None,
+    columns: Optional[list[str]] = PROFILES_TYPES['weather'],
 ) -> pd.DataFrame:
 
     if ranges == None:
@@ -592,7 +592,7 @@ def load_weather_day_constant_random(
 def weather_random_days_from_dataframe(
     Profiles: pd.DataFrame,
     Set_Days: pd.DataFrame,
-    columns: Optional[List[str]] = PROFILES_TYPES['weather'],
+    columns: Optional[list[str]] = PROFILES_TYPES['weather'],
 ) -> pd.DataFrame :
     """
     This function randomly assign the weather variables of a set of days
@@ -604,7 +604,7 @@ def weather_random_days_from_dataframe(
         DESCRIPTION.
     Set_Days : pd.DataFrame
         DESCRIPTION.
-    columns : Optional[List[str]], optional
+    columns : Optional[list[str]], optional
         DESCRIPTION. The default is PROFILES_TYPES['weather'].
      : TYPE
         DESCRIPTION.
@@ -634,7 +634,7 @@ def weather_random_days_from_dataframe(
 def load_weather_from_tmy(
         Profiles: pd.DataFrame,
         TMY: pd.DataFrame,
-        columns: Optional[List[str]] = PROFILES_TYPES['weather'],
+        columns: Optional[list[str]] = PROFILES_TYPES['weather'],
     ) -> pd.DataFrame :
     
     rows_profiles = len(Profiles)
@@ -654,7 +654,7 @@ def load_weather_from_tmy(
 def load_weather_from_file(
     Profiles: pd.DataFrame,
     file_path: str,
-    columns: Optional[List[str]] = PROFILES_TYPES['weather'],
+    columns: Optional[list[str]] = PROFILES_TYPES['weather'],
     subset_random: Optional[str] = None,
     subset_value: Union[str, int, pd.Timestamp] = None,
 ) -> pd.DataFrame :
@@ -671,7 +671,7 @@ def load_weather_from_file(
         The DataFrame defined by profile_new.
     file_path : str
         Path to the file. It is assumed the file is in the correct format.
-    columns : Optional[List[str]], optional
+    columns : Optional[list[str]], optional
         DESCRIPTION. The default is PROFILES_TYPES['weather'].
     subset_random : Optional[str], optional
                     'all': pick from all the dataset,
@@ -789,7 +789,7 @@ def add_randomization_delay(
 
 def defining_control_signals(
     df_cs_original: pd.DataFrame,
-    Periods: List[Any],
+    Periods: list[Any],
     STEP: int = 3,
     random_ON: bool = False
 ) -> pd.DataFrame:
@@ -1092,7 +1092,7 @@ def loading_periods_control_load(profile_control):
 def load_controlled_load(
     Profiles: pd.DataFrame,
     profile_control: int = 0,
-    columns: List[str] = PROFILES_TYPES["control"],
+    columns: list[str] = PROFILES_TYPES["control"],
     random_ON: bool = True,
 ) -> pd.DataFrame:
 
@@ -1119,7 +1119,7 @@ def load_PV_generation(
         Profiles: pd.DataFrame,
         profile_PV: int = 0,
         PV_NomPow: float = 4000.,
-        columns: List[str] = ["PV_Gen"],
+        columns: list[str] = ["PV_Gen"],
         ) -> pd.DataFrame:
 
     df_PV = pd.DataFrame(index=Profiles.index, columns=columns)
@@ -1140,7 +1140,7 @@ def load_PV_generation(
 def load_elec_consumption(
     Profiles: pd.DataFrame,
     profile_elec: int = 0,
-    columns: List[str] = ["Import_Grid"],
+    columns: list[str] = ["Import_Grid"],
 ) -> pd.DataFrame:
 
     df_Elec = pd.DataFrame(index=Profiles.index, columns=columns)

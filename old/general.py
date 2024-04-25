@@ -2,7 +2,6 @@ import os
 import sys
 import pandas as pd
 import numpy as np
-from typing import Optional, List, Dict, Any, Tuple
 
 from tm_solarshift.devices import (
     Variable,
@@ -77,7 +76,7 @@ class GeneralSetup():
 
 #------------------------------------
 def parametric_settings(
-        params_in : Dict = {},
+        params_in : dict = {},
         params_out: List = [],
         ) -> pd.DataFrame:
 
@@ -89,7 +88,7 @@ def parametric_settings(
     and a list of strings with the desired outputs from out_overall.
 
     Args:
-        params_in (Dict): Dict with (parameter : [values]) structure.
+        params_in (dict): dict with (parameter : [values]) structure.
         params_out (List): List with expected output from simulations.
 
     Returns:

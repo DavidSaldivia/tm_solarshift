@@ -2,18 +2,51 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, List, Dict, Any, Tuple
 
-from tm_solarshift.units import conversion_factor as CF
 from tm_solarshift.general import GeneralSetup
+from tm_solarshift.constants import SIMULATIONS_IO
+from tm_solarshift.utils.units import conversion_factor as CF
+from tm_solarshift.utils.finance import (
+    calculate_household_energy_cost,
+    calculate_wholesale_energy_cost
+)
+
+TM_POSTPROC_OUTPUT = SIMULATIONS_IO.TM_POSTPROC_OUTPUT
+ECON_POSTPROC_OUTPUT = SIMULATIONS_IO.ECON_POSTPROC_OUTPUT
+FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.FIN_POSTPROC_OUTPUT
+
+POSTPROC_TYPES = ["TM", "ECON", "FIN"]
 
 #------------------------------
 def annual_simulation(
         GS: GeneralSetup,
-        timeseries: pd.DataFrame,
-        out_all: pd.DataFrame
-        ) -> Dict:
+        ts: pd.DataFrame,
+        out_all: pd.DataFrame,
+        include: list[str] = POSTPROC_TYPES
+        ) -> dict:
 
+    out_overall_th = {}
+    out_overall_econ = {}
+    out_overall_fin = {}
+
+    if "TM" in include:
+        out_overall_th = thermal_postproc(GS, ts, out_all)
+
+    if "ECON" in include:
+        out_overall_econ = economics_postproc(GS, ts, out_all)
+
+    if "FIN" in include:
+        out_overall_fin = financial_analysis(GS, ts, out_all)
+
+    return out_overall_th | out_overall_econ | out_overall_fin
+
+#-------------------
+def thermal_postproc(
+        GS: GeneralSetup,
+        ts: pd.DataFrame,
+        out_all: pd.DataFrame
+) -> dict[str, float]:
+    
     STEP_h = GS.simulation.STEP.get_value("hr")
     DAYS = GS.simulation.DAYS.get_value("d")
     thermal_cap = GS.DEWH.thermal_cap.get_value("kWh")
@@ -44,78 +77,106 @@ def annual_simulation(
         tank_flowrate * STEP_h * cp * (temp_top - temp_mains) * CF("J", "kWh")
     ).sum()
 
-    E_losses = heater_heat_acum - E_HWD_acum
+    E_losses_acum = heater_heat_acum - E_HWD_acum
     eta_stg = E_HWD_acum / heater_heat_acum
     cycles_day = heater_heat_acum / thermal_cap / DAYS
 
-    # Average values
-    m_HWD_avg = hw_flowrate.sum() * STEP_h / DAYS
-    SOC_avg = SOC.mean()
-    temp_amb_avg = temp_amb.mean()
-    temp_mains_avg = temp_mains.mean()
-
     # Risks_params
+    SOC_avg = SOC.mean()
     SOC_min = SOC.min()
     (SOC_025, SOC_050) = SOC.quantile( [0.25, 0.50], interpolation="nearest", )
     t_SOC0 = (SOC <= 0.01).sum() * STEP_h
 
-    # Emissions and Solar Fraction
+    out_overall_th = {key:None for key in TM_POSTPROC_OUTPUT}
+    out_overall_th["heater_heat_acum"] = heater_heat_acum
+    out_overall_th["heater_power_acum"] = heater_power_acum
+    out_overall_th["heater_perf_avg"] = heater_perf_avg
+    out_overall_th["E_HWD_acum"] = E_HWD_acum
+    out_overall_th["E_losses_acum"] = E_losses_acum
+    out_overall_th["eta_stg"] = eta_stg
+    out_overall_th["cycles_day"] = cycles_day
+    out_overall_th["SOC_avg"] = SOC_avg
+    out_overall_th["SOC_min"] = SOC_min
+    out_overall_th["SOC_025"] = SOC_025
+    out_overall_th["SOC_050"] = SOC_050
+    out_overall_th["t_SOC0"] = t_SOC0
+
+    return out_overall_th
+
+#------------------
+def economics_postproc(
+        GS: GeneralSetup,
+        ts: pd.DataFrame,
+        out_all: pd.DataFrame
+) -> dict[str, float]:
+    
+    STEP_h = GS.simulation.STEP.get_value("hr")
+
+    heater_power = out_all["HeaterPower"]
     heater_power_sum = heater_power.sum()
     if heater_power_sum <= 0.0:
         heater_power_sum = np.nan
-    solar_ratio = (
+
+    solar_ratio_potential = (
         heater_power[
             (heater_power.index.hour >= 8.75) & (heater_power.index.hour <= 17.01)
         ].sum()
         / heater_power_sum
     )
-    
+    solar_ratio_real = np.nan   #Not implemented. It should calculate as
+
     emissions_total = (
         (heater_power * CF("kJ/h", "MW")) * STEP_h
-        * timeseries["Intensity_Index"]
+        * ts["Intensity_Index"]
         ).sum()
     emissions_marginal = (
         (heater_power * CF("kJ/h", "MW")) * STEP_h
-        * timeseries["Marginal_Index"]
+        * ts["Marginal_Index"]
         ).sum()
     
-    out_overall = {
-        "heater_heat_acum": heater_heat_acum,
-        "heater_power_acum": heater_power_acum,
-        "heater_perf_avg": heater_perf_avg,
-        "E_HWD_acum": E_HWD_acum,
-        "E_losses": E_losses,
-        "eta_stg": eta_stg,
-        "cycles_day": cycles_day,
-        "m_HWD_avg": m_HWD_avg,
-        "SOC_avg": SOC_avg,
-        "temp_amb_avg": temp_amb_avg,
-        "temp_mains_avg": temp_mains_avg,
-        "SOC_min": SOC_min,
-        "SOC_025": SOC_025,
-        "SOC_050": SOC_050,
-        "t_SOC0": t_SOC0,
-        "emissions_total": emissions_total,
-        "emissions_marginal": emissions_marginal,
-        "solar_ratio": solar_ratio,
-    }
+    annual_hw_household_cost = calculate_household_energy_cost(
+        GS, ts, out_all
+    )
+    annual_hw_retailer_cost = calculate_wholesale_energy_cost(
+        GS, ts, out_all
+    )
 
-    return out_overall
+    out_overall_econ = {key:None for key in ECON_POSTPROC_OUTPUT}
+    out_overall_econ["annual_emissions_total"] = emissions_total
+    out_overall_econ["annual_emissions_marginal"] = emissions_marginal
+    out_overall_econ["solar_ratio_potential"] = solar_ratio_potential
+    out_overall_econ["solar_ratio_real"] = solar_ratio_real
+    out_overall_econ["annual_hw_household_cost"] = annual_hw_household_cost
+    out_overall_econ["annual_hw_retailer_cost"] = annual_hw_retailer_cost
+    return out_overall_econ
+
+#-----------------
+def financial_postproc(
+    GS: GeneralSetup,
+    ts: pd.DataFrame,
+    out_all: pd.DataFrame,
+    out_overall_th: dict = None,
+    out_overall_econ: dict = None,
+) -> dict:
+
+    from tm_solarshift.utils.finance import financial_analysis
+    out_overall_fin = financial_analysis()
+    return out_overall_fin
 
 #------------------------------
 def events_simulation(
-        general_setup: GeneralSetup, 
-        timeseries: pd.DataFrame,
+        GS: GeneralSetup, 
+        ts: pd.DataFrame,
         out_data: pd.DataFrame,
     ) -> pd.DataFrame:
     
-    STEP_h = general_setup.simulation.STEP.get_value("hr")
-    cp = general_setup.DEWH.fluid.cp.get_value("J/kg-K")
+    STEP_h = GS.simulation.STEP.get_value("hr")
+    cp = GS.DEWH.fluid.cp.get_value("J/kg-K")
 
-    df = timeseries.groupby(timeseries.index.date)[
+    df = ts.groupby(ts.index.date)[
         ["m_HWD_day", "Temp_Amb", "Temp_Mains"]
     ].mean()
-    idx = np.unique(timeseries.index.date)
+    idx = np.unique(ts.index.date)
     df_aux = out_data.groupby(out_data.index.date)
     df.loc[df.index == idx, "SOC_end"] = df_aux.tail(1)["SOC"].values
     df.loc[df.index == idx,"TempTh_end"] = df_aux.tail(1)["TempBottom"].values
@@ -134,12 +195,12 @@ def events_simulation(
 
 #------------------------------
 def detailed_plots(
-    general_setup: GeneralSetup, 
-    out_all,
-    fldr_results_detailed=None,
-    case=None,
-    save_plots_detailed=False,
-    tmax=72.0,
+    GS: GeneralSetup, 
+    out_all: pd.DataFrame,
+    fldr_results_detailed: str = None,
+    case: str = None,
+    save_plots_detailed: bool = False,
+    tmax: float = 72.0,
     showfig: bool = True,
 ):
 
@@ -148,7 +209,7 @@ def detailed_plots(
     fs = 16
     xmax = tmax
 
-    DEWH = general_setup.DEWH
+    DEWH = GS.DEWH
     temp_min = 20.
     temp_max = DEWH.temp_max.get_value("degC")
 
@@ -219,7 +280,17 @@ def detailed_plots(
 
 #-------------
 def main():
-    ...
+    
+    GS = GeneralSetup()
+    GS.solar_system = None
+    ts = GS.create_ts()
+    
+    (out_all, out_overall) = GS.run_thermal_simulation(ts, verbose=True)
+    out_overall2 = annual_simulation(GS, ts, out_all)
+
+    print(out_overall)
+    print(out_overall2)
+
     return None
 
 #-------------

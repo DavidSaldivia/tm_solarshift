@@ -7,7 +7,7 @@ from datetime import (
     timedelta,
 )
 import zipfile
-from typing import Optional, List, Dict, Any
+from typing import Optional, Any
 
 from tm_solarshift.external.model_constants import SolarShiftConstants
 import numpy as np
@@ -134,9 +134,9 @@ def get_site_data(
     site_id: int,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    data_types: List[str] = [],
+    data_types: list[str] = [],
     data_dir: str = DATA_DIRECTORY.sa_data_dirs["raw_data"],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     get a single site's data
     Args:
@@ -187,10 +187,10 @@ def get_circuit_data(
     circuit_id,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    data_types: List[str] = [],
-    secondary_data_types: List[str] = [],
+    data_types: list[str] = [],
+    secondary_data_types: list[str] = [],
     data_dir: str = DATA_DIRECTORY.sa_data_dirs["raw_data"],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get a single circuit's data
     Args:
@@ -263,10 +263,10 @@ def get_site_hot_water_circuit_data(
     site_id: int,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    data_types: List[str] = [],
-    secondary_data_types: List[str] = [],
+    data_types: list[str] = [],
+    secondary_data_types: list[str] = [],
     data_dir: str = DATA_DIRECTORY.sa_data_dirs["raw_data"],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     
     site_circuit_list = pd.read_csv(
         os.path.join(
@@ -342,7 +342,7 @@ def prepare_site_data_in_df(
     site_id: int,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    data_types: List[str] = [],
+    data_types: list[str] = [],
     data_dir: str = DATA_DIRECTORY.sa_data_dirs["raw_data"],
 ) -> pd.DataFrame:
     """Prepare site data in dataframe
@@ -351,7 +351,7 @@ def prepare_site_data_in_df(
         site_id (int): site id
         start_date (Optional[datetime], optional): start date (inclusive). Defaults to None.
         end_date (Optional[datetime], optional): end date (exclusive). Defaults to None.
-        data_types (List[str], optional): data types to include. Defaults to [].
+        data_types (list[str], optional): data types to include. Defaults to [].
         data_dir (str, optional): data dir. Defaults to DATA_DIRECTORY.sa_data_dirs["raw_data"].
 
     Returns:

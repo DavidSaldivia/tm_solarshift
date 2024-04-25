@@ -4,12 +4,10 @@ import time
 import os
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from typing import Optional, List, Dict, Any, Tuple
 from tempfile import TemporaryDirectory
 
-from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
-from tm_solarshift.units import conversion_factor as CF
+from tm_solarshift.constants import (DIRECTORY, SIMULATIONS_IO)
+from tm_solarshift.utils.units import conversion_factor as CF
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.devices import (
     ResistiveSingle, 
@@ -20,7 +18,7 @@ from tm_solarshift.devices import (
 )
 
 DIR_DATA = DIRECTORY.DIR_DATA
-TS_TYPES = DEFINITIONS.TS_TYPES
+TS_TYPES = SIMULATIONS_IO.TS_TYPES
 TRNSYS_EXECUTABLE = r"C:/TRNSYS18/Exe/TRNExe64.exe"
 TEMPDIR_SIMULATION = "C:/SolarShift_TempDir"
 FILES_TRNSYS_INPUT = {
@@ -108,7 +106,9 @@ class TrnsysSetup():
         else:
             raise ValueError("DEWH object is not a valid one for TRNSYS simulation")
 
-        if GS.solar_system.__class__ == SolarSystem:
+        if (GS.solar_system.__class__ == SolarSystem) or (
+            GS.solar_system == None
+        ):
             self.layout_PV = "PVF"
         else:
             raise ValueError("Solar system object is not a valid one for TRNSYS simulation")
@@ -116,7 +116,6 @@ class TrnsysSetup():
         self.layout_v = 0
         self.layout_TC = "MX"
         self.layout_WF = "W9a"
-        # self.layout_WF = "W15"
         self.weather_source = None
 
         for key, value in kwargs.items():
@@ -126,8 +125,8 @@ class TrnsysSetup():
 #------------
 def editing_dck_general(
         trnsys_setup: TrnsysSetup,
-        dck_editing: List[str],
-        ) -> List[str]:
+        dck_editing: list[str],
+        ) -> list[str]:
 
     #General settings
     START = trnsys_setup.START.get_value("hr")
@@ -186,8 +185,8 @@ def editing_dck_general(
 #------------
 def editing_dck_weather(
         trnsys_setup: TrnsysSetup,
-        dck_editing: List[str],
-        ) -> List[str]:
+        dck_editing: list[str],
+        ) -> list[str]:
 
     layout_WF = trnsys_setup.layout_WF
 
@@ -232,8 +231,8 @@ def editing_dck_weather(
 # Editing dck tank file
 def editing_dck_tank(
         trnsys_setup: TrnsysSetup,
-        dck_editing: List[str],
-        ) -> List[str]:
+        dck_editing: list[str],
+        ) -> list[str]:
 
 
     #Defining tank_params
@@ -481,7 +480,7 @@ def postprocessing_detailed(
 
     node_cols = [col for col in out_all if col.startswith("Node")]
     out_all2 = out_all[node_cols]
-    out_all["T_avg"] = out_all2.mean(axis=1)
+    out_all["tank_temp_avg"] = out_all2.mean(axis=1)
     out_all["SOC"] = ((
         (out_all2 - temp_consump)
         * (out_all2 > temp_consump)).sum(axis=1) 
@@ -500,7 +499,7 @@ def postprocessing_detailed(
     out_all["E_HWD"] = out_all["HW_Flow"] * (
         tank_cp * (temp_consump - temp_mains) / 3600.
     )  # [W]
-    out_all["E_Level"] = (
+    out_all["E_level"] = (
         (out_all2 - temp_consump).sum(axis=1) 
         / (tank_nodes * (temp_max - temp_consump))
         )
@@ -553,7 +552,7 @@ def run_simulation(
 def main():
 
     GS = GeneralSetup()
-    ts = GS.create_ts_default()
+    ts = GS.create_ts()
     out_all = run_simulation(GS, ts, verbose=True)
     print(out_all)
 

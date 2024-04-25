@@ -1,20 +1,15 @@
 import os
-import sys
 import pandas as pd
 import numpy as np
 import xarray as xr
-import matplotlib.pyplot as plt
-import cartopy
-import cartopy.crs as ccrs                   # import projections
-import cartopy.feature as cf                 # import features
 
-from typing import Optional, List, Dict, Union, Any, Tuple
+from typing import Optional, Union
 
-from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, DEFAULTS)
-from tm_solarshift.location import (Location, from_postcode)
+from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, DEFAULTS, SIMULATIONS_IO)
+from tm_solarshift.utils.location import (Location, from_postcode)
 
 DIR_DATA = DIRECTORY.DIR_DATA
-TS_WEATHER = DEFINITIONS.TS_TYPES["weather"]
+TS_WEATHER = SIMULATIONS_IO.TS_TYPES["weather"]
 DEFINITION_SEASON = DEFINITIONS.SEASON
 LOCATIONS_METEONORM = DEFINITIONS.LOCATIONS_METEONORM
 LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
@@ -84,9 +79,9 @@ DATASET_ALL = list(dict.fromkeys( [ x for xs in list_aux for x in xs ] )) #flatt
 #----------
 def load_day_constant_random(
     timeseries: pd.DataFrame,
-    ranges: Optional[Dict[str,tuple]] = None,
+    ranges: Optional[dict[str,tuple]] = None,
     seed_id: int = np.random.SeedSequence().entropy,
-    columns: Optional[List[str]] = TS_WEATHER,
+    columns: Optional[list[str]] = TS_WEATHER,
 ) -> pd.DataFrame:
     
     rng = np.random.default_rng(seed_id)
@@ -117,7 +112,7 @@ def random_days_from_dataframe(
     timeseries: pd.DataFrame,
     df_sample: pd.DataFrame,
     seed_id: int = np.random.SeedSequence().entropy,
-    columns: Optional[List[str]] = TS_WEATHER,
+    columns: Optional[list[str]] = TS_WEATHER,
 ) -> pd.DataFrame :
     """
     This function randomly assign the weather variables of a set of days
@@ -129,7 +124,7 @@ def random_days_from_dataframe(
         DESCRIPTION.
     set_days : pd.DataFrame
         DESCRIPTION.
-    columns : Optional[List[str]], optional
+    columns : Optional[list[str]], optional
         DESCRIPTION. The default is TS_WEATHER.
     : TYPE
         DESCRIPTION.
@@ -160,7 +155,7 @@ def random_days_from_dataframe(
 def from_tmy(
         timeseries: pd.DataFrame,
         TMY: pd.DataFrame,
-        columns: Optional[List[str]] = TS_WEATHER,
+        columns: Optional[list[str]] = TS_WEATHER,
     ) -> pd.DataFrame :
     
     rows_timeseries = len(timeseries)
@@ -181,7 +176,7 @@ def from_tmy(
 def from_file(
     timeseries: pd.DataFrame,
     file_path: str = None,
-    columns: Optional[List[str]] = TS_WEATHER,
+    columns: Optional[list[str]] = TS_WEATHER,
     subset_random: Optional[str] = None,
     subset_value: Union[str, int, pd.Timestamp] = None,
 ) -> pd.DataFrame :
@@ -198,7 +193,7 @@ def from_file(
         The DataFrame defined by profile_new.
     file_path : str
         Path to the file. It is assumed the file is in the correct format.
-    columns : Optional[List[str]], optional
+    columns : Optional[list[str]], optional
         DESCRIPTION. The default is TS_WEATHER.
     subset_random : Optional[str], optional
                     'all': pick from all the dataset,
@@ -253,8 +248,8 @@ def from_file(
 # -------------
 def load_tmy(
     ts: pd.DataFrame,
-    params: Dict,
-    columns: Optional[List[str]] = TS_WEATHER,
+    params: dict,
+    columns: Optional[list[str]] = TS_WEATHER,
 ) -> pd.DataFrame:
     
     YEAR = ts.index.year[0]
@@ -341,8 +336,8 @@ def load_dataset_merra2(
 #----------
 def load_montecarlo(
     ts: pd.DataFrame,
-    params: Dict,
-    columns: Optional[List[str]] = TS_WEATHER,
+    params: dict,
+    columns: Optional[list[str]] = TS_WEATHER,
 ) -> pd.DataFrame:
     
     dataset = params["dataset"]
@@ -380,8 +375,8 @@ def load_montecarlo(
 #----------------
 def load_historical(
     ts: pd.DataFrame,
-    params: Dict,
-    columns: Optional[List[str]] = TS_WEATHER,
+    params: dict,
+    columns: Optional[list[str]] = TS_WEATHER,
 ) -> pd.DataFrame:
     
     pass
@@ -392,8 +387,8 @@ def load_historical(
 def load_weather_data(
         ts: pd.DataFrame,
         type_sim: str,
-        params: Dict = {},
-        columns: Optional[List[str]] = TS_WEATHER,
+        params: dict = {},
+        columns: Optional[list[str]] = TS_WEATHER,
 ) -> pd.DataFrame:
     
     #Checking
@@ -418,7 +413,7 @@ def load_weather_data(
 def main():
     #Creating a timeseries
     from tm_solarshift.general import GeneralSetup
-    from tm_solarshift.units import Variable
+    from tm_solarshift.utils.units import Variable
 
     GS = GeneralSetup()
     ts = GS.create_ts_empty()

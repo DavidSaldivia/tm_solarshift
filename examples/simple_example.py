@@ -11,10 +11,10 @@ def simplest_use():
     #Run a thermal simulation with the default case
     (out_all, out_overall) = GS.run_thermal_simulation(ts, verbose=True)
     print(out_all)          # detailed results, DataFrame
-    print(out_overall)      # overall results, Dict
+    print(out_overall)      # overall results, dict
 
     #get a sample plot
-    from tm_solarshift.thermal_models import postprocessing
+    from tm_solarshift.utils import postprocessing
     postprocessing.detailed_plots(GS, out_all, save_plots_detailed=False)
     
     return None
@@ -24,7 +24,7 @@ def changing_household_parameters():
     
     from tm_solarshift.general import (GeneralSetup, Household, ThermalSimulation)
     from tm_solarshift.devices import (ResistiveSingle, SolarSystem)
-    from tm_solarshift.hwd import HWD
+    from tm_solarshift.timeseries.hwd import HWD
 
     # the attributes of GS and their default objects:
     GS = GeneralSetup()
@@ -36,7 +36,7 @@ def changing_household_parameters():
 
     #----------------------
     # Household() contains information for the energy plans and type of control
-    GS.household.tariff_type = "flat"       # used when not in CL. Options ["CL", "flat", "tou"]
+    GS.household.tariff_type = "tou"       # used when not in CL. Options ["CL", "flat", "tou"]
     GS.household.DNSP = "Ausgrid"           # used to get the tariff rates
     GS.household.location = "Sydney"        # str for cities, int for postcodes, tuple for coordinates
     GS.household.control_type = "CL"        # Other options: ["GS", timer, diverter]
@@ -47,7 +47,7 @@ def changing_household_parameters():
     #running the simulation. Note: ts is optional (if not provided is calculated using GS.create_ts())
     (out_all, out_overall) = GS.run_thermal_simulation()
     print(out_all)          # detailed results, DataFrame
-    print(out_overall)      # overall results, Dict
+    print(out_overall)      # overall results, dict
 
     return None
 
@@ -71,7 +71,7 @@ def changing_DEWH_technology():
 
     (out_all, out_overall) = GS.run_thermal_simulation()
     print(out_all)          # detailed results, DataFrame
-    print(out_overall)      # overall results, Dict
+    print(out_overall)      # overall results, dict
 
     return
 

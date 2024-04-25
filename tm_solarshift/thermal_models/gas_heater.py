@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-from typing import (Dict, Tuple)
 
 from tm_solarshift.general import GeneralSetup
-from tm_solarshift.units import conversion_factor as CF
+from tm_solarshift.utils import postprocessing
+from tm_solarshift.utils.units import conversion_factor as CF
 from tm_solarshift.devices import (
     GasHeaterInstantaneous,
     GasHeaterStorage,
@@ -14,7 +14,7 @@ def instantaneous_fixed_eta(
         ts: pd.DataFrame,
         STEP_h: float = 3/60.,
         verbose: bool = False,
-) -> Tuple[None, Dict[str, float]]:
+) -> tuple[None, dict[str, float]]:
     
     hw_flow = ts["m_HWD"]
     temp_amb_avg = ts["Temp_Amb"].mean()
@@ -87,10 +87,10 @@ def storage_fixed_eta(
         GS: GeneralSetup,
         ts: pd.DataFrame,
         verbose: bool = False,
-) -> Tuple[pd.DataFrame,Dict[str, float]]:
+) -> tuple[pd.DataFrame,dict[str, float]]:
 
     
-    from tm_solarshift.thermal_models import (trnsys, postprocessing)
+    from tm_solarshift.thermal_models import (trnsys)
 
     DEWH: GasHeaterStorage = GS.DEWH
     if DEWH.__class__ == GasHeaterStorage:

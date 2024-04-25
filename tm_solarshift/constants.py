@@ -41,6 +41,85 @@ class DEFAULTS():
     HWDP = 1
     NEM_REGION = "NSW1"
 
+class SIMULATIONS_IO():
+
+    TS_TYPES = {
+        "weather": ["GHI", "Temp_Amb", "Temp_Mains"],
+        "control": ["CS"],
+        "electric": ["PV_Gen", "Import_Grid", "Import_CL"],
+        "HWDP": ["P_HWD", "m_HWD", "m_HWD_day"],
+        "economic": ["tariff", "rate_type", "Wholesale_Market"],
+        "emissions": ["Intensity_Index", "Marginal_Index"],
+    }
+    TS_COLUMNS_ALL = [
+        item for sublist in 
+            [value for _, value in TS_TYPES.items()]
+        for item in sublist
+    ]
+
+    TS_TYPES_TM = ["weather", "control", "HWDP"] # ts columns for thermal sims
+    TS_TYPES_PV = ["weather", "electric"]        # ts columns for PV sim
+    TS_TYPES_ECO = ["weather", "electric"]       # ts columns for ECO postproc
+
+    PARAMS_OUT = [
+        'heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
+        'E_HWD_acum', 'eta_stg', 'cycles_day', 'SOC_avg',
+        'm_HWD_avg', 'temp_amb_avg', 'temp_mains_avg',
+        'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
+        'emissions_total', 'emissions_marginal', 'solar_ratio',
+    ]
+    TM_SIM_OUTPUT = [
+        'PV_gen',                # PVPower in trnsys. CHANGE!
+        'PV_to_HW',              # PV4HW in trnsys.   CHANGE!
+        'heater_heat',           # HeaterHeat in trnsys.   CHANGE!
+        'heater_power',          # HeaterPower in trnsys.   CHANGE!
+        'heater_perf',           # HeaterPerf in trnsys. CHANGE!
+        'tank_mfr',              # Tank_FlowRate in trnsys. CHANGE!
+        'tank_temp_out',         # Tank_TempOut in trnsys. CHANGE!
+        'tank_tstat_1',          # ??? in trnsys. CHANGE!
+        'C_all',                 # C_All in trnsys. CHANGE!
+        'tank_temp_avg',         # T_avg in trnsys. CHANGE!
+        'SOC',
+        'SOC2',
+        'SOC3',
+        'E_HWD',
+        'E_level',
+    ]
+    TM_POSTPROC_OUTPUT = [
+        "heater_heat_acum", "heater_power_acum", "heater_perf_avg",
+        "E_HWD_acum", "E_losses_acum",
+        "eta_stg", "cycles_day",
+        "SOC_avg", "SOC_min", "SOC_025", "SOC_050", "t_SOC0",
+    ]
+    
+    ECON_POSTPROC_OUTPUT = [
+        'annual_emissions_total',
+        'annual_emissions_marginal',
+        'solar_ratio_potential',
+        'solar_ratio_real',
+        'annual_hw_household_cost',
+        'annual_hw_retailer_cost'
+    ]
+
+    FIN_POSTPROC_OUTPUT = [
+        "net_present_cost",
+        "payback_period",
+        "LCOHW",
+        "fraction_capital",
+        "fraction_energy",
+        "fraction_oandm",
+        "fraction_others",
+    ]
+
+    FIN_COMP_OUTPUT = [
+        "emission_savings",
+        "cost_savings_household",
+        "cost_savings_retailer",
+    ]
+
+
+
+
 # Definitions and mappings
 class DEFINITIONS():
     LOCATIONS_METEONORM = [
@@ -91,6 +170,9 @@ class DEFINITIONS():
         "Canberra": "NSW1",
         "Townsville": "QLD1",
     }
+    STATES_NEM_REGION = {
+        "SA":"SA1", "NSW": "NSW1", "QLD":"QLD1", "VIC": "VIC1",
+    }
     SEASON = {
         "summer": [12, 1, 2],
         "autumn": [3, 4, 5],
@@ -130,19 +212,6 @@ class DEFINITIONS():
         "hw_only" : "constant_day",
         "forecast": "mc",
     }
-    TS_TYPES = {
-        "weather": ["GHI", "Temp_Amb", "Temp_Mains"],
-        "control": ["CS"],
-        "electric": ["PV_Gen", "Import_Grid", "Import_CL"],
-        "HWDP": ["P_HWD", "m_HWD", "m_HWD_day"],
-        "economic": ["tariff", "rate_type", "Wholesale_Market"],
-        "emissions": ["Intensity_Index", "Marginal_Index"],
-    }
-    TS_COLUMNS_ALL = [
-        item for sublist in 
-            [value for _, value in TS_TYPES.items()]
-        for item in sublist
-    ]
     
     TARIFF_TYPES = {
         "flat": "Flat Tariff",

@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, dict, Any, Tuple
 from tempfile import TemporaryDirectory
 
 from tm_solarshift.general import (
@@ -126,8 +126,8 @@ class TrnsysSetup():
 #### EDITING DCK FILE FUNCTIONS
 def editing_dck_general(
         trnsys_setup: TrnsysSetup,
-        dck_editing: List[str],
-        ) -> List[str]:
+        dck_editing: list[str],
+        ) -> list[str]:
 
     START = trnsys_setup.START
     STOP = trnsys_setup.STOP
@@ -177,8 +177,8 @@ def editing_dck_general(
 
 def editing_dck_weather(
         trnsys_setup: TrnsysSetup,
-        dck_editing: List[str],
-        ) -> List[str]:
+        dck_editing: list[str],
+        ) -> list[str]:
 
     layout_WF = trnsys_setup.layout_WF
 
@@ -222,8 +222,8 @@ def editing_dck_weather(
 # Editing dck tank file
 def editing_dck_tank(
         trnsys_setup: TrnsysSetup,
-        dck_editing: List[str],
-        ) -> List[str]:
+        dck_editing: list[str],
+        ) -> list[str]:
 
     W_TO_KJ_H = conversion_factor("W", "kJ/h")
     DEWH = trnsys_setup.DEWH
@@ -512,7 +512,7 @@ def postprocessing_annual_simulation(
         trnsys_setup: TrnsysSetup,
         Profiles: pd.DataFrame,
         out_all: pd.DataFrame
-        ) -> Dict:
+        ) -> dict:
 
     START = trnsys_setup.START
     STOP = trnsys_setup.STOP

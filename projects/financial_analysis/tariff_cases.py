@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 from typing import Tuple, Dict
 
 import tm_solarshift.general as general
-import tm_solarshift.tariffs as tariffs
+import tm_solarshift.timeseries.market as market
 from tm_solarshift.devices import ResistiveSingle
-from tm_solarshift.units import (
+from tm_solarshift.utils.units import (
     Variable,
     conversion_factor as CF
 )
@@ -237,7 +237,7 @@ def calculate_annual_bill(
     if verbose:
         print("Get timeseries with import rate")
     ts = GS.create_ts()
-    ts = tariffs.get_import_rate(ts,
+    ts = market.load_household_import_rate(ts,
                                  tariff_type = GS.household.tariff_type,
                                  control_load = GS.household.control_load,
                                  dnsp = GS.household.DNSP,
@@ -263,7 +263,7 @@ def calculate_annual_bill(
 
     elif type_control == "diverter":
         #It considers three hours at night plus everything diverted from solar
-        import tm_solarshift.control as control
+        import tm_solarshift.timeseries.control as control
         ts = control.load_schedule(ts, control_load = control_load, random_ON=False)
         ts_timer = ts["CS"].copy()
 

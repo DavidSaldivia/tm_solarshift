@@ -2,34 +2,39 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from typing import Tuple, Dict
-from functools import lru_cache
 
-import tm_solarshift.general as general
-from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
-from tm_solarshift.units import conversion_factor as CF
+from tm_solarshift.constants import (DIRECTORY,DEFINITIONS)
+from tm_solarshift.general import GeneralSetup
+from tm_solarshift.utils.units import conversion_factor as CF
+from tm_solarshift.utils.location import Location
 from tm_solarshift.devices import (
     SolarSystem,
     GasHeaterInstantaneous,
 )
-
 from tm_solarshift.external.energy_plan_utils import (
     get_energy_breakdown,
     get_energy_plan_for_dnsp,
 )
 
+DIR_SPOTPRICE = DIRECTORY.DIR_DATA["energy_market"]
+DIR_EMISSIONS = DIRECTORY.DIR_DATA["emissions"]
 DIR_TARIFFS = DIRECTORY.DIR_DATA["tariffs"]
+
+FILES = {
+    "WHOLESALE_PRICES": os.path.join(DIR_SPOTPRICE, 'SP_2017-2023.csv'),
+    "EMISSIONS_TEMPLATE": os.path.join( DIR_EMISSIONS, "emissions_year_{:}_{:}.csv"),
+}
 GAS_TARIFF_SAMPLE_FILE = os.path.join(DIRECTORY.DIR_DATA["gas"],"energyaustralia_basic.json")
 
 #-----------
-def get_import_rate(
+def load_household_import_rate(
         ts: pd.DataFrame,
         tariff_type: str = "flat",
         dnsp: str = "Ausgrid",
         return_energy_plan: bool = True,
         control_load: int = 1,
 
-) -> Tuple[pd.DataFrame,Dict] | pd.DataFrame:
+) -> tuple[pd.DataFrame,dict] | pd.DataFrame:
 
     # Preparing ts to the format required by Rui's code
     ts2 = pd.DataFrame(index=ts.index, columns = [
@@ -103,7 +108,7 @@ def get_import_rate(
         return ts
 
 #-------------
-def get_gas_rate(
+def load_household_gas_rate(
         ts: pd.DataFrame,
         heater: GasHeaterInstantaneous,
         tariff_type: str = "gas",
@@ -130,135 +135,88 @@ def get_gas_rate(
     hw_flow = ts["m_HWD"]
     STEP_h = ts.index.freq.n * CF("min", "hr")
 
-    output = ts.copy()
-    output["E_HWD"] = specific_energy * hw_flow * STEP_h         #[MJ]
-    output["E_HWD_cum_day"] = output.groupby(output.index.date)['E_HWD'].cumsum()
-    output["tariff"] = pd.cut(
-        output["E_HWD_cum_day"],
+    ts2 = ts.copy()
+    ts2["E_HWD"] = specific_energy * hw_flow * STEP_h         #[MJ]
+    ts2["E_HWD_cum_day"] = ts2.groupby(ts2.index.date)['E_HWD'].cumsum()
+    ts2["tariff"] = pd.cut(
+        ts2["E_HWD_cum_day"],
         bins = edges, labels = rates, right = False
     ).astype("float")
-    output["rate_type"] = tariff_type
+    ts["rate_type"] = tariff_type
 
-    return output
+    ts["tariff"] = ts2["tariff"]
+    ts["rate_type"] = tariff_type
+    return ts
 
-#------------------------
-# @lru_cache(maxsize=20)
-def calculate_energy_cost(
-        row: pd.Series,
-        df_tm: pd.DataFrame = None,
-        dnsp: str = "Ausgrid",
-        ) -> float:
-
-    name = row["name"]
-    tariff_type = row["tariff_type"]
-    has_solar = row["has_solar"]
-    control_type = row["control_type"]
-    control_load = row["control_load"]
-
-    if df_tm is None:
-        #Run thermal simulation. In the meantime, read from file
-        GS = general.GeneralSetup()
-        GS.household.tariff_type = tariff_type
-        GS.household.control_type = control_type
-        GS.household.control_load = control_load
-        ts = GS.create_ts()
-        GS.run_thermal_simulation(ts)
-
-    else:
-        out_all = df_tm.copy()
-        STEP_h = 3. * CF("min","hr")         #Change it later
-        heater_power = out_all["HeaterPower"] * CF("kJ/h", "kW")
-
-    ts = get_import_rate(
-        out_all,
-        tariff_type, dnsp,
-        return_energy_plan=False,
+#---------------------------------
+# emissions
+def load_emission_index_year(
+        timeseries: pd.DataFrame,
+        location: str = "Sydney",
+        index_type: str = "total",
+        year: int = 2022,
+        ) -> pd.DataFrame:
+    
+    if (type(location) == Location):
+        state = location.state
+        loc_st = DEFINITIONS.LOCATIONS_STATE
+        location = list(loc_st.keys())[list(loc_st.values()).index(state)]
+    
+    columns = {
+        "total": "Intensity_Index",
+        "marginal": "Marginal_Index",
+        # "both": PROFILES.TYPES["emissions"]   #Not working well yet
+        }[index_type]
+    
+    emissions = pd.read_csv(
+        FILES["EMISSIONS_TEMPLATE"].format(year, index_type), index_col=0,
     )
+    emissions.index = pd.to_datetime(emissions.index)
 
-    if has_solar:
-        tz = 'Australia/Brisbane'
-        solar_system = general.GeneralSetup().solar_system
-        pv_power = solar_system.load_PV_generation(df = out_all, tz=tz,  unit="kW")
+    timeseries[columns] = emissions[
+        emissions["Region"] == DEFINITIONS.LOCATIONS_NEM_REGION[location]
+        ][columns].resample(
+            f"{timeseries.index.freq.n}T"
+        ).interpolate('linear')
+    return timeseries
 
-        imported_energy = np.where( pv_power < heater_power, heater_power - pv_power, 0 )
-        energy_cost = (
-            ts["tariff"] * imported_energy * STEP_h  
-            ).sum()
-        
-    else:    
-        energy_cost = ( ts["tariff"] * heater_power * STEP_h ).sum()
-
-    return energy_cost
-
-#--------------
-def plot_results(
-    results,
-    savefig=False,
-    showfig=False,
-    width=0.1,
-    ):
-
-    lbls = ["CL1", "GS-flat", "GS-tou", "SS-flat", "SS-tou"]
-
-    fig, ax = plt.subplots(figsize=(9,6))
-    # ax2 = ax.twinx()
-    fs = 16
-    width = 0.25
-    aux1 = results[~results["solar"]]
-    aux1["x"] = np.arange(5) - width/2.
-    ax.bar(aux1["x"], aux1["energy_cost"],
-            width, alpha=0.8, color="C0",
-            label="No Solar")
+#---------------------------------
+# wholesale prices
+def load_wholesale_prices(
+        timeseries: pd.DataFrame,
+        location: Location = Location(),
+        ) -> pd.DataFrame:
     
-    aux2 = results[results["solar"]]
-    aux2.loc[5,"energy_cost"] = aux1.loc[0,"energy_cost"]
+    df_SP = pd.read_csv( FILES["WHOLESALE_PRICES"], index_col=0 )
+    df_SP.index = pd.to_datetime(df_SP.index).tz_localize(None)
 
-    aux2["x"] = np.arange(5) + width/2.
-    ax.bar(aux2["x"], aux2["energy_cost"],
-            0.25, alpha=0.8, color="C1",
-            label="Solar")
-    
-    for i in range(len(lbls)):
-        pct_change = (
-            aux2.loc[i+5, "energy_cost"]-aux1.loc[i, "energy_cost"]
-            )/aux1.loc[i, "energy_cost"]
-        txt = f"{pct_change:.2%}"
-        ax.annotate(txt, (aux2.loc[i+5,"x"]-width/2.,aux2.loc[i+5,"energy_cost"]))
+    if type(location) == str:   #city
+        nem_region = DEFINITIONS.LOCATIONS_NEM_REGION[location]
+    elif type(location) == tuple:     #coordinate
+        pass #Check which state the location is
+    elif type(location) == int:     #postcode
+        pass #Check the NEM region of postcode
+    elif type(location) == Location:
+        nem_region = DEFINITIONS.STATES_NEM_REGION[location.state]
 
-    
-    # ax2.bar([],[], alpha=0.8, color="C0", label=" No solar")
-    # ax2.bar([],[], alpha=0.8, color="C1", label="Solar")
-    
-    ax.legend(fontsize=fs-2)
-    ax.grid()
-    # ax2.legend(fontsize=fs-2)
-    
-    # ax.set_ylim(0.5,0.8)
-    ax.set_xticks(np.arange(5))
-    ax.set_xticklabels(lbls, rotation=45)
-    ax.set_xlabel( 'Cases of interest', fontsize=fs)
-    ax.set_ylabel( 'Annual energy cost (AUD)', fontsize=fs)
-    ax.tick_params(axis='both', which='major', labelsize=fs)
-    # ax.set_ylim(-0.0002,0.0)
-    if savefig:
-        fig.savefig(
-            os.path.join(DIRECTORY.DIR_MAIN, "dev", '0-energy_cost.png'),
-            bbox_inches='tight')
-    if showfig:
-        plt.show()
-    plt.close()
-    return
+    timeseries["Wholesale_Market"] = df_SP[
+        nem_region
+        ].resample(
+            f"{timeseries.index.freq.n}T"
+        ).interpolate('linear')
+
+    return timeseries
 
 #--------------------
-def test_get_import_rate():
+def test_load_household_import_rate():
     
     COLS = DEFINITIONS.TS_TYPES["economic"]
 
-    GS = general.GeneralSetup()
+    GS = GeneralSetup()
     GS.household.DNSP = "Ausgrid"
     GS.household.tariff_type = "flat"
     ts = GS.create_ts_empty()
-    (ts, energy_plan) = get_import_rate(ts,
+    (ts, energy_plan) = load_household_import_rate(ts,
                                         tariff_type = GS.household.tariff_type,
                                         dnsp = GS.household.DNSP,
                                         return_energy_plan = True,
@@ -266,11 +224,11 @@ def test_get_import_rate():
     print(ts)
     print(ts[COLS], energy_plan)
     #-------------------
-    GS = general.GeneralSetup()
+    GS = GeneralSetup()
     GS.household.DNSP = "Ausgrid"
     GS.household.tariff_type = "tou"
     ts = GS.create_ts_empty()
-    (ts, energy_plan) = get_import_rate(ts,
+    (ts, energy_plan) = load_household_import_rate(ts,
                                         tariff_type = GS.household.tariff_type,
                                         dnsp = GS.household.DNSP,
                                         return_energy_plan = True,
@@ -279,12 +237,12 @@ def test_get_import_rate():
     print(ts[COLS], energy_plan)
 
     #-------------------
-    GS = general.GeneralSetup()
+    GS = GeneralSetup()
     GS.household.DNSP = "Ausgrid"
     GS.household.tariff_type = "CL"
     GS.household.control_load = 1
     ts = GS.create_ts_empty()
-    (ts, energy_plan) = get_import_rate(ts,
+    (ts, energy_plan) = load_household_import_rate(ts,
                                         tariff_type = GS.household.tariff_type,
                                         dnsp = GS.household.DNSP,
                                         control_load = GS.household.control_load,
@@ -294,39 +252,17 @@ def test_get_import_rate():
     print(ts[COLS], energy_plan)
     return
 
-#-------------------
-def test_calculate_energy_cost():
-
-    COLS = DEFINITIONS.TS_TYPES["economic"]
-
-    GS = general.GeneralSetup()
-    GS.household.DNSP = "Ausgrid"
-    GS.household.tariff_type = "CL"
-    GS.household.control_load = 1
-    ts = GS.create_ts_empty()
-    (ts, energy_plan) = get_import_rate(ts,
-                                    tariff_type = GS.household.tariff_type,
-                                    dnsp = GS.household.DNSP,
-                                    control_load = GS.household.control_load,
-                                    return_energy_plan = True,
-                                    )
-    print(ts)
-    print(ts[COLS], energy_plan)
-    
-    return
-
-
 #------------------------
 def test_get_gas_rate():
 
     COLS = DEFINITIONS.TS_TYPES["economic"]
-    GS = general.GeneralSetup()
+    GS = GeneralSetup()
     GS.DEWH = GasHeaterInstantaneous()
     GS.household.tariff_type = "gas"
 
     ts = GS.create_ts()
 
-    output = get_gas_rate( ts, heater = GS.DEWH )
+    output = load_household_gas_rate( ts, heater = GS.DEWH )
     energy_bill = (output["E_HWD"] * output["tariff"]).sum()
     print(output)
     print(energy_bill)
@@ -338,8 +274,32 @@ if __name__ == "__main__":
 
     test_get_gas_rate()
 
-    # test_get_import_rate()
+    # test_load_household_import_rate()
 
     # test_calculate_energy_cost()
 
     pass
+#---------------------------
+def main():
+
+    from tm_solarshift.general import GeneralSetup
+    GS = GeneralSetup()
+    ts = GS.create_ts()
+    
+    location = Location("Sydney")
+    ts = load_emission_index_year( ts, location, index_type='total', year=2022 )
+    ts = load_emission_index_year( ts, location, index_type='marginal', year=2022 )
+
+    ts = load_wholesale_prices(ts, location)
+    
+    ts = load_household_import_rate(
+        ts,
+        tariff_type="tou",
+        return_energy_plan=False
+    )
+
+    print(ts.head(20))
+    pass
+
+if __name__ == "__main__":
+    main()

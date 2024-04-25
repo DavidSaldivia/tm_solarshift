@@ -2,14 +2,14 @@ import numpy as np
 import pandas as pd
 from typing import Any, List
 
-from tm_solarshift.constants import DEFINITIONS
-TS_TYPES = DEFINITIONS.TS_TYPES
+from tm_solarshift.constants import SIMULATIONS_IO
+TS_TYPES = SIMULATIONS_IO.TS_TYPES
 
 #-------------
 def load_schedule(
     timeseries: pd.DataFrame,
     control_load: int = 0,
-    columns: List[str] = TS_TYPES["control"],
+    columns: list[str] = TS_TYPES["control"],
     random_ON: bool = True,
 ) -> pd.DataFrame:
 
@@ -85,7 +85,7 @@ def add_randomization_delay(
 #----------------
 def create_signal_series(
     df_cs_original: pd.DataFrame,
-    periods: List[Any],
+    periods: list[Any],
     STEP: int = 3,
     random_ON: bool = True,
 ) -> pd.DataFrame:
@@ -412,7 +412,7 @@ def period_definitions(profile_control):
 def main():
 
     #Creating a timeseries dataframe
-    import tm_solarshift.control as control
+    import tm_solarshift.timeseries.control as control
     from tm_solarshift.general import GeneralSetup
     GS = GeneralSetup()
 

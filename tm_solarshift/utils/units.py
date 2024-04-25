@@ -1,5 +1,4 @@
 import numpy as np
-from typing import List
 
 #-------------------------
 # Unit conversion factors
@@ -92,6 +91,10 @@ CONVERSIONS = {
         "rad": 1e0,
         "deg": 180./np.pi,
     },
+    "cost" : {
+        "AUD": 1e0,
+        "USD": 1.4e0,
+    },
 #-------------------
     "density": {
         "kg/m3": 1e0,
@@ -157,7 +160,7 @@ class VariableList():
     """
     Similar to Variable() but for lists.
     """
-    def __init__(self, values: List, unit: str = None, type="scalar"):
+    def __init__(self, values: list, unit: str = None, type="scalar"):
         self.values = values
         self.unit = unit
         self.type = type

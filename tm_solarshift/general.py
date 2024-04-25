@@ -1,16 +1,12 @@
 import numpy as np
 import pandas as pd
-from typing import (List, Tuple, Dict)
 
-from tm_solarshift.constants import DEFINITIONS
-from tm_solarshift.units import Variable
-from tm_solarshift.hwd import HWD
-from tm_solarshift.location import Location
+from tm_solarshift.constants import (DEFINITIONS, SIMULATIONS_IO)
 
-import tm_solarshift.circuits as circuits
-import tm_solarshift.control as control
-import tm_solarshift.external_data as external_data
-import tm_solarshift.weather as weather
+from tm_solarshift.utils.units import Variable
+from tm_solarshift.utils.location import Location
+
+from tm_solarshift.timeseries.hwd import HWD
 
 from tm_solarshift.devices import (
     ResistiveSingle,
@@ -21,8 +17,8 @@ from tm_solarshift.devices import (
     SolarSystem,
 )
 
-TS_TYPES = DEFINITIONS.TS_TYPES
-TS_COLUMNS_ALL = DEFINITIONS.TS_COLUMNS_ALL
+TS_TYPES = SIMULATIONS_IO.TS_TYPES
+TS_COLUMNS_ALL = SIMULATIONS_IO.TS_COLUMNS_ALL
 
 #------------------------------------
 class GeneralSetup():
@@ -38,13 +34,13 @@ class GeneralSetup():
     #---------------
     def create_ts_empty(
         self,
-        ts_columns: List[str] = TS_COLUMNS_ALL,
+        ts_columns: list[str] = TS_COLUMNS_ALL,
     ) -> pd.DataFrame:
         """Create an empty timeseries dataframe (ts).
         Useful to populate ts manually
 
         Args:
-            ts_columns (List[str], optional): columns to include. Defaults to TS_COLUMNS_ALL.
+            ts_columns (list[str], optional): columns to include. Defaults to TS_COLUMNS_ALL.
 
         Returns:
             pd.DataFrame: ts (timeseries dataframe)
@@ -62,22 +58,30 @@ class GeneralSetup():
     #---------------
     def create_ts(
         self,
-        ts_columns: List[str] = TS_COLUMNS_ALL,
+        ts_columns: list[str] = TS_COLUMNS_ALL,
     ) -> pd.DataFrame:
         """
         Create a timeseries dataframe (ts) using the information in self.
         Check the specific functions to get more information about definition process.
 
         Args:
-            ts_columns (List[str], optional): columns to show in ts. Defaults to TS_COLUMNS_ALL.
+            ts_columns (list[str], optional): columns to show in ts. Defaults to TS_COLUMNS_ALL.
 
         Returns:
             pd.DataFrame: ts, the timeseries dataframe.
         """
+
+        import tm_solarshift.timeseries.circuits as circuits
+        import tm_solarshift.timeseries.control as control
+        import tm_solarshift.timeseries.market as market
+        import tm_solarshift.timeseries.weather as weather
         
         location = self.household.location
         control_load = self.household.control_load
         random_control = self.household.control_random_on
+        tariff_type = self.household.tariff_type
+        dnsp = self.household.DNSP
+
         solar_system = self.solar_system
         type_sim = self.simulation.type_sim
         YEAR = self.simulation.YEAR.get_value("-")
@@ -92,15 +96,27 @@ class GeneralSetup():
         ts = self.HWDInfo.generator(ts, method = HWD_method)
         ts = weather.load_weather_data( ts, type_sim = type_sim_weather, params = params_weather )
         ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
+        
         ts = circuits.load_PV_generation(ts, solar_system = solar_system)
         ts = circuits.load_elec_consumption(ts, profile_elec = 0)
-        ts = external_data.load_wholesale_prices(ts, location)
-        ts = external_data.load_emission_index_year(
+
+        ts = market.load_wholesale_prices(ts, location)
+        ts = market.load_emission_index_year(
             ts, index_type= 'total', location = location, year = YEAR,
         )
-        ts = external_data.load_emission_index_year(
+        ts = market.load_emission_index_year(
             ts, index_type= 'marginal', location = location, year = YEAR,
         )
+
+        if tariff_type == "gas":
+            ts = market.load_household_gas_rate(ts, self.DEWH)
+        else:
+            ts = market.load_household_import_rate(
+                ts, tariff_type, dnsp,
+                return_energy_plan=False,
+                control_load=control_load
+            )
+            
         return ts[ts_columns]
     
     #-------------------
@@ -108,7 +124,7 @@ class GeneralSetup():
             self,
             ts: pd.DataFrame = None,
             verbose: bool = False,
-    ) -> Tuple[pd.DataFrame, Dict]:
+    ) -> tuple[pd.DataFrame, dict]:
         """Run a thermal simulation using the data provided in self.
 
         Args:
@@ -119,7 +135,7 @@ class GeneralSetup():
             TypeError: DEWH object and thermal model engine are not compatible
 
         Returns:
-            Tuple[pd.DataFrame, Dict]: (out_all, out_overall) = (detailed results, overall results)
+            tuple[pd.DataFrame, dict]: (out_all, out_overall) = (detailed results, overall results)
         """
         
         if ts is None:
@@ -128,13 +144,15 @@ class GeneralSetup():
         DEWH = self.DEWH
         
         if (DEWH.__class__ == ResistiveSingle):
-            from tm_solarshift.thermal_models import (trnsys, postprocessing)
+            from tm_solarshift.thermal_models import trnsys
+            from tm_solarshift.utils import postprocessing
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_simulation(self, ts, out_all)
         
         elif (DEWH.__class__ == HeatPump):
-            from tm_solarshift.thermal_models import (trnsys, postprocessing)
+            from tm_solarshift.thermal_models import trnsys
+            from tm_solarshift.utils import postprocessing 
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_simulation(self, ts, out_all)

@@ -18,10 +18,9 @@ The module is divided in four sections:
 import os
 import numpy as np
 import pandas as pd
-from typing import List, Any, Dict
 import tm_solarshift.devices as devices
 from tm_solarshift.general import GeneralSetup
-from tm_solarshift.units import (Variable, Water)
+from tm_solarshift.utils.units import (Variable, Water)
 
 
 DIR_PROJECT = os.path.dirname(os.path.abspath(__file__))

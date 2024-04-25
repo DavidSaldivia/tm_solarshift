@@ -1,16 +1,11 @@
 import warnings
 import pandas as pd
-import cartopy
-import cartopy.crs as ccrs                   # import projections
-import cartopy.feature as cf                 # import features
 
-from typing import List, Dict, Any, Tuple
-
-from tm_solarshift.constants import ( DIRECTORY, DEFINITIONS)
+from tm_solarshift.constants import ( DIRECTORY, DEFINITIONS, SIMULATIONS_IO)
 DIR_DATA = DIRECTORY.DIR_DATA
 FILE_POSTCODES = DIRECTORY.FILE_POSTCODES
 
-TS_WEATHER = DEFINITIONS.TS_TYPES["weather"]
+TS_WEATHER = SIMULATIONS_IO.TS_TYPES["weather"]
 DEFINITION_SEASON = DEFINITIONS.SEASON
 LOCATIONS_METEONORM = DEFINITIONS.LOCATIONS_METEONORM
 LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
@@ -18,7 +13,7 @@ LOCATIONS_COORDINATES = DEFINITIONS.LOCATIONS_COORDINATES
 
 #------------------
 class Location():
-    def __init__(self, value: str|int|Tuple[float,float] = "Sydney",):
+    def __init__(self, value: str|int|tuple[float,float] = "Sydney",):
         self.value = value
         
         if type(value) == str:
@@ -31,7 +26,7 @@ class Location():
             raise TypeError(f"{type(self.value)} is not a valid type for Location")
 
     @property
-    def coords(self) -> Tuple[float,float]:
+    def coords(self) -> tuple[float,float]:
         if self.input_type == "city":
             return LOCATIONS_COORDINATES[self.value]
         elif self.input_type == "postcode":
@@ -80,7 +75,7 @@ class Location():
 def from_postcode(
     postcode: int = 2035,
     get: str = "state",
-) -> str| Tuple[float, float]:
+) -> str| tuple[float, float]:
     """It returns the state, coords, lon, or lat from a postcode, using the australian_postcodes.csv set.
 
     Args:
@@ -91,7 +86,7 @@ def from_postcode(
         ValueError: _description_
 
     Returns:
-        str| Tuple[float, float]: _description_
+        str| tuple[float, float]: _description_
     """
     
     df_raw = pd.read_csv(FILE_POSTCODES)
@@ -110,13 +105,13 @@ def from_postcode(
     return df[df.index == postcode].values[0]
 
 def from_coords(
-        coords: Tuple[float, float],
+        coords: tuple[float, float],
         get : str = "postcode",
 ) -> int|str:
     """It return the postcode or state closest to coords (a distance function is used). It uses australian_postcodes coordinates.
 
     Args:
-        coords (Tuple[float, float]): coordinates: (long, lat)
+        coords (tuple[float, float]): coordinates: (long, lat)
         get (str, optional): Any column from australian_postcods.csv. Although for now only [postcode,state] are accepted. Defaults to "postcode".
 
     Returns:

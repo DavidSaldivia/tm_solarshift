@@ -1,10 +1,8 @@
 import os
 import numpy as np
 import pandas as pd
-from typing import Optional, List, Dict, Any, Tuple
-
 from tm_solarshift.constants import DIRECTORY
-from tm_solarshift.units import (
+from tm_solarshift.utils.units import (
     Variable,
     Water,
     conversion_factor as CF
@@ -20,11 +18,15 @@ FILE_MODELS_TH = os.path.join(DIRECTORY.DIR_DATA["specs"], "data_models_TH.csv")
 #Solar System and auxiliary devices
 class SolarSystem():
     def __init__(self):
+
         self.nom_power = Variable(4000.0,"W")
         self.lat = Variable(-33.86,"-")
         self.lon = Variable(151.22,"-")
         self.tilt = Variable(abs(self.lat.get_value("-")),"-")
         self.orient = Variable(180.0,"-")
+
+        self.model = "-"
+        self.cost = Variable(np.nan, "AUD")
 
         self.profile_PV = 1
 
@@ -78,6 +80,10 @@ class ResistiveSingle():
         self.temp_deadband = Variable(10.0, "degC") # Dead band for max temp control
         self.temp_min = Variable(45.0, "degC")  # Minimum temperature in the tank
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
+
+        #finance
+        self.cost = Variable(np.nan, "AUD")
+        self.model = "-"
 
     @property
     def thermal_cap(self):
@@ -143,6 +149,9 @@ class HeatPump():
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
         self.temp_deadband = Variable(10, "degC")
 
+        #finance
+        self.cost = Variable(np.nan, "AUD")
+        self.model = "-"
         
     @property
     def thermal_cap(self):
@@ -196,6 +205,10 @@ class GasHeaterInstantaneous():
 
         #control
         self.temp_consump = Variable(45.0, "degC")
+
+        #finance
+        self.cost = Variable(np.nan, "AUD")
+        self.model = "-"
 
     @property
     def eta(self) -> Variable:
@@ -264,6 +277,10 @@ class GasHeaterStorage():
         self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
         self.temp_deadband = Variable(10, "degC")
+
+        #finance
+        self.cost = Variable(np.nan, "AUD")
+        self.model = "-"
 
     @property
     def eta(self) -> Variable:
@@ -346,6 +363,10 @@ class SolarThermalElecAuxiliary():
         # Auxiliary resistive heater
         self.nom_power = Variable(3600.0, "W")
         self.eta = Variable(1.0, "-")
+
+        #finance
+        self.cost = Variable(np.nan, "AUD")
+        self.model = "-"
 
     @property
     def thermal_cap(self):

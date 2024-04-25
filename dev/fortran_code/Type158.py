@@ -1,12 +1,11 @@
 import os
 import numpy as np
 import pandas as pd
-from typing import List, Any, Dict
 from functools import cache
 import tm_solarshift.devices as devices
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
 from tm_solarshift.general import GeneralSetup
-from tm_solarshift.units import (Variable, Water)
+from tm_solarshift.utils.units import (Variable, Water)
 
 #Control parameters
 N_NODES_MAX = 50
