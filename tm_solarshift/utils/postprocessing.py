@@ -36,7 +36,7 @@ def annual_simulation(
         out_overall_econ = economics_postproc(GS, ts, out_all)
 
     if "FIN" in include:
-        out_overall_fin = financial_analysis(GS, ts, out_all)
+        out_overall_fin = financial_postproc(GS, ts, out_all)
 
     return out_overall_th | out_overall_econ | out_overall_fin
 
