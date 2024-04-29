@@ -18,7 +18,7 @@ FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.FIN_POSTPROC_OUTPUT
 POSTPROC_TYPES = ["TM", "ECON", "FIN"]
 
 #------------------------------
-def annual_simulation(
+def annual_postproc(
         GS: GeneralSetup,
         ts: pd.DataFrame,
         out_all: pd.DataFrame,
@@ -123,7 +123,7 @@ def economics_postproc(
         ].sum()
         / heater_power_sum
     )
-    solar_ratio_real = np.nan   #Not implemented. It should calculate as
+    solar_ratio_real = np.nan   #Not implemented yet. It should calculate as
 
     emissions_total = (
         (heater_power * CF("kJ/h", "MW")) * STEP_h
@@ -286,7 +286,7 @@ def main():
     ts = GS.create_ts()
     
     (out_all, out_overall) = GS.run_thermal_simulation(ts, verbose=True)
-    out_overall2 = annual_simulation(GS, ts, out_all)
+    out_overall2 = annual_postproc(GS, ts, out_all)
 
     print(out_overall)
     print(out_overall2)

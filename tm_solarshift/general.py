@@ -107,7 +107,7 @@ class GeneralSetup():
         ts = market.load_emission_index_year(
             ts, index_type= 'marginal', location = location, year = YEAR,
         )
-
+        
         if tariff_type == "gas":
             ts = market.load_household_gas_rate(ts, self.DEWH)
         else:
@@ -116,7 +116,7 @@ class GeneralSetup():
                 return_energy_plan=False,
                 control_load=control_load
             )
-            
+
         return ts[ts_columns]
     
     #-------------------

@@ -2,7 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from typing import Tuple, Dict
 
 import tm_solarshift.general as general
 import tm_solarshift.timeseries.market as market
@@ -353,8 +352,6 @@ if __name__ == "__main__":
     plot_results_timers(cases, savefig=True, showfig=True)
     
     # run_simulations_ruby()
-
-
     # file_cases = os.path.join(DIR_PROJECT, "energy_cost_cases.csv")
     # cases = pd.read_csv(os.path.join(DIR_PROJECT,file_cases), index_col=0)
     # plot_results(cases, savefig=True, showfig=True)

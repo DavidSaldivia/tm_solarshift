@@ -139,12 +139,11 @@ def financial_analysis(
     if out_overall_econ == None:
         out_overall_econ = economics_postproc(GS, ts, out_all)
 
+    energy_annual = out_overall_th["heater_power_acum"]
+    energy_cost = out_overall_econ["annual_hw_household_cost"]
 
     capital_cost = calculate_capital_cost(GS.DEWH)
     oandm_cost = calculate_oandm_cost(GS, ts, out_all)
-    
-    energy_annual = out_overall_th["heater_power_acum"]
-    energy_cost = out_overall_econ["annual_hw_household_cost"]
     
     NPF = 8.
     variable_cost = (energy_cost + oandm_cost)
