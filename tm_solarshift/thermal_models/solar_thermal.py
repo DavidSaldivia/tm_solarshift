@@ -22,7 +22,7 @@ def run_thermal_model(
 
     #Running a trnsys simulation assuming all energy from resistive
     out_all = trnsys.run_simulation(GS, ts, verbose=verbose)
-    out_overall = postprocessing.annual_simulation(GS, ts, out_all)
+    out_overall = postprocessing.annual_postproc(GS, ts, out_all)
 
     #Calculating energy provided by solar thermal and the solar fraction
     #Emissions and tariffs are recalculated

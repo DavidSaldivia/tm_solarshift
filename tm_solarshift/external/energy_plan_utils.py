@@ -1,4 +1,11 @@
+import json, os
+from datetime import datetime
+import pandas as pd
 
+from tm_solarshift.constants import DIRECTORY
+
+# from tm_solarshift.external.solarshift_sola_data import DATA_DIRECTORY
+from tm_solarshift.external.model_constants import SolarShiftConstants
 from tm_solarshift.external.energy_plan import (
     FlatPlan,
     ToUPlan,
@@ -6,12 +13,6 @@ from tm_solarshift.external.energy_plan import (
     StepPlan,
     SeasonalCLPlan,
 )
-
-import json, os
-from tm_solarshift.external.solarshift_sola_data import DATA_DIRECTORY
-from tm_solarshift.external.model_constants import SolarShiftConstants
-from datetime import datetime
-import pandas as pd
 
 CONTROLLED_LOAD_INFO = SolarShiftConstants.CONTROLLED_LOAD_INFO
 
@@ -45,10 +46,13 @@ def get_energy_plan_for_dnsp(
         controlled_load_num: int, controlled load number
         switching_cl: bool, whether to use switching controlled load
     """
+
+    # DIR_DATA_TARIFFS = DATA_DIRECTORY.sa_data_dirs["energy_plans"]
+    DIR_DATA_TARIFFS = DIRECTORY.DIR_DATA["tariffs"]
     if " " in dnsp:
         dnsp = dnsp.replace(" ", "")
     energy_plan_path = os.path.join(
-        DATA_DIRECTORY.sa_data_dirs["energy_plans"],
+        DIR_DATA_TARIFFS,
         f"{dnsp.lower()}_{tariff_type}_plan.json",
     )
     with open(energy_plan_path, "rb") as f:
@@ -59,12 +63,12 @@ def get_energy_plan_for_dnsp(
     if controlled_load_num > 0:
         if switching_cl:
             cl_plan_path = os.path.join(
-                DATA_DIRECTORY.sa_data_dirs["energy_plans"],
+                DIR_DATA_TARIFFS,
                 f"{dnsp.lower()}_controlled_load_{controlled_load_num}_plan.json",
             )
             if not os.path.exists(cl_plan_path):
                 cl_plan_path = os.path.join(
-                    DATA_DIRECTORY.sa_data_dirs["energy_plans"],
+                    DIR_DATA_TARIFFS,
                     f"ausgrid_controlled_load_{controlled_load_num}_plan.json",
                 )
             with open(cl_plan_path, "rb") as f:
@@ -139,6 +143,7 @@ def add_wholesale_prices(raw_data: pd.DataFrame, state: str = "NSW"):
         raw_data (pd.DataFrame): raw data
         state (str, optional): state. Defaults to "NSW".
     """
+    from tm_solarshift.external.solarshift_sola_data import DATA_DIRECTORY
     price_data = pd.read_csv(
         os.path.join(
             DATA_DIRECTORY.price_data_dir,

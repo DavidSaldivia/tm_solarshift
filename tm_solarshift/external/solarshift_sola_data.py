@@ -9,7 +9,8 @@ from datetime import (
 import zipfile
 from typing import Optional, Any
 
-from tm_solarshift.external.model_constants import SolarShiftConstants
+from tm_solarshift.constants import DIRECTORY
+# from tm_solarshift.external.model_constants import SolarShiftConstants
 import numpy as np
 import pandas as pd
 
@@ -22,7 +23,7 @@ MISSING_DATA_THRESHOLD = {
     900: 92,
 }
 
-fileDir = os.path.dirname(__file__)
+# fileDir = os.path.dirname(__file__)
 
 r"""
 Data directory and file names.
@@ -57,18 +58,9 @@ Overall there are two main datasets:
 
 class DATA_DIRECTORY(object):
     sa_data_dirs = {
-        "raw_data": os.path.join(
-            os.path.dirname(fileDir),
-            "data","SA_raw"
-            ),
-        "processed_data": os.path.join(
-            os.path.dirname(fileDir),
-            "data","SA_processed"
-            ),
-        "energy_plans": os.path.join(
-            # os.path.dirname(fileDir),
-            "data","energy_plans"
-            )
+        "raw_data": DIRECTORY.DIR_DATA["SA_raw"],
+        "processed_data": DIRECTORY.DIR_DATA["SA_processed"],
+        "energy_plans": DIRECTORY.DIR_DATA["tariffs"]
         }
     solar_hot_water_dir = "solar_hot_water/"
     sa_file_names = {

@@ -45,7 +45,7 @@ def load_PV_generation(
     df_PV = pd.DataFrame(index=timeseries.index, columns=columns)
     lbl = columns[0]
     
-    if solar_system == None:
+    if solar_system is None:
         df_PV[lbl] = 0.0
     else:
         profile_PV = solar_system.profile_PV

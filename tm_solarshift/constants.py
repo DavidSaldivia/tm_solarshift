@@ -12,6 +12,7 @@ class DIRECTORY():
         "layouts" : os.path.join(DIR_MAIN, "data", "trnsys_layouts"),
         "location" : os.path.join(DIR_MAIN, "data", "location"),
         "SA_processed" : os.path.join(DIR_MAIN, "data", "SA_processed"),
+        "SA_raw" : os.path.join(DIR_MAIN, "data", "SA_raw"),
         "samples" : os.path.join(DIR_MAIN, "data", "samples"),
         "specs" : os.path.join(DIR_MAIN, "data", "device_specs"),
         "tariffs" : os.path.join(DIR_MAIN, "data", "tariffs_json_2023-24"),
@@ -22,6 +23,14 @@ class DIRECTORY():
     DIR_PROJECTS = os.path.join(DIR_MAIN, "projects")
     
     #FILES
+    FILES_MODEL_SPECS = {
+        "resistive" : os.path.join(DIR_DATA["specs"], "data_models_RS.csv"),
+        "heat_pump" : os.path.join(DIR_DATA["specs"], "data_models_HP.csv"),
+        "gas_instant": os.path.join(DIR_DATA["specs"], "data_models_GI.csv"),
+        "gas_storage": os.path.join(DIR_DATA["specs"], "data_models_GS.csv"),
+        "solar_thermal": os.path.join(DIR_DATA["specs"], "data_models_TH.csv"),
+    }
+
     FILES_HWD_SAMPLES ={
         "HWD_daily" : os.path.join(DIR_DATA["samples"], "HWD_daily_sample_site.csv"),
         "HWD_events": os.path.join(DIR_DATA["samples"], "HWD_events.xlsx"),
@@ -105,10 +114,12 @@ class SIMULATIONS_IO():
         "net_present_cost",
         "payback_period",
         "LCOHW",
-        "fraction_capital",
-        "fraction_energy",
-        "fraction_oandm",
-        "fraction_others",
+        "capital_cost",
+        "annual_bill",
+        "oandm_cost",
+        "others_cost",
+        "rebates",
+        "disconnection_costs",
     ]
 
     FIN_COMP_OUTPUT = [
@@ -116,9 +127,6 @@ class SIMULATIONS_IO():
         "cost_savings_household",
         "cost_savings_retailer",
     ]
-
-
-
 
 # Definitions and mappings
 class DEFINITIONS():

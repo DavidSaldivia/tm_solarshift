@@ -8,11 +8,7 @@ from tm_solarshift.utils.units import (
     conversion_factor as CF
 )
 
-FILE_MODELS_RS = os.path.join(DIRECTORY.DIR_DATA["specs"], "data_models_RS.csv")
-FILE_MODELS_HP = os.path.join(DIRECTORY.DIR_DATA["specs"], "data_models_HP.csv")
-FILE_MODELS_GI = os.path.join(DIRECTORY.DIR_DATA["specs"], "data_models_GI.csv")
-FILE_MODELS_GS = os.path.join(DIRECTORY.DIR_DATA["specs"], "data_models_GS.csv")
-FILE_MODELS_TH = os.path.join(DIRECTORY.DIR_DATA["specs"], "data_models_TH.csv")
+FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 
 #-------------------------
 #Solar System and auxiliary devices
@@ -101,7 +97,7 @@ class ResistiveSingle():
     @classmethod
     def from_model_file(
         cls,
-        file_path: str = FILE_MODELS_RS,
+        file_path: str = FILES_MODEL_SPECS["resistive"],
         model:str = "",
         ):
         
@@ -166,7 +162,7 @@ class HeatPump():
     @classmethod
     def from_model_file(
         cls,
-        file_path: str = FILE_MODELS_HP,
+        file_path: str = FILES_MODEL_SPECS["heat_pump"],
         model:str = "",
         ):
         
@@ -225,7 +221,7 @@ class GasHeaterInstantaneous():
     @classmethod
     def from_model_file(
         cls,
-        file_path: str = FILE_MODELS_GI,
+        file_path: str = FILES_MODEL_SPECS["gas_instant"],
         model:str = "",
         ):
         
@@ -297,7 +293,7 @@ class GasHeaterStorage():
     @classmethod
     def from_model_file(
         cls,
-        file_path: str = FILE_MODELS_GS,
+        file_path: str = FILES_MODEL_SPECS["gas_storage"],
         model:str = "",
         ):
         
@@ -381,7 +377,7 @@ class SolarThermalElecAuxiliary():
     @classmethod
     def from_model_file(
         cls,
-        file_path: str = FILE_MODELS_TH,
+        file_path: str = FILES_MODEL_SPECS["solar_thermal"],
         model:str = "",
         ):
         

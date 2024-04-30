@@ -176,7 +176,7 @@ def analysis(
 def updating_parameters(
         GS: general.GeneralSetup,
         row_in: pd.Series,
-        units_in: List = [],
+        units_in: list = [],
 ) -> None:
     """updating parameters for those of the specific run.
     This function update the GS object. It takes the string and converts it into GS attributes.

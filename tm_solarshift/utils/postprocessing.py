@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.constants import SIMULATIONS_IO
 from tm_solarshift.utils.units import conversion_factor as CF
-from tm_solarshift.utils.finance import (
+from tm_solarshift.utils.finance_old import (
     calculate_household_energy_cost,
-    calculate_wholesale_energy_cost
+    calculate_wholesale_energy_cost,
+    financial_analysis,
 )
 
 TM_POSTPROC_OUTPUT = SIMULATIONS_IO.TM_POSTPROC_OUTPUT
@@ -159,8 +160,9 @@ def financial_postproc(
     out_overall_econ: dict = None,
 ) -> dict:
 
-    from tm_solarshift.utils.finance import financial_analysis
-    out_overall_fin = financial_analysis()
+    out_overall_fin = financial_analysis(
+        GS, ts, out_all, out_overall_th, out_overall_econ
+    )
     return out_overall_fin
 
 #------------------------------

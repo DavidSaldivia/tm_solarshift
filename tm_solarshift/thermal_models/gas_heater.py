@@ -58,6 +58,10 @@ def instantaneous_fixed_eta(
     heater_heat_acum = E_HWD_acum / eta
     m_HWD_avg = (hw_flow * STEP_h).sum() / DAYS
 
+    out_all = hw_flow.copy()
+    out_all["eta"] = eta
+    out_all["HeaterPower"] = specific_energy * hw_flow * CF("MJ", "kJ")    #[kJ/h]
+
     out_overall = {
         "heater_heat_acum": heater_heat_acum,
         "heater_perf_avg": eta,
@@ -80,7 +84,7 @@ def instantaneous_fixed_eta(
         "SOC_050": np.nan,
     }
 
-    return (None, out_overall)
+    return (out_all, out_overall)
 
 #--------------------------------
 def storage_fixed_eta(
@@ -101,7 +105,7 @@ def storage_fixed_eta(
         raise ValueError("DEWH type is not compatible with this function.")
 
     out_all = trnsys.run_simulation(GS, ts, verbose=verbose)
-    out_overall = postprocessing.annual_simulation(GS, ts, out_all)
+    out_overall = postprocessing.annual_postproc(GS, ts, out_all)
     sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
 
     emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
