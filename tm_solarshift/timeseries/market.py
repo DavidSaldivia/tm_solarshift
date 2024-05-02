@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from tm_solarshift.constants import (DIRECTORY,DEFINITIONS)
 from tm_solarshift.general import GeneralSetup

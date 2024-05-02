@@ -203,7 +203,7 @@ def period_definitions(profile_control):
             }
         ]
     
-    if profile_control == 0:
+    elif profile_control == 0:
         # 24/7 General Supply
         periods = [
             {
@@ -217,7 +217,7 @@ def period_definitions(profile_control):
             }
         ]
     
-    if profile_control == 1:
+    elif profile_control == 1:
         # Ausgrid's Controlled Load 1 (Legacy)
         periods = [
             {
@@ -240,7 +240,7 @@ def period_definitions(profile_control):
             },
         ]
     
-    if profile_control == 2:
+    elif profile_control == 2:
         # Ausgrid's Controlled Load 2 (Legacy - Option A)
         periods = [
             {
@@ -272,7 +272,7 @@ def period_definitions(profile_control):
             },
         ]
     
-    if profile_control == 3:
+    elif profile_control == 3:
         # Ausgrid's new Controlled Load 1 (Solar Soak - Option B)
         # Here is called CL3
         periods = [
@@ -332,7 +332,7 @@ def period_definitions(profile_control):
             },
         ]
     
-    if profile_control == 4:
+    elif profile_control == 4:
         # Solar soak, no randomization, only solar time
         periods = [
             {
@@ -346,7 +346,7 @@ def period_definitions(profile_control):
             }
         ]
     
-    if profile_control == 5:
+    elif profile_control == 5:
         # Old control load 3 (CL1 + Solar time). No randomization
         periods = [
             {
@@ -369,7 +369,7 @@ def period_definitions(profile_control):
             },
         ]
 
-    if profile_control == 6:
+    elif profile_control == 6:
         # Timer using off-peak periods
         periods = [
             {
@@ -392,7 +392,7 @@ def period_definitions(profile_control):
             },
         ]
     
-    if profile_control == 10:
+    elif profile_control == 10:
         # Only 3 hours at beginning of day (for Event's analysis)
         periods = [
             {
@@ -405,7 +405,19 @@ def period_definitions(profile_control):
                 "random_off": 0,  # [mins]
             }
         ]
-        
+    else:
+        # No Connection at all (useful for tests)
+        periods = [
+            {
+                "label": "annual",  # only used as reference
+                "month_start": 0,  # inclusive
+                "month_stop": 0,  # inclusive
+                "time_start": 0,  # inclusive
+                "time_stop": 0,  # inclusive
+                "random_on": 0,  # [mins]
+                "random_off": 0,  # [mins]
+            }
+        ]
     return periods
 
 

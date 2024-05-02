@@ -1,3 +1,4 @@
+# General imports
 import os
 import numpy as np
 import pandas as pd
@@ -22,6 +23,7 @@ from tm_solarshift.devices import (
     SolarThermalElecAuxiliary,
 )
 
+#-----------------------------
 # Constants for this module
 Heater = Union[
     ResistiveSingle,
@@ -42,9 +44,10 @@ FILE_MODEL_HOUSEHOLDSIZES = os.path.join(
     "models_householdsize.csv"
 )
 LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
-MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
+FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.FIN_POSTPROC_OUTPUT
 
+#-----------------------------
 #Default values
 DEFAULT_CAPITAL_COST = 1000.    #[AUD]
 DEFAULT_DIVERTER_COST = 1100.   #[AUD]
@@ -53,12 +56,12 @@ DEFAULT_PERM_CLOSE_COST = 1250  #[AUD]
 DEFAULT_TEMP_CLOSE_COST = 200   #[AUD]
 DEFAULT_NEW_ELEC_SETUP = 500.   #[AUD]
 
-DEFAULT_REBATES = 0             #[AUD]
+DEFAULT_REBATES = 0             # [AUD]
 DEFAULT_DISCOUNT_RATE = 0.08    # 8%
-DEFAULT_LIFESPAN = 10           # years
-DEFAULT_MAJOR_MAINTANCE = 200.  # aud
-DEFAULT_HOUSEHOLD_SIZE = 4      # people
-DEFAULT_DAILY_HWD = 200.        #L/day
+DEFAULT_LIFESPAN = 10           # [years]
+DEFAULT_MAJOR_MAINTANCE = 200.  # AUD
+DEFAULT_HOUSEHOLD_SIZE = 4      # [people]
+DEFAULT_DAILY_HWD = 200.        # [L/day]
 
 # List of accepted values
 LIST_PARAMS_INPUT = [ "location", "profile_HWD", "household_size",
@@ -115,6 +118,7 @@ def get_control_load(
         control_type: str,
         tariff_type: str
 )-> int:
+    
     match control_type:
         case "GS":
             control_load = 0
@@ -124,12 +128,19 @@ def get_control_load(
             control_load = 2
         case "CL3":
             control_load = 3
-        case "timer_SS":
+        case "timer_SS" | "SS":
             control_load = 4
         case "timer_OP":
             control_load = 6
         case "diverter":
-            control_load = 1 if tariff_type == "CL" else (10 if tariff_type == "flat" else None)
+            if tariff_type == "CL":
+                control_load = 1
+            elif tariff_type == "flat":
+                control_load = 10
+            elif tariff_type == "tou":
+                control_load = 6
+            else:
+                control_load = -1
         case _:
             raise ValueError("wrong control_type.")
     return control_load
@@ -153,7 +164,7 @@ def calculate_capital_cost(GS: GeneralSetup) -> float:
     household_size = GS.household.size
 
     model_number = get_model_number(household_size, heater_type)
-    df_heaters = pd.read_csv( MODEL_SPECS[heater_type], index_col=0 )
+    df_heaters = pd.read_csv( FILES_MODEL_SPECS[heater_type], index_col=0 )
 
     match heater_type:
 
@@ -212,7 +223,11 @@ def calculate_rebates(
         case "NSW":
             rebate = NSW_rebate(old_heater, new_system)
         case "VIC":
-            rebate = VIC_rebate(old_heater, new_heater=heater_type, new_system=new_system)
+            rebate = VIC_rebate(
+                old_heater,
+                new_heater=heater_type,
+                new_system=new_system
+            )
         case "SA":
             rebate = SA_rebate()
         case "ACT":
@@ -425,7 +440,7 @@ def financial_analysis(
     #running thermal simulation
     ts = GS.create_ts()
     (out_all, out_overall) = GS.run_thermal_simulation(ts, verbose=verbose)
-    energy_annual = out_overall["heater_power_acum"]
+    energy_HWD_annual = out_overall["E_HWD_acum"]
 
     #Calculating fixed and variable costs
     capital_cost = calculate_capital_cost(GS)
@@ -452,7 +467,7 @@ def financial_analysis(
 
     #Calculating financial parameters
     net_present_cost = calculate_npv(cashflows, discount_rate)
-    LCOHW = net_present_cost / (energy_annual*N_years)      #[AUD/kWh]
+    LCOHW = net_present_cost / (energy_HWD_annual*N_years)      #[AUD/kWh]
     payback_period = np.nan
 
     #Generating the output
