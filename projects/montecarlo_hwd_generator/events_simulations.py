@@ -15,16 +15,16 @@ from sklearn import linear_model
 
 from typing import List, Dict, Union
 
-from tm_solarshift.constants import ( DIRECTORY, DEFINITIONS)
+from tm_solarshift.constants import ( DIRECTORY, SIMULATIONS_IO)
 from tm_solarshift.general import GeneralSetup
-from tm_solarshift.utils import postprocessing
+from tm_solarshift.thermal_models import postprocessing
 from tm_solarshift.thermal_models import (trnsys)
 from tm_solarshift.utils.units import (
     Variable,
 )
 
-PROFILES_TYPES = DEFINITIONS.TS_TYPES
-TS_COLUMNS_ALL = DEFINITIONS.TS_COLUMNS_ALL
+PROFILES_TYPES = SIMULATIONS_IO.TS_TYPES
+TS_COLUMNS_ALL = SIMULATIONS_IO.TS_COLUMNS_ALL
 WEATHER_TYPES = [
     'day_constant', 
     'meteonorm_random', 

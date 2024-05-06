@@ -16,7 +16,7 @@ TM_POSTPROC_OUTPUT = SIMULATIONS_IO.TM_POSTPROC_OUTPUT
 ECON_POSTPROC_OUTPUT = SIMULATIONS_IO.ECON_POSTPROC_OUTPUT
 FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.FIN_POSTPROC_OUTPUT
 
-POSTPROC_TYPES = ["TM", "ECON", "FIN"]
+POSTPROC_TYPES = ["TM", "ECON"]
 
 #------------------------------
 def annual_postproc(
@@ -35,9 +35,6 @@ def annual_postproc(
 
     if "ECON" in include:
         out_overall_econ = economics_postproc(GS, ts, out_all)
-
-    if "FIN" in include:
-        out_overall_fin = financial_postproc(GS, ts, out_all)
 
     return out_overall_th | out_overall_econ | out_overall_fin
 

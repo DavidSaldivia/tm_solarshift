@@ -7,7 +7,7 @@ from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
 from tm_solarshift.utils.units import VariableList
 from tm_solarshift.devices import (HeatPump, ResistiveSingle)
 
-from tm_solarshift.utils.parametric import (
+from tm_solarshift.analysis.parametric import (
     parametric_settings,
     parametric_run,
 )

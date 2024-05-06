@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 import tm_solarshift.general as general
-import tm_solarshift.utils.parametric as parametric
+import tm_solarshift.analysis.parametric as parametric
 from tm_solarshift.utils.units import VariableList
 
 PARAMS_OUT = parametric.PARAMS_OUT

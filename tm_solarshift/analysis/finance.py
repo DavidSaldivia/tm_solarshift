@@ -47,7 +47,7 @@ LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.FIN_POSTPROC_OUTPUT
 
-#-----------------------------
+#--------------------
 #Default values
 DEFAULT_CAPITAL_COST = 1000.    #[AUD]
 DEFAULT_DIVERTER_COST = 1100.   #[AUD]
@@ -63,6 +63,7 @@ DEFAULT_MAJOR_MAINTANCE = 200.  # AUD
 DEFAULT_HOUSEHOLD_SIZE = 4      # [people]
 DEFAULT_DAILY_HWD = 200.        # [L/day]
 
+#--------------------
 # List of accepted values
 LIST_PARAMS_INPUT = [ "location", "profile_HWD", "household_size",
                      "heater_type", "has_solar", "control_type",
@@ -98,7 +99,7 @@ def get_heater_object(
     heater_type: str,
     model: str
 ) -> Heater:
-    
+
     match heater_type:
         case "resistive":
             DEWH = ResistiveSingle.from_model_file(model=model)
@@ -112,6 +113,7 @@ def get_heater_object(
             DEWH = SolarThermalElecAuxiliary.from_model_file(model=model)
         case _:
             raise ValueError("heater_type not among accepted DEWH.")
+        
     return DEWH
 #-------------------
 def get_control_load(
@@ -286,7 +288,6 @@ def calculate_oandm_cost(
     # annual oandm cost
     # include operation, maintance, re-purchase, etc.
     oandm_cost = 0.
-
     return oandm_cost
 
 #-----------------------
@@ -416,10 +417,18 @@ def get_GS_instance(
     GS.HWDInfo.daily_avg = Variable( daily_avg, "L/d")
     GS.HWDInfo.daily_max = Variable( 2*daily_avg, "L/d")
     GS.HWDInfo.daily_std = Variable( daily_avg/3., "L/d")
+
     if not has_solar:
         GS.solar_system = None
 
     return GS
+
+def save_and_cache(GS, output_finance, cashflows ):
+
+        
+        
+
+    return
 
 #------------------
 def financial_analysis(
@@ -429,7 +438,10 @@ def financial_analysis(
     permanent_close: bool = False,
     major_maintance_years: list[int] = [4, 8],
     verbose: bool = True,
+    save_details: bool = False,
+    create_cache: bool = True,
 ) -> tuple[dict,np.array]:
+
 
     #retrieving data
     heater_type = row["heater_type"]

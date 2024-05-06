@@ -142,7 +142,7 @@ def financial_analysis(
     out_overall_econ: dict = None,
 ) -> dict:
 
-    from tm_solarshift.utils.postprocessing import (
+    from tm_solarshift.thermal_models.postprocessing import (
         thermal_postproc,
         economics_postproc,
     )

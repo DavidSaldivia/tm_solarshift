@@ -10,7 +10,7 @@ import tm_solarshift.general as general
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
 from tm_solarshift.utils.units import (Variable, VariableList)
 from tm_solarshift.devices import (ResistiveSingle, GasHeaterInstantaneous)
-from  tm_solarshift.utils import postprocessing
+from  tm_solarshift.thermal_models import postprocessing
 
 PARAMS_OUT = DEFINITIONS.PARAMS_OUT
 DIR_DATA = DIRECTORY.DIR_DATA

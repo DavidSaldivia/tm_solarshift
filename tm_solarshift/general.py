@@ -162,14 +162,14 @@ class GeneralSetup():
         
         if (DEWH.__class__ == ResistiveSingle):
             from tm_solarshift.thermal_models import trnsys
-            from tm_solarshift.utils import postprocessing
+            from tm_solarshift.thermal_models import postprocessing
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_postproc(self, ts, out_all)
         
         elif (DEWH.__class__ == HeatPump):
             from tm_solarshift.thermal_models import trnsys
-            from tm_solarshift.utils import postprocessing 
+            from tm_solarshift.thermal_models import postprocessing 
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_postproc(self, ts, out_all)

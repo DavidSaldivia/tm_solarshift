@@ -45,10 +45,28 @@ class DIRECTORY():
     FILE_POSTCODES = os.path.join(DIR_DATA["location"], "australian_postcodes.csv") # https://www.matthewproctor.com/australian_postcodes
     FILE_MERRA2_COORDS = os.path.join(DIR_DATA["location"], "merra2_coord_states.csv")
     
-class DEFAULTS():
+
+class DEFAULT():
+
     LOCATION = "Sydney"
     HWDP = 1
     NEM_REGION = "NSW1"
+    
+    TZ = 'Australia/Brisbane'       # NEM timezone
+    LAT = -33.86
+    LON = 151.21
+    TILT = abs(LAT)
+    ORIENT = 180.
+    
+    G_STC = 1000.                   #[W/m2]
+    PV_NOMPOW = 5000.               #[W]
+    ADR_PARAMS = {
+        'k_a': 0.99924,
+        'k_d': -5.49097,
+        'tc_d': 0.01918,
+        'k_rs': 0.06999,
+        'k_rsh': 0.26144,
+    }
 
 class SIMULATIONS_IO():
 

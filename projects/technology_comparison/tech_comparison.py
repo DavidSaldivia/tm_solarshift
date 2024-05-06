@@ -3,7 +3,7 @@ import pandas as pd
 
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.utils.units import VariableList
-import tm_solarshift.utils.parametric as parametric
+import tm_solarshift.analysis.parametric as parametric
 PARAMS_OUT = parametric.PARAMS_OUT
 from tm_solarshift.devices import (
     ResistiveSingle,

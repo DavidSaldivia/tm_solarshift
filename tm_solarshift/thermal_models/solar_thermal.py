@@ -3,7 +3,7 @@ import pandas as pd
 
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.devices import SolarThermalElecAuxiliary
-from tm_solarshift.utils import postprocessing
+from tm_solarshift.thermal_models import postprocessing
 from tm_solarshift.utils.units import conversion_factor as CF
 from tm_solarshift.thermal_models import (trnsys)
 from tm_solarshift.external.pvlib_utils import (
