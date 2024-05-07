@@ -35,7 +35,8 @@ FILES_TRNSYS_OUTPUT = {
     "RESULTS_TANK": "TRNSYS_Out_TankTemps.dat",
     "RESULTS_SIGNAL": "TRNSYS_Out_Signals.dat",
 }
-METEONORM_FOLDER = r"C:/TRNSYS18/Weather/Meteonorm/Australia-Oceania"
+# METEONORM_FOLDER = r"C:/TRNSYS18/Weather/Meteonorm/Australia-Oceania"
+METEONORM_FOLDER = os.path.join("C:/TRNSYS18/Weather/Meteonorm/Australia-Oceania")
 METEONORM_FILES = {
     "Adelaide": "AU-Adelaide-946720.tm2",
     "Alice_Spring": "AU-Alice-Springs-943260.tm2",

@@ -16,16 +16,27 @@ DEFAULT_PV_NOMPOW = DEFAULT.PV_NOMPOW
 DEFAULT_ADR_PARAMS = DEFAULT.ADR_PARAMS
 
 #most of these columns are from pbliv
-COLS_TMY = ["temp_air", "ghi", "dni", "dhi", "wind_speed"]
-COLS_SOLPOS = ["apparent_zenith", "zenith",
-               "apparent_elevation", "elevation",
-               "azimuth", "equation_of_time"]
-COLS_INCIDENCE = ["cosine_aoi", "aoi"]
-COLS_IRRADIANCE_PLANE = ["poa_global", "poa_direct",
-                         "poa_diffuse", "poa_sky_diffuse",
-                         "poa_ground_diffuse"]
+COLS_TMY = [
+    "temp_air", "ghi", "dni", "dhi", "wind_speed"
+]
+COLS_SOLPOS = [
+    "apparent_zenith", "zenith",
+    "apparent_elevation", "elevation",
+    "azimuth", "equation_of_time"
+]
+COLS_INCIDENCE = [
+    "cosine_aoi",
+    "aoi"
+]
+COLS_IRRADIANCE_PLANE = [
+    "poa_global", "poa_direct",
+    "poa_diffuse", "poa_sky_diffuse",
+    "poa_ground_diffuse"
+]
 
 #---------------
+# helper
+
 def load_trnsys_weather(
     YEAR: int = 2022,
     START: int = 0,
@@ -51,8 +62,6 @@ def load_trnsys_weather(
     df = df.iloc[1:]
 
     # Converting from kJ/hr to W
-    # df["HeaterPower"] = df["HeaterPower"]
-    # df["HeaterHeat"] = df["HeaterHeat"]
     df["ghi"] = df["ghi"] / 3.6
     df["dni"] = df["dni"] / 3.6
     df["dhi"] = df["dhi"] / 3.6

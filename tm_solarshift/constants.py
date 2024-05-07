@@ -71,12 +71,12 @@ class DEFAULT():
 class SIMULATIONS_IO():
 
     TS_TYPES = {
-        "weather": ["GHI", "Temp_Amb", "Temp_Mains"],
+        "weather": ["GHI", "temp_amb", "temp_mains", "DNI", "DHI", "WS"],
         "control": ["CS"],
-        "electric": ["PV_Gen", "Import_Grid", "Import_CL"],
+        "electric": ["PV_gen", "import_grid", "import_CL"],
         "HWDP": ["P_HWD", "m_HWD", "m_HWD_day"],
-        "economic": ["tariff", "rate_type", "Wholesale_Market"],
-        "emissions": ["Intensity_Index", "Marginal_Index"],
+        "economic": ["tariff", "rate_type", "wholesale_market"],
+        "emissions": ["intensity_index", "marginal_index"],
     }
     TS_COLUMNS_ALL = [
         item for sublist in 
