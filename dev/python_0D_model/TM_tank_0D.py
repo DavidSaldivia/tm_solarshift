@@ -5,7 +5,7 @@ import tm_solarshift.general as general
 from tm_solarshift.constants import DIRECTORY
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.devices import (Variable, ResistiveSingle)
-from tm_solarshift.thermal_models import (tank_0D, trnsys)
+from tm_solarshift.models import (tank_0D, trnsys)
 
 
 #------------------------------

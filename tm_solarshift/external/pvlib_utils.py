@@ -139,7 +139,7 @@ def get_irradiance_plane(
     poa_global = get_total_irradiance(
         tilt, orient,
         solpos["apparent_zenith"], solpos["azimuth"],
-        df["dni"], df["ghi"], df["dhi"]
+        df["DNI"], df["GHI"], df["DHI"]
     )["poa_global"]
 
     return poa_global
@@ -159,7 +159,7 @@ def get_incidence_angle_cosine(
 
 #---------------
 def get_PV_generation(
-    df: pd.DataFrame = None,
+    ts: pd.DataFrame,
     tz: str = tz_default,
     latitude: float = lat_default,
     longitude: float = long_default,
@@ -170,13 +170,11 @@ def get_PV_generation(
     adr_params: dict = adr_params_default,
 ) -> pd.DataFrame:
     
-    if df is None:
-        df = load_trnsys_weather(tz=tz)
-    
-    df['poa_global'] = get_irradiance_plane(df, latitude, longitude, tilt, orient)
+    df = ts.copy()
     # Estimate the expected operating temperature of the PV modules
+    df['poa_global'] = get_irradiance_plane(df, latitude, longitude, tilt, orient, tz=tz)
     df['temp_pv'] = pvlib.temperature.faiman(
-        df["poa_global"], df["temp_air"], df["wind_speed"]
+        df["poa_global"], df["temp_amb"], df["WS"]
     )
     #Relative efficiency and module power
     df['eta_rel'] = pvefficiency_adr(df['poa_global'], df['temp_pv'], **adr_params)

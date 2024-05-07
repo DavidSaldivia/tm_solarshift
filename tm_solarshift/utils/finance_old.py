@@ -52,14 +52,14 @@ def calculate_household_energy_cost(
     if df_tm  is None:
         df_tm = GS.run_thermal_simulation(ts)
 
-    heater_power = df_tm["HeaterPower"] * CF("kJ/h", "kW")
+    heater_power = df_tm["heater_power"] * CF("kJ/h", "kW")
 
     if GS.solar_system == None:
         imported_energy = heater_power.copy()
     else:    
         tz = 'Australia/Brisbane'
         pv_power = GS.solar_system.load_PV_generation(
-            df = df_tm, tz=tz,  unit="kW"
+            ts=ts, tz=tz,  unit="kW"
         )
         imported_energy = np.where(
             pv_power < heater_power, heater_power - pv_power, 0
@@ -82,8 +82,8 @@ def calculate_wholesale_energy_cost(
     if df_tm is None:
         df_tm = GS.run_thermal_simulation(ts)
         
-    heater_power = df_tm["HeaterPower"] * CF("kJ/h", "MW")
-    energy_cost = ( ts["Wholesale_Market"] * heater_power * STEP_h).sum()
+    heater_power = df_tm["heater_power"] * CF("kJ/h", "MW")
+    energy_cost = ( ts["wholesale_market"] * heater_power * STEP_h).sum()
     return energy_cost
 
 #------------------------
@@ -142,7 +142,7 @@ def financial_analysis(
     out_overall_econ: dict = None,
 ) -> dict:
 
-    from tm_solarshift.thermal_models.postprocessing import (
+    from tm_solarshift.models.postprocessing import (
         thermal_postproc,
         economics_postproc,
     )

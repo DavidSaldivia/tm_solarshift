@@ -17,11 +17,8 @@ from typing import List, Dict, Union
 
 from tm_solarshift.constants import ( DIRECTORY, SIMULATIONS_IO)
 from tm_solarshift.general import GeneralSetup
-from tm_solarshift.thermal_models import postprocessing
-from tm_solarshift.thermal_models import (trnsys)
-from tm_solarshift.utils.units import (
-    Variable,
-)
+from tm_solarshift.utils.units import Variable
+from tm_solarshift.models import (trnsys, postprocessing)
 
 PROFILES_TYPES = SIMULATIONS_IO.TS_TYPES
 TS_COLUMNS_ALL = SIMULATIONS_IO.TS_COLUMNS_ALL
@@ -34,8 +31,6 @@ WEATHER_TYPES = [
 DIR_DATA = DIRECTORY.DIR_DATA
 DIR_PROJECT = os.path.join(DIRECTORY.DIR_PROJECTS,os.path.dirname(__file__))
 DIR_RESULTS = os.path.join(DIR_PROJECT, "results")
-
-
 
 def loading_timeseries(
     GS: GeneralSetup,
@@ -59,7 +54,6 @@ def loading_timeseries(
     ts = GS.create_ts_empty(ts_columns = ts_columns)
     ts = GS.HWDInfo.generator( ts, method = HWDG_method,)
     ts = weather.load_montecarlo(ts, params = params_weather)
-
     ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
     ts = circuits.load_PV_generation(ts, solar_system = solar_system)
     ts = circuits.load_elec_consumption(ts, profile_elec = 0)
@@ -584,6 +578,7 @@ def function_with_all(case: int) -> List:
 
     GS = GeneralSetup()
     GS.HWDInfo.profile_HWD = case
+
     GS.household.control_load = control_load
     GS.household.control_random_on = random_control
     GS.HWDInfo.daily_distribution = HWD_daily_dist

@@ -22,8 +22,8 @@ TS_TYPES = SIMULATIONS_IO.TS_TYPES
 TRNSYS_EXECUTABLE = r"C:/TRNSYS18/Exe/TRNExe64.exe"
 TEMPDIR_SIMULATION = "C:/SolarShift_TempDir"
 FILES_TRNSYS_INPUT = {
-    "PV_Gen": "0-Input_PVGen.csv",
-    "Import_Grid": "0-Input_Elec.csv",
+    "PV_gen": "0-Input_PVGen.csv",
+    "import_grid": "0-Input_Elec.csv",
     "m_HWD": "0-Input_HWD.csv",
     "CS": "0-Input_Control_Signal.csv",
     "weather": "0-Input_Weather.csv",
@@ -395,7 +395,7 @@ def creating_timeseries_files(
     tempDir = trnsys_setup.tempDir
     
     #Saving files for other than weather
-    lbls = ["PV_Gen", "m_HWD", "CS", "Import_Grid"]
+    lbls = ["PV_gen", "m_HWD", "CS", "import_grid"]
     for lbl in lbls:
         timeseries[lbl].to_csv(
             os.path.join(tempDir, FILES_TRNSYS_INPUT[lbl]), index=False
@@ -466,7 +466,7 @@ def postprocessing_detailed(
     )
     out_all = out_gen.join(out_tank, how="left")
     out_all = out_all.join(
-        out_sig[["C_Load", "C_Tmax", "C_Tmin", "C_All"]],
+        out_sig[["C_load", "C_temp_max", "C_temp_min", "C_all"]],
         how="left"
     )
 
@@ -477,7 +477,7 @@ def postprocessing_detailed(
     temp_min = DEWH.temp_min.get_value("degC")
     tank_cp = DEWH.fluid.cp.get_value("J/kg-K")
     tank_nodes = DEWH.nodes
-    temp_mains = out_all["T_mains"].mean()
+    temp_mains = out_all["temp_mains"].mean()
 
     node_cols = [col for col in out_all if col.startswith("Node")]
     out_all2 = out_all[node_cols]
@@ -497,7 +497,7 @@ def postprocessing_detailed(
         / (temp_max - temp_min)
         / tank_nodes
         )
-    out_all["E_HWD"] = out_all["HW_Flow"] * (
+    out_all["E_HWD"] = out_all["HW_flow"] * (
         tank_cp * (temp_consump - temp_mains) / 3600.
     )  # [W]
     out_all["E_level"] = (

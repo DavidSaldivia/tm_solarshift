@@ -28,23 +28,21 @@ class SolarSystem():
 
     def load_PV_generation(
             self,
-            df: pd.DataFrame,
+            ts: pd.DataFrame,
             tz: str = 'Australia/Brisbane',
             unit: str = "kW",
     ) -> pd.DataFrame:
     
-        from tm_solarshift.external.pvlib_utils import (get_PV_generation, load_trnsys_weather)
-
-        df_sample = load_trnsys_weather()  #Fix this!
+        from tm_solarshift.external.pvlib_utils import get_PV_generation
         df_aux = get_PV_generation(tz=tz,
-                                   df = df_sample,
+                                   ts = ts,
                                    latitude = self.lat.get_value("-"),
                                    longitude = self.lon.get_value("-"),
                                    tilt = self.tilt.get_value("-"),
                                    orient = self.orient.get_value("-"),
                                    PV_nompower = self.nom_power.get_value("W"),)
     
-        df_aux.index = df.index
+        df_aux.index = ts.index
         PVPower =  df_aux["PVPower"] * CF("W", unit)
         return PVPower
     

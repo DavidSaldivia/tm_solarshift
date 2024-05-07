@@ -93,7 +93,7 @@ def storage_fixed_eta(
 ) -> tuple[pd.DataFrame,dict[str, float]]:
 
     
-    from tm_solarshift.thermal_models import (trnsys, postprocessing)
+    from tm_solarshift.models import (trnsys, postprocessing)
     DEWH: GasHeaterStorage = GS.DEWH
     if DEWH.__class__ == GasHeaterStorage:
         kgCO2_TO_kgCH4 = 44. / 16. #Assuming pure methane for gas

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import conversion_factor as  CF
-from tm_solarshift.thermal_models.trnsys import (
+from tm_solarshift.models.trnsys import (
     METEONORM_FILES,
     METEONORM_FOLDER,
     TRNSYS_EXECUTABLE
@@ -41,10 +41,6 @@ def main():
             )
         )
         print(location)
-
-        print((df1["GHI"]/df2["GHI"]).mean())
-        # plt.plot(df1["GHI"],df2["GHI"])
-        # plt.show()
 
         weather_path = os.path.join(METEONORM_FOLDER, METEONORM_FILES[location])
 

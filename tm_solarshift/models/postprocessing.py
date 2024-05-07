@@ -50,13 +50,13 @@ def thermal_postproc(
     thermal_cap = GS.DEWH.thermal_cap.get_value("kWh")
     cp = GS.DEWH.fluid.cp.get_value("J/kg-K")
 
-    heater_heat = out_all["HeaterHeat"]
-    heater_power = out_all["HeaterPower"]
-    tank_flowrate = out_all["Tank_FlowRate"]
-    temp_top = out_all["TempTop"]
-    temp_amb = out_all["T_amb"]
-    temp_mains = out_all["T_mains"]
-    hw_flowrate = out_all["HW_Flow"]
+    heater_heat = out_all["heater_heat"]
+    heater_power = out_all["heater_power"]
+    tank_flowrate = out_all["tank_flow_rate"]
+    temp_top = out_all["temp_top"]
+    temp_amb = out_all["temp_amb"]
+    temp_mains = out_all["temp_mains"]
+    hw_flowrate = out_all["HW_flow"]
     SOC = out_all["SOC"]
 
     # Calculating overall parameters
@@ -110,7 +110,7 @@ def economics_postproc(
     
     STEP_h = GS.simulation.STEP.get_value("hr")
 
-    heater_power = out_all["HeaterPower"]
+    heater_power = out_all["heater_power"]
     heater_power_sum = heater_power.sum()
     if heater_power_sum <= 0.0:
         heater_power_sum = np.nan
@@ -125,11 +125,11 @@ def economics_postproc(
 
     emissions_total = (
         (heater_power * CF("kJ/h", "MW")) * STEP_h
-        * ts["Intensity_Index"]
+        * ts["intensity_index"]
         ).sum()
     emissions_marginal = (
         (heater_power * CF("kJ/h", "MW")) * STEP_h
-        * ts["Marginal_Index"]
+        * ts["marginal_index"]
         ).sum()
     
     annual_hw_household_cost = calculate_household_energy_cost(
@@ -173,17 +173,17 @@ def events_simulation(
     cp = GS.DEWH.fluid.cp.get_value("J/kg-K")
 
     df = ts.groupby(ts.index.date)[
-        ["m_HWD_day", "Temp_Amb", "Temp_Mains"]
+        ["m_HWD_day", "temp_amb", "temp_mains"]
     ].mean()
     idx = np.unique(ts.index.date)
     df_aux = out_data.groupby(out_data.index.date)
     df.loc[df.index == idx, "SOC_end"] = df_aux.tail(1)["SOC"].values
-    df.loc[df.index == idx,"TempTh_end"] = df_aux.tail(1)["TempBottom"].values
+    df.loc[df.index == idx,"temp_tstat_end"] = df_aux.tail(1)["TempBottom"].values
     df.loc[df.index == idx,"EL_end"] = df_aux.tail(1)["E_Level"].values
 
     E_HWD_acum = (
-        (out_data["Tank_FlowRate"] * STEP_h * cp
-         * (out_data["TempTop"] - out_data["T_mains"])
+        (out_data["tank_flow_rate"] * STEP_h * cp
+         * (out_data["temp_top"] - out_data["temp_mains"])
          * CF("J", "kWh")
          ).groupby(out_data.index.date)
         .sum()

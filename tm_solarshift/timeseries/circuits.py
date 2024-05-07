@@ -26,7 +26,7 @@ def profile_step(df:pd.DataFrame, t1:float, t2:float, A1:float, A0:float=0)-> pd
 def load_PV_generation(
         timeseries: pd.DataFrame,
         solar_system: SolarSystem,
-        columns: list[str] = ["PV_Gen"],
+        columns: list[str] = ["PV_gen"],
         ) -> pd.DataFrame:
     """Function to create/load simple gaussian profile for PV generation.
 
@@ -65,7 +65,7 @@ def load_PV_generation(
 def load_elec_consumption(
     timeseries: pd.DataFrame,
     profile_elec: int = 0,
-    columns: list[str] = ["Import_Grid"],
+    columns: list[str] = ["import_grid"],
 ) -> pd.DataFrame:
 
     df_Elec = pd.DataFrame(index=timeseries.index, columns=columns)

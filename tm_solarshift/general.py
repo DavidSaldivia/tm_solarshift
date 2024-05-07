@@ -161,32 +161,32 @@ class GeneralSetup():
         DEWH = self.DEWH
         
         if (DEWH.__class__ == ResistiveSingle):
-            from tm_solarshift.thermal_models import trnsys
-            from tm_solarshift.thermal_models import postprocessing
+            from tm_solarshift.models import trnsys
+            from tm_solarshift.models import postprocessing
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_postproc(self, ts, out_all)
         
         elif (DEWH.__class__ == HeatPump):
-            from tm_solarshift.thermal_models import trnsys
-            from tm_solarshift.thermal_models import postprocessing 
+            from tm_solarshift.models import trnsys
+            from tm_solarshift.models import postprocessing 
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
             out_overall = postprocessing.annual_postproc(self, ts, out_all)
 
         elif (DEWH.__class__ == GasHeaterInstantaneous):
             self.simulation.engine = "own"
-            import tm_solarshift.thermal_models.gas_heater as gas_heater
+            from tm_solarshift.models import gas_heater
             (out_all, out_overall) = gas_heater.instantaneous_fixed_eta(DEWH, ts, verbose=verbose)
         
         elif (DEWH.__class__ == GasHeaterStorage):
             self.simulation.engine = "trnsys"
-            import tm_solarshift.thermal_models.gas_heater as gas_heater
+            from tm_solarshift.models import gas_heater
             (out_all, out_overall) = gas_heater.storage_fixed_eta(self, ts, verbose=verbose)
 
         elif self.DEWH.__class__ == SolarThermalElecAuxiliary:
             self.simulation.engine = "trnsys"
-            import tm_solarshift.thermal_models.solar_thermal as solar_thermal
+            from tm_solarshift.models import solar_thermal
             (out_all, out_overall) = solar_thermal.run_thermal_model(self, ts, verbose=verbose)
         
         else:
@@ -219,28 +219,28 @@ class GeneralSetup():
         DEWH = self.DEWH
         
         if (DEWH.__class__ == ResistiveSingle):
-            from tm_solarshift.thermal_models import trnsys
+            from tm_solarshift.models import trnsys
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
         
         elif (DEWH.__class__ == HeatPump):
-            from tm_solarshift.thermal_models import trnsys
+            from tm_solarshift.models import trnsys
             self.simulation.engine = "trnsys"
             out_all = trnsys.run_simulation(self, ts, verbose=verbose)
 
         elif (DEWH.__class__ == GasHeaterInstantaneous):
             self.simulation.engine = "own"
-            import tm_solarshift.thermal_models.gas_heater as gas_heater
+            import tm_solarshift.models.gas_heater as gas_heater
             (out_all, out_overall) = gas_heater.instantaneous_fixed_eta(DEWH, ts, verbose=verbose)
         
         elif (DEWH.__class__ == GasHeaterStorage):
             self.simulation.engine = "trnsys"
-            import tm_solarshift.thermal_models.gas_heater as gas_heater
+            import tm_solarshift.models.gas_heater as gas_heater
             (out_all, out_overall) = gas_heater.storage_fixed_eta(self, ts, verbose=verbose)
 
         elif self.DEWH.__class__ == SolarThermalElecAuxiliary:
             self.simulation.engine = "trnsys"
-            import tm_solarshift.thermal_models.solar_thermal as solar_thermal
+            import tm_solarshift.models.solar_thermal as solar_thermal
             (out_all, out_overall) = solar_thermal.run_thermal_model(self, ts, verbose=verbose)
         
         else:

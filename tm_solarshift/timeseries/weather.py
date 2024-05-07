@@ -5,15 +5,23 @@ import xarray as xr
 
 from typing import Optional, Union
 
-from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, DEFAULTS, SIMULATIONS_IO)
-from tm_solarshift.utils.location import (Location, from_postcode)
+from tm_solarshift.constants import (
+    DIRECTORY,
+    DEFINITIONS,
+    DEFAULT,
+    SIMULATIONS_IO
+)
+from tm_solarshift.utils.location import (
+    Location,
+    from_postcode
+)
 
 DIR_DATA = DIRECTORY.DIR_DATA
-TS_WEATHER = SIMULATIONS_IO.TS_TYPES["weather"]
 DEFINITION_SEASON = DEFINITIONS.SEASON
 LOCATIONS_METEONORM = DEFINITIONS.LOCATIONS_METEONORM
 LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
 LOCATIONS_COORDINATES = DEFINITIONS.LOCATIONS_COORDINATES
+TS_WEATHER = SIMULATIONS_IO.TS_TYPES["weather"]
 
 #--------------
 DIR_METEONORM = os.path.join(DIR_DATA["weather"], "meteonorm_processed")
@@ -53,7 +61,7 @@ SIMS_PARAMS = {
     },
     "mc": {
         "dataset": ['METEONORM', 'MERRA2', 'NCI'],
-        "location": DEFAULTS.LOCATION,
+        "location": DEFAULT.LOCATION,
         "subset": ['all', 'annual', 'season', 'month', 'date'],
         "random": [True, False],
         "value": None,

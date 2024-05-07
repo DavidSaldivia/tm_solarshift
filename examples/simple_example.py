@@ -14,7 +14,7 @@ def simplest_use():
     print(out_overall)      # overall results, dict
 
     #get a sample plot
-    from tm_solarshift.thermal_models import postprocessing
+    from tm_solarshift.models import postprocessing
     postprocessing.detailed_plots(GS, out_all, save_plots_detailed=False)
     
     return None
