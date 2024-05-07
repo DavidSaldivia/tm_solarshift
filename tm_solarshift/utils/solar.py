@@ -17,7 +17,7 @@ DEFAULT_TILT = DEFAULT.TILT
 DEFAULT_ORIENT = DEFAULT.ORIENT
 
 #most of these columns are from pbliv
-COLS_TMY = ["temp_air", "ghi", "dni", "dhi", "wind_speed"]
+COLS_TMY = ["temp_aMB", "GHI", "DNI", "DHI", "WS"]
 COLS_SOLPOS = ["apparent_zenith", "zenith",
                "apparent_elevation", "elevation",
                "azimuth", "equation_of_time"]
@@ -77,7 +77,7 @@ def get_plane_irradiance(
     plane_irrad = irradiance.get_total_irradiance(
         tilt, orient,
         solpos["apparent_zenith"], solpos["azimuth"],
-        df["dni"], df["ghi"], df["dhi"]
+        df["DNI"], df["GHI"], df["DHI"]
     )
     return plane_irrad
 

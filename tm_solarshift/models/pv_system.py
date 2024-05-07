@@ -17,7 +17,7 @@ DEFAULT_ADR_PARAMS = DEFAULT.ADR_PARAMS
 
 #most of these columns are from pbliv
 COLS_TMY = [
-    "temp_air", "ghi", "dni", "dhi", "wind_speed"
+    "temp_air", "GHI", "DNI", "DHI", "WS"
 ]
 COLS_SOLPOS = [
     "apparent_zenith", "zenith",
@@ -34,54 +34,9 @@ COLS_IRRADIANCE_PLANE = [
     "poa_ground_diffuse"
 ]
 
-#---------------
-# helper
-
-def load_trnsys_weather(
-    YEAR: int = 2022,
-    START: int = 0,
-    STOP: int = 8760,
-    STEP: int = 3,
-    tz: str = DEFAULT_TZ,
-):
-    STEP_h = STEP / 60.
-    PERIODS = int(np.ceil((STOP - START)/STEP_h))
-
-    df = pd.read_table(
-    os.path.join(
-        DIR_MAIN,
-        "dev",
-        "trnsys_weather_file", 
-        "TRNSYS_Out_Detailed.dat",
-    ), 
-    sep=r"\s+", 
-    index_col=0
-    )
-    df = df[["T_amb","GHI", "DNI", "DHI", "WS"]]
-    df.rename(columns = {"T_amb":"temp_air", "GHI":"ghi", "DNI":"dni", "DHI":"dhi", "WS":"wind_speed"}, inplace=True)
-    df = df.iloc[1:]
-
-    # Converting from kJ/hr to W
-    df["ghi"] = df["ghi"] / 3.6
-    df["dni"] = df["dni"] / 3.6
-    df["dhi"] = df["dhi"] / 3.6
-
-    start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") \
-            + pd.DateOffset(hours=START)
-    idx = pd.date_range(
-            start=start_time, 
-            periods=PERIODS, 
-            freq=f"{STEP}min"
-        )
-    idx = idx.tz_localize(tz)
-
-    df.index = idx
-
-    return df
-
 #-------------------
 def get_PV_generation(
-    df: pd.DataFrame = None,
+    df: pd.DataFrame,
     tz: str = DEFAULT_TZ,
     latitude: float = DEFAULT_LAT,
     longitude: float = DEFAULT_LON,
@@ -92,9 +47,6 @@ def get_PV_generation(
     adr_params: dict = DEFAULT_ADR_PARAMS,
 ) -> pd.DataFrame:
     
-    if df is None:
-        df = load_trnsys_weather(tz=tz)
-    
     import pvlib
     from pvlib.pvarray import pvefficiency_adr
     import tm_solarshift.utils.solar as solar
@@ -103,7 +55,7 @@ def get_PV_generation(
     df["poa_global"] = plane_irrad["poa_global"]
     # Estimate the expected operating temperature of the PV modules
     df["temp_pv"] = pvlib.temperature.faiman(
-        df["poa_global"], df["temp_air"], df["wind_speed"]
+        df["poa_global"], df["temp_amb"], df["WS"]
     )
     #Relative efficiency and module power
     df["eta_rel"] = pvefficiency_adr(df['poa_global'], df['temp_pv'], **adr_params)
