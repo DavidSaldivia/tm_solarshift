@@ -1,8 +1,10 @@
-import os
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import pvlib
+from pvlib.pvarray import pvefficiency_adr
+
+import tm_solarshift.utils.solar as solar
 from tm_solarshift.constants import (DIRECTORY, DEFAULT)
 
 DIR_MAIN = DIRECTORY.DIR_MAIN
@@ -36,7 +38,7 @@ COLS_IRRADIANCE_PLANE = [
 
 #-------------------
 def get_PV_generation(
-    df: pd.DataFrame,
+    ts: pd.DataFrame,
     tz: str = DEFAULT_TZ,
     latitude: float = DEFAULT_LAT,
     longitude: float = DEFAULT_LON,
@@ -47,19 +49,21 @@ def get_PV_generation(
     adr_params: dict = DEFAULT_ADR_PARAMS,
 ) -> pd.DataFrame:
     
-    import pvlib
-    from pvlib.pvarray import pvefficiency_adr
-    import tm_solarshift.utils.solar as solar
-
-    plane_irrad = solar.get_plane_irradiance(df, latitude, longitude, tilt, orient)
+    temp_amb = ts["temp_amb"]
+    WS = ts["WS"]
+    
+    # Obtain the irradiance in the PV array plane
+    plane_irrad = solar.get_plane_irradiance(ts, latitude, longitude, tilt, orient, tz)
+    
+    df = ts.copy()
     df["poa_global"] = plane_irrad["poa_global"]
+    
     # Estimate the expected operating temperature of the PV modules
-    df["temp_pv"] = pvlib.temperature.faiman(
-        df["poa_global"], df["temp_amb"], df["WS"]
-    )
+    df["temp_pv"] = pvlib.temperature.faiman( df["poa_global"], temp_amb, WS )
+    
     #Relative efficiency and module power
     df["eta_rel"] = pvefficiency_adr(df['poa_global'], df['temp_pv'], **adr_params)
-    df["PVPower"] = PV_nompower * df['eta_rel'] * (df['poa_global'] / G_STC)
+    df["pv_power"] = PV_nompower * df['eta_rel'] * (df['poa_global'] / G_STC)
 
     return df
 

@@ -555,6 +555,7 @@ def plotting_sample_size(data: pd.DataFrame,
 
     plt.close()
     return None
+
 #-------------------------
 def function_with_all(case: int) -> List:
 
@@ -656,7 +657,7 @@ def main_linear():
 
 
 #-------------------------
-def main_multiprocessing(processes:int = 2):
+def main_multiprocessing(processes:int = 4):
 
     from multiprocessing import Pool
 

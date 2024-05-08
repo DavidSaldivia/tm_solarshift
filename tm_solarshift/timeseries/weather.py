@@ -50,7 +50,7 @@ VARIABLE_RANGES = {
 }
 TYPES_SIMULATION = [
     "tmy",                      # One year of data. Usually with tmy files.
-    "montecarlo",               # Random sample of temporal unit (e.g. days) from set (month, week, day).
+    "mc",                       # Random sample of temporal unit (e.g. days) from set (month, week, day).
     "historical",               # Specific dates for a specific location (SolA, EE, EWS, etc).
     "constant_day",             # Constant values each day
     ]
@@ -145,13 +145,13 @@ def random_days_from_dataframe(
 
     rng = np.random.default_rng(seed_id)
 
-    df_sample = df_sample.copy()
-    list_dates = np.unique(df_sample.index.date)
+    df_sample_new = df_sample.copy()
+    list_dates = np.unique(df_sample_new.index.date)
     DAYS = len(np.unique(timeseries.index.date))
     list_picked_dates = rng.choice( list_dates, size=DAYS )
-    df_sample["date"] = df_sample.index.date
+    df_sample_new["date"] = df_sample_new.index.date
     set_picked_days = [
-        df_sample[df_sample["date"]==date] for date in list_picked_dates
+        df_sample_new[df_sample_new["date"]==date] for date in list_picked_dates
     ]
     df_final = pd.concat(set_picked_days)
     df_final.index = timeseries.index
@@ -278,8 +278,11 @@ def load_tmy(
 
 # -------------
 def load_dataset_meteonorm(
+        ts: pd.DataFrame,
         location: str,
-        YEAR: int = 2022
+        YEAR: int = 2022,
+        START: int = 0,
+        STEP: int = 3,
 ) -> pd.DataFrame:
 
     if location not in DEFINITIONS.LOCATIONS_METEONORM:
@@ -292,7 +295,9 @@ def load_dataset_meteonorm(
         ),
         index_col=0
     )
-    df_dataset.index = pd.to_datetime(df_dataset.index)
+    PERIODS = len(df_dataset)
+    start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
+    df_dataset.index = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
     df_dataset["date"] = df_dataset.index
     df_dataset["date"] = df_dataset["date"].apply(lambda x: x.replace(year=YEAR))
     df_dataset.index = df_dataset["date"]
@@ -354,7 +359,7 @@ def load_montecarlo(
     value = params["value"]
     
     if dataset == "meteonorm":
-        df_dataset = load_dataset_meteonorm(location)
+        df_dataset = load_dataset_meteonorm(ts, location)
     elif dataset == "merra2":
         df_dataset = load_dataset_merra2(ts, location, ts.index.year[0])
     else:
@@ -377,8 +382,9 @@ def load_montecarlo(
     elif subset == 'date':
         df_sample = df_dataset[
             df_dataset.index.date==value.date()
-            ]  
-    return random_days_from_dataframe( ts, df_sample, columns=columns )
+            ]
+    df_weather = random_days_from_dataframe( ts, df_sample, columns=columns )
+    return df_weather
 
 #----------------
 def load_historical(
@@ -406,17 +412,18 @@ def load_weather_data(
         raise ValueError(f"{type_sim} not in {TYPES_SIMULATION}")
     
     if type_sim == "tmy":
-        return load_tmy(ts, params, columns)
+        df_weather = load_tmy(ts, params, columns)
     
     if type_sim == "mc":
-        return load_montecarlo(ts, params, columns)
+        df_weather = load_montecarlo(ts, params, columns)
 
     if type_sim == "historical":
-        return load_historical(ts, params, columns)
+        df_weather = load_historical(ts, params, columns)
 
     if type_sim == "constant_day":
-        return load_day_constant_random(ts)
+        df_weather = load_day_constant_random(ts)
     
+    return df_weather
 
 def main():
     #Creating a timeseries
@@ -448,7 +455,7 @@ def main():
     print(ts[TS_WEATHER])
 
     #----------------
-    type_sim = "montecarlo"
+    type_sim = "mc"
     params = {
         "dataset": "meteonorm",
         "location": GS.household.location,

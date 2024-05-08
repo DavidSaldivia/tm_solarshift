@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import pvlib
-from pvlib import iotools, location
+from pvlib import location
 from pvlib.irradiance import (get_total_irradiance, aoi_projection)
 from pvlib.pvarray import pvefficiency_adr
 

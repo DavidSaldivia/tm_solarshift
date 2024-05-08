@@ -16,8 +16,8 @@ def instantaneous_fixed_eta(
 ) -> tuple[None, dict[str, float]]:
     
     hw_flow = ts["m_HWD"]
-    temp_amb_avg = ts["Temp_Amb"].mean()
-    temp_mains_avg = ts["Temp_Mains"].mean()
+    temp_amb_avg = ts["temp_amb"].mean()
+    temp_mains_avg = ts["temp_mains"].mean()
     DAYS = len(np.unique(ts.index.date))
 
     kgCO2_TO_kgCH4 = 44. / 16.
@@ -59,7 +59,7 @@ def instantaneous_fixed_eta(
 
     out_all = hw_flow.copy()
     out_all["eta"] = eta
-    out_all["HeaterPower"] = specific_energy * hw_flow * CF("MJ", "kJ")    #[kJ/h]
+    out_all["heater_power"] = specific_energy * hw_flow * CF("MJ", "kJ")    #[kJ/h]
 
     out_overall = {
         "heater_heat_acum": heater_heat_acum,

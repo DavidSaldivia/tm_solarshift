@@ -208,31 +208,6 @@ def updating_parameters(
             setattr(GS, key, value)
     return None
 
-    # params_row = row_in.to_dict()
-
-    # for parameter in params_row:
-        
-    #     if '.' in parameter:
-    #         (obj_name, param_name) = parameter.split('.')
-
-    #         #Retrieving first level attribute (i.e.: DEWH, household, simulation, etc.)
-    #         object = getattr(GS, obj_name)
-
-    #         # Defining the attribute value and assigning to first level object
-    #         if params_in[parameter].__class__ == VariableList:
-    #             param_value = Variable(params_row[parameter], params_in[parameter].unit)
-    #         else:
-    #             param_value = params_row[parameter]
-    #         setattr(object, param_name, param_value)
-
-    #         # Reassigning the first level attribute to GS
-    #         setattr(GS, obj_name, object)
-
-    #     else:
-    #         setattr(
-    #             GS, parameter, params_row[parameter]
-    #         )
-
 #------------------------------
 def parametric_run_test():
     

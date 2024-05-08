@@ -71,10 +71,17 @@ class GeneralSetup():
             pd.DataFrame: ts, the timeseries dataframe.
         """
 
-        import tm_solarshift.timeseries.circuits as circuits
-        import tm_solarshift.timeseries.control as control
-        import tm_solarshift.timeseries.market as market
-        import tm_solarshift.timeseries.weather as weather
+        # import tm_solarshift.timeseries.circuits as circuits
+        # import tm_solarshift.timeseries.control as control
+        # import tm_solarshift.timeseries.market as market
+        # import tm_solarshift.timeseries.weather as weather
+
+        from tm_solarshift.timeseries import (
+            circuits,
+            control,
+            market,
+            weather,
+        )
         
         location = self.household.location
         control_type = self.household.control_type
@@ -93,17 +100,15 @@ class GeneralSetup():
         params_weather = self.simulation.params_weather
 
         ts = self.create_ts_empty(ts_columns = ts_columns)
-
         ts = self.HWDInfo.generator(ts, method = HWD_method)
         ts = weather.load_weather_data( ts, type_sim = type_sim_weather, params = params_weather )
-
         ts = circuits.load_PV_generation(ts, solar_system = solar_system)
         ts = circuits.load_elec_consumption(ts, profile_elec = 0)
 
         if control_type == "diverter" and solar_system is not None:
             #Diverter considers three hours at night plus everything diverted from solar
             tz = 'Australia/Brisbane'
-            pv_power = solar_system.load_PV_generation( df = ts, tz=tz,  unit="kW")
+            pv_power = solar_system.load_PV_generation( ts=ts, tz=tz, unit="kW")
             ts = control.load_schedule(ts, control_load = control_load, random_ON=False)
             heater_nom_power = self.DEWH.nom_power.get_value("kW")
             ts["CS"] = np.where(

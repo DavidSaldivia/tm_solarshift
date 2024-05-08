@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from typing import Union, Any
 
+#--------------------------
 # Internal Solarshift imports
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.constants import (
@@ -316,15 +317,13 @@ def calculate_household_energy_cost(
     if df_tm is None:
         (df_tm, _) = GS.run_thermal_simulation(ts, verbose = True)
 
-    heater_power = df_tm["HeaterPower"] * CF("kJ/h", "kW")
+    heater_power = df_tm["heater_power"] * CF("kJ/h", "kW")
 
     if GS.solar_system == None:
         imported_energy = heater_power.copy()
     else:
         tz = 'Australia/Brisbane'
-        pv_power = GS.solar_system.load_PV_generation(
-            df = df_tm, tz=tz,  unit="kW"
-        )
+        pv_power = GS.solar_system.load_PV_generation( ts=ts, tz=tz,  unit="kW" )
         if control_type == "diverter":
             #Diverter considers three hours at night plus everything diverted from solar
             control_load = GS.household.control_load
@@ -355,8 +354,8 @@ def calculate_wholesale_energy_cost(
     if df_tm is None:
         df_tm = GS.run_thermal_simulation(ts)
         
-    heater_power = df_tm["HeaterPower"] * CF("kJ/h", "MW")
-    energy_cost = ( ts["Wholesale_Market"] * heater_power * STEP_h).sum()
+    heater_power = df_tm["heater_power"] * CF("kJ/h", "MW")
+    energy_cost = ( ts["wholesale_market"] * heater_power * STEP_h).sum()
     return energy_cost
 
 #------------------------
@@ -382,7 +381,7 @@ def calculate_annual_bill(
 
 #------------------------
 def get_GS_instance(
-        row: pd.Series,
+        row: pd.Series|dict,
         verbose: bool = True,
         ) -> GeneralSetup:
 
@@ -425,14 +424,14 @@ def get_GS_instance(
 
 def save_and_cache(GS, output_finance, cashflows ):
 
-        
+        #Build this later
         
 
     return
 
 #------------------
 def financial_analysis(
-    row: pd.Series,
+    row: pd.Series|dict,
     N_years: int = DEFAULT_LIFESPAN,
     discount_rate: float = DEFAULT_DISCOUNT_RATE,
     permanent_close: bool = False,

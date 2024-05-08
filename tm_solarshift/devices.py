@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import pandas as pd
 from tm_solarshift.constants import DIRECTORY
@@ -11,20 +10,30 @@ from tm_solarshift.utils.units import (
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 
 #-------------------------
-#Solar System and auxiliary devices
+#PV System and auxiliary devices
 class SolarSystem():
     def __init__(self):
 
+        #description
+        self.name = "PV system standard."
+        self.model = "-"
+        self.cost = Variable(np.nan, "AUD")
+
+        #technical data
         self.nom_power = Variable(4000.0,"W")
+
+        #location (change lat and lon with Location). Create them as properties.
         self.lat = Variable(-33.86,"-")
         self.lon = Variable(151.22,"-")
         self.tilt = Variable(abs(self.lat.get_value("-")),"-")
         self.orient = Variable(180.0,"-")
 
-        self.model = "-"
-        self.cost = Variable(np.nan, "AUD")
-
+        #generation profile (only used for testing)
         self.profile_PV = 1
+
+    @property
+    def coords(self) -> tuple[float,float]:
+        return (self.lat, self.lon)
 
     def load_PV_generation(
             self,
@@ -33,30 +42,41 @@ class SolarSystem():
             unit: str = "kW",
     ) -> pd.DataFrame:
     
-        from tm_solarshift.external.pvlib_utils import get_PV_generation
-        df_aux = get_PV_generation(tz=tz,
-                                   ts = ts,
-                                   latitude = self.lat.get_value("-"),
-                                   longitude = self.lon.get_value("-"),
-                                   tilt = self.tilt.get_value("-"),
-                                   orient = self.orient.get_value("-"),
-                                   PV_nompower = self.nom_power.get_value("W"),)
+        latitude = self.lat.get_value("-")
+        longitude = self.lon.get_value("-")
+        tilt = self.tilt.get_value("-")
+        orient = self.orient.get_value("-")
+        PV_nompower = self.nom_power.get_value("W")
+
+        from tm_solarshift.models.pv_system import get_PV_generation
+        df_aux = get_PV_generation(ts = ts,
+                                   latitude = latitude,
+                                   longitude = longitude,
+                                   tilt = tilt,
+                                   orient = orient,
+                                   tz = tz,
+                                   PV_nompower = PV_nompower,)
     
         df_aux.index = ts.index
-        PVPower =  df_aux["PVPower"] * CF("W", unit)
-        return PVPower
-    
+        pv_power =  df_aux["pv_power"] * CF("W", unit)
+        return pv_power
+
 #-------------------------
 #List of heater devices        
 class ResistiveSingle():
     def __init__(self):
 
+        # description
+        self.name = "Conventional resistive immersive heater (single unit)."
+        self.model = "-"
+        self.cost = Variable(np.nan, "AUD")
+
         #Loading all default values
-        # heater
+        # heater data
         self.nom_power = Variable(3600.0, "W")
         self.eta = Variable(1.0, "-")
         
-        # tank
+        # tank geometry and losses
         self.vol = Variable(0.315,"m3")
         self.height = Variable(1.45, "m")  # It says 1.640 in specs, but it is external height, not internal
         self.height_inlet = Variable(0.113, "m")
@@ -65,19 +85,16 @@ class ResistiveSingle():
         self.height_thermostat = Variable(0.103, "m")
         self.U = Variable(0.9, "W/m2-K")
 
+        #numerical simulation
+        self.fluid = Water()
         self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
         self.temps_ini = 3  # [-] Initial temperature of the tank. Check trnsys.editing_dck_tank() for options
-        self.fluid = Water()
 
         # control
         self.temp_max = Variable(65.0, "degC")  #Maximum temperature in the tank
         self.temp_deadband = Variable(10.0, "degC") # Dead band for max temp control
         self.temp_min = Variable(45.0, "degC")  # Minimum temperature in the tank
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
-
-        #finance
-        self.cost = Variable(np.nan, "AUD")
-        self.model = "-"
 
     @property
     def thermal_cap(self):
@@ -117,6 +134,12 @@ class ResistiveSingle():
 #-------------------------
 class HeatPump():
     def __init__(self):
+
+        # description
+        self.name = "Heat Pump, external heat exchanger with thermostat."
+        self.model = "-"
+        self.cost = Variable(np.nan, "AUD")
+
         # heater
         self.nom_power_th = Variable(5240.0, "W")
         self.nom_power_el = Variable(870.0, "W")
@@ -142,10 +165,6 @@ class HeatPump():
         self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
         self.temp_deadband = Variable(10, "degC")
-
-        #finance
-        self.cost = Variable(np.nan, "AUD")
-        self.model = "-"
         
     @property
     def thermal_cap(self):
@@ -183,9 +202,16 @@ class HeatPump():
 #-------------------------
 class GasHeaterInstantaneous():
     def __init__(self):
+        
+        # description
+        self.name = "Gas heater instantaneous (no storage)."
+        self.model = "-"
+        self.cost = Variable(np.nan, "AUD")
+
         # Default data from:
         # https://www.rheem.com.au/rheem/products/Residential/Gas-Continuous-Flow/Continuous-Flow-%2812---27L%29/Rheem-12L-Gas-Continuous-Flow-Water-Heater-%3A-50%C2%B0C-preset/p/876812PF#collapse-1-2-1
         # Data from model Rheim 20
+        
         #heater
         self.nom_power = Variable(157., "MJ/hr")
         self.flow_water = Variable(20., "L/min")
@@ -241,13 +267,17 @@ class GasHeaterInstantaneous():
 class GasHeaterStorage():
     def __init__(self):
 
+        # description
+        self.name = "Gas heater with storage tank."
+        self.model = "-"
+        self.cost = Variable(np.nan, "AUD")
+        
         # Gas heater data are from GasInstantaneous:
         # https://www.rheem.com.au/rheem/products/Residential/Gas-Continuous-Flow/Continuous-Flow-%2812---27L%29/Rheem-12L-Gas-Continuous-Flow-Water-Heater-%3A-50%C2%B0C-preset/p/876812PF#collapse-1-2-1
         # Data from model Rheim 20
-
         # Tank data are from ResistiveSingle default
 
-        #heater
+        # heater
         self.nom_power = Variable(157., "MJ/hr")
         self.flow_water = Variable(20., "L/min")
         self.deltaT_rise = Variable(25., "dgrC")
@@ -265,7 +295,7 @@ class GasHeaterStorage():
         self.temps_ini = 3  # [-] Initial temperature of the tank. Check editing_dck_tank() below for the options
         self.fluid = Water()
 
-        #control
+        # control
         self.temp_max = Variable(63.0, "degC")  #Maximum temperature in the tank
         self.temp_min = Variable(45.0,"degC")  # Minimum temperature in the tank
         self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
@@ -323,6 +353,11 @@ class GasHeaterStorage():
 class SolarThermalElecAuxiliary():
     def __init__(self):
 
+        # description
+        self.name = "Solar thermal colector. Tank separated from collector, with electric heater."
+        self.model = "-"
+        self.cost = Variable(np.nan, "AUD")
+        
         #Nominal values
         self.massflowrate = Variable(0.05, "kg/s")
         self.fluid = Water()
@@ -335,6 +370,10 @@ class SolarThermalElecAuxiliary():
         self.tilt = Variable(abs(self.lat.get_value("-")),"-")
         self.orient = Variable(180.0,"-")
     
+        # Auxiliary resistive heater
+        self.nom_power = Variable(3600.0, "W")
+        self.eta = Variable(1.0, "-")
+
         # tank
         self.vol = Variable(0.315,"m3")
         self.height = Variable(1.45, "m")  # It says 1.640 in specs, but it is external height, not internal
@@ -354,13 +393,6 @@ class SolarThermalElecAuxiliary():
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
         self.temp_deadband = Variable(10, "degC")
 
-        # Auxiliary resistive heater
-        self.nom_power = Variable(3600.0, "W")
-        self.eta = Variable(1.0, "-")
-
-        #finance
-        self.cost = Variable(np.nan, "AUD")
-        self.model = "-"
 
     @property
     def thermal_cap(self):

@@ -6,10 +6,9 @@ import matplotlib.pyplot as plt
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.constants import SIMULATIONS_IO
 from tm_solarshift.utils.units import conversion_factor as CF
-from tm_solarshift.utils.finance_old import (
+from tm_solarshift.analysis.finance import (
     calculate_household_energy_cost,
     calculate_wholesale_energy_cost,
-    financial_analysis,
 )
 
 TM_POSTPROC_OUTPUT = SIMULATIONS_IO.TM_POSTPROC_OUTPUT
@@ -53,10 +52,8 @@ def thermal_postproc(
     heater_heat = out_all["heater_heat"]
     heater_power = out_all["heater_power"]
     tank_flowrate = out_all["tank_flow_rate"]
-    temp_top = out_all["temp_top"]
-    temp_amb = out_all["temp_amb"]
+    temp_out = out_all["tank_temp_out"]
     temp_mains = out_all["temp_mains"]
-    hw_flowrate = out_all["HW_flow"]
     SOC = out_all["SOC"]
 
     # Calculating overall parameters
@@ -72,7 +69,7 @@ def thermal_postproc(
     heater_perf_avg = heater_heat_acum / heater_power_acum
 
     E_HWD_acum = (
-        tank_flowrate * STEP_h * cp * (temp_top - temp_mains) * CF("J", "kWh")
+        tank_flowrate * STEP_h * cp * (temp_out - temp_mains) * CF("J", "kWh")
     ).sum()
 
     E_losses_acum = heater_heat_acum - E_HWD_acum
@@ -148,19 +145,19 @@ def economics_postproc(
     out_overall_econ["annual_hw_retailer_cost"] = annual_hw_retailer_cost
     return out_overall_econ
 
-#-----------------
-def financial_postproc(
-    GS: GeneralSetup,
-    ts: pd.DataFrame,
-    out_all: pd.DataFrame,
-    out_overall_th: dict = None,
-    out_overall_econ: dict = None,
-) -> dict:
+# #-----------------
+# def financial_postproc(
+#     GS: GeneralSetup,
+#     ts: pd.DataFrame,
+#     out_all: pd.DataFrame,
+#     out_overall_th: dict = None,
+#     out_overall_econ: dict = None,
+# ) -> dict:
 
-    out_overall_fin = financial_analysis(
-        GS, ts, out_all, out_overall_th, out_overall_econ
-    )
-    return out_overall_fin
+#     out_overall_fin = financial_analysis(
+#         GS, ts, out_all, out_overall_th, out_overall_econ
+#     )
+#     return out_overall_fin
 
 #------------------------------
 def events_simulation(

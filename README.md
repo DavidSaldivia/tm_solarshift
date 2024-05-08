@@ -11,7 +11,7 @@ In addition to these scripts, you'll need TRNSYS installed in your computer with
 The repository is structured in the following directories and modules:
 - `tm_solarshift` is the core of the repository. The main modules inside are:
     - [general](tm_solarshift/general.py) contains the GeneralSetup class that defines everything in the simulations. their main attributes are `household`, `DEWH`, `solar_system`, `HWDinfo`, and `simulation`.
-    - [constants](tm_solarshift/constants.py) contains the `DIRECTORY` with all the global constants and utility classes.
+    - [constants](tm_solarshift/constants.py) contains the `DIRECTORY`, `DEFINITIONS`, `DEFAULT` values, `SIMULATION_IO` classes, with global constants.
     - [control](tm_solarshift/control.py) contains the functions to load the controlled load profiles and other type of controls into the simulations.
     - [circuits](tm_solarshift/circuits.py) contains the functions to load the solar and load timeseries (under development.)
     - [devices](tm_solarshift/devices.py): contains the classes to define the technical specifications of different devices in a DEWH system. So far resistive heater, heat pump, and instantaneous gas heater are included.

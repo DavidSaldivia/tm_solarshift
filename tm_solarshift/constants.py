@@ -98,11 +98,11 @@ class SIMULATIONS_IO():
     TM_SIM_OUTPUT = [
         'PV_gen',                # PVPower in trnsys. CHANGE!
         'PV_to_HW',              # PV4HW in trnsys.   CHANGE!
-        'heater_heat',           # HeaterHeat in trnsys.   CHANGE!
-        'heater_power',          # HeaterPower in trnsys.   CHANGE!
-        'heater_perf',           # HeaterPerf in trnsys. CHANGE!
-        'tank_mfr',              # Tank_FlowRate in trnsys. CHANGE!
-        'tank_temp_out',         # Tank_TempOut in trnsys. CHANGE!
+        'heater_heat',
+        'heater_power',
+        'heater_perf',
+        'tank_flow_rate',
+        'tank_temp_out',
         'tank_tstat_1',          # ??? in trnsys. CHANGE!
         'C_all',                 # C_All in trnsys. CHANGE!
         'tank_temp_avg',         # T_avg in trnsys. CHANGE!

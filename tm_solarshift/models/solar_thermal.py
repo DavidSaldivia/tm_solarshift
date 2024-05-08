@@ -1,24 +1,23 @@
 import numpy as np
 import pandas as pd
 
+from tm_solarshift.constants import DEFAULT
 from tm_solarshift.general import GeneralSetup
 from tm_solarshift.devices import SolarThermalElecAuxiliary
 from tm_solarshift.models import postprocessing
 from tm_solarshift.utils.units import conversion_factor as CF
 from tm_solarshift.models import trnsys
-from tm_solarshift.external.pvlib_utils import (
-    get_irradiance_plane,
-    get_incidence_angle_cosine,
-    load_trnsys_weather,
-)
+from tm_solarshift.utils.solar import (get_plane_irradiance, get_plane_angles)
+DEFAULT_TZ = DEFAULT.TZ
 
 def run_thermal_model(
         GS: GeneralSetup,
         ts: pd.DataFrame = None,
         verbose: bool = False,
-        STEP_h: float = 3./60.,
+        tz: str = DEFAULT_TZ,
 ) -> pd.DataFrame:
     
+    STEP_h = GS.simulation.STEP.get_value("hr")
 
     #Running a trnsys simulation assuming all energy from resistive
     out_all = trnsys.run_simulation(GS, ts, verbose=verbose)
@@ -39,33 +38,31 @@ def run_thermal_model(
     cp = DEWH.fluid.cp.get_value("J/kg-K")
     IAM = DEWH.IAM.get_value("-")
 
-    ts_weather = load_trnsys_weather()          #Fix this!
-    total_irrad = get_irradiance_plane(ts_weather, latitude, longitude, tilt, orient)
-    total_irrad.index = total_irrad.index.tz_localize(None)
-    out_all["total_irrad"] = total_irrad * area         #["W"]
-    cosine_aoi = get_incidence_angle_cosine(ts, latitude, longitude, tilt, orient)
-    out_all["cosine_aoi"] = np.where(cosine_aoi>0.0, cosine_aoi, 0.)
-    out_all["iam"] = np.where(cosine_aoi>0.0, 1. - IAM * (1./cosine_aoi - 1.), 0.)
-
-    temp_amb = out_all["T_amb"]
+    temp_amb = out_all["temp_amb"]
     temp_inlet = out_all["Node10"]
 
-    # out_all["HeaterPerf"] = np.where(
-    #     out_all["total_irrad"] > 0.,
-    #     FRta * out_all["iam"] - FRUL * (temp_inlet - temp_amb) / out_all["total_irrad"],
-    #     0.
-    # )
-    out_all["HeaterPerf"] = np.where(
+    plane_irrad = get_plane_irradiance(ts, latitude, longitude, tilt, orient, tz)
+    plane_irrad.index = plane_irrad.index.tz_localize(None)
+    plane_angles = get_plane_angles(ts, latitude, longitude, tilt, orient, tz)
+    plane_angles.index = plane_angles.index.tz_localize(None)
+    cosine_aoi = plane_angles["cosine_aoi"]
+    
+    out_all["total_irrad"] = plane_irrad["poa_global"] * area         #["W"]
+    out_all["cosine_aoi"] = np.where( cosine_aoi>0.0 , cosine_aoi, 0.)
+    out_all["iam"] = np.where( cosine_aoi>0.0 , 1. - IAM * (1./cosine_aoi - 1.), 0.)
+
+
+    out_all["heater_perf"] = np.where(
         out_all["total_irrad"] > 0.,
         FRta - FRUL * (temp_inlet - temp_amb) / out_all["total_irrad"],
         0.
     )
-    out_all["HeaterPerf"] = np.where(
-        (out_all["HeaterPerf"] > 0.) & (out_all["HeaterPerf"]<=1.0),
-        out_all["HeaterPerf"],
+    out_all["heater_perf"] = np.where(
+        (out_all["heater_perf"] > 0.) & (out_all["heater_perf"]<=1.0),
+        out_all["heater_perf"],
         0.
     )
-    out_all["solar_energy_u"] = out_all["HeaterPerf"] * out_all["total_irrad"]  #["W"]
+    out_all["solar_energy_u"] = out_all["heater_perf"] * out_all["total_irrad"]  #["W"]
 
     out_overall["solar_energy_u"] = (out_all["solar_energy_u"] * STEP_h * CF("Wh", "kWh")).sum()
     out_overall["solar_energy_in"] = (out_all["total_irrad"] * STEP_h * CF("Wh", "kWh")).sum()
@@ -75,16 +72,15 @@ def run_thermal_model(
     temp_outlet = temp_inlet + out_all["solar_energy_u"] / (massflowrate * cp)
 
     #Recalculate total emissions and tariffs
-    out_all["HeaterPower_no_solar"] = ( out_all["HeaterPower"] - out_all["solar_energy_u"] * CF("W","kJ/h") )
+    out_all["heater_power_no_solar"] = ( out_all["heater_power"] - out_all["solar_energy_u"] * CF("W","kJ/h") )
     out_overall["emissions_total"] = (
-        (out_all["HeaterPower_no_solar"] * CF("kJ/h", "MW")) * STEP_h
-        * ts["Intensity_Index"]
+        (out_all["heater_power_no_solar"] * CF("kJ/h", "MW")) * STEP_h
+        * ts["intensity_index"]
         ).sum()
     out_overall["emissions_marginal"] = (
-        (out_all["HeaterPower_no_solar"] * CF("kJ/h", "MW")) * STEP_h
-        * ts["Marginal_Index"]
+        (out_all["heater_power_no_solar"] * CF("kJ/h", "MW")) * STEP_h
+        * ts["marginal_index"]
         ).sum()
     out_overall["heater_power_acum"] = (out_overall["heater_power_acum"] - out_overall["solar_energy_u"])
 
-    # print(out_overall)
     return (out_all, out_overall)

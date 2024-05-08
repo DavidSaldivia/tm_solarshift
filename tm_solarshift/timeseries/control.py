@@ -405,8 +405,24 @@ def period_definitions(profile_control):
                 "random_off": 0,  # [mins]
             }
         ]
-    else:
+        
+    elif profile_control in range(100,121):
         # No Connection at all (useful for tests)
+        timer_on = profile_control - 100.0
+        timer_off = timer_on + 4.0
+        periods = [
+            {
+                "label": "annual",  # only used as reference
+                "month_start": 1,  # inclusive
+                "month_stop": 12,  # inclusive
+                "time_start": timer_on,  # inclusive
+                "time_stop": timer_off,  # inclusive
+                "random_on": 0,  # [mins]
+                "random_off": 0,  # [mins]
+            }
+        ]
+
+    else:
         periods = [
             {
                 "label": "annual",  # only used as reference
