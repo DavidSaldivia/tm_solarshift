@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from typing import Any, List
 
 from tm_solarshift.constants import SIMULATIONS_IO
 TS_TYPES = SIMULATIONS_IO.TS_TYPES
@@ -85,7 +84,7 @@ def add_randomization_delay(
 #----------------
 def create_signal_series(
     df_cs_original: pd.DataFrame,
-    periods: list[Any],
+    periods: list,
     STEP: int = 3,
     random_ON: bool = True,
 ) -> pd.DataFrame:

@@ -84,9 +84,9 @@ class SIMULATIONS_IO():
         for item in sublist
     ]
 
-    TS_TYPES_TM = ["weather", "control", "HWDP"] # ts columns for thermal sims
-    TS_TYPES_PV = ["weather", "electric"]        # ts columns for PV sim
-    TS_TYPES_ECO = ["weather", "electric"]       # ts columns for ECO postproc
+    TS_TYPES_TM = ["weather", "control", "HWDP"]    # ts columns for thermal sims
+    TS_TYPES_PV = ["weather", "electric"]           # ts columns for PV sim
+    TS_TYPES_ECO = ["weather", "electric"]          # ts columns for ECO postproc
 
     PARAMS_OUT = [
         'heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
@@ -95,16 +95,18 @@ class SIMULATIONS_IO():
         'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
         'emissions_total', 'emissions_marginal', 'solar_ratio',
     ]
-    TM_SIM_OUTPUT = [
+    OUTPUT_SIM_PV = [
         'PV_gen',                # PVPower in trnsys. CHANGE!
         'PV_to_HW',              # PV4HW in trnsys.   CHANGE!
+    ]
+    OUTPUT_SIM_DEWH = [
         'heater_heat',
         'heater_power',
         'heater_perf',
         'tank_flow_rate',
         'tank_temp_out',
         'tank_tstat_1',          # ??? in trnsys. CHANGE!
-        'C_all',                 # C_All in trnsys. CHANGE!
+        'C_all',
         'tank_temp_avg',         # T_avg in trnsys. CHANGE!
         'SOC',
         'SOC2',
@@ -112,14 +114,16 @@ class SIMULATIONS_IO():
         'E_HWD',
         'E_level',
     ]
-    TM_POSTPROC_OUTPUT = [
+    OUTPUT_SIM_STC = [
+        "",
+    ]
+    OUTPUT_ANALYSIS_TM =[
         "heater_heat_acum", "heater_power_acum", "heater_perf_avg",
         "E_HWD_acum", "E_losses_acum",
         "eta_stg", "cycles_day",
         "SOC_avg", "SOC_min", "SOC_025", "SOC_050", "t_SOC0",
     ]
-    
-    ECON_POSTPROC_OUTPUT = [
+    OUTPUT_ANALYSIS_ECON = [
         'annual_emissions_total',
         'annual_emissions_marginal',
         'solar_ratio_potential',
@@ -127,8 +131,7 @@ class SIMULATIONS_IO():
         'annual_hw_household_cost',
         'annual_hw_retailer_cost'
     ]
-
-    FIN_POSTPROC_OUTPUT = [
+    OUTPUT_ANALYSIS_FIN = [
         "net_present_cost",
         "payback_period",
         "LCOHW",

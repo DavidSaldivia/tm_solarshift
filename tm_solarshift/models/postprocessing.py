@@ -11,9 +11,9 @@ from tm_solarshift.analysis.finance import (
     calculate_wholesale_energy_cost,
 )
 
-TM_POSTPROC_OUTPUT = SIMULATIONS_IO.TM_POSTPROC_OUTPUT
-ECON_POSTPROC_OUTPUT = SIMULATIONS_IO.ECON_POSTPROC_OUTPUT
-FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.FIN_POSTPROC_OUTPUT
+OUTPUT_ANALYSIS_TM = SIMULATIONS_IO.OUTPUT_ANALYSIS_TM
+OUTPUT_ANALYSIS_ECON = SIMULATIONS_IO.OUTPUT_ANALYSIS_ECON
+OUTPUT_ANALYSIS_FIN = SIMULATIONS_IO.OUTPUT_ANALYSIS_FIN
 
 POSTPROC_TYPES = ["TM", "ECON"]
 
@@ -30,15 +30,15 @@ def annual_postproc(
     out_overall_fin = {}
 
     if "TM" in include:
-        out_overall_th = thermal_postproc(GS, ts, out_all)
+        out_overall_th = thermal_analysis(GS, ts, out_all)
 
     if "ECON" in include:
-        out_overall_econ = economics_postproc(GS, ts, out_all)
+        out_overall_econ = economics_analysis(GS, ts, out_all)
 
     return out_overall_th | out_overall_econ | out_overall_fin
 
 #-------------------
-def thermal_postproc(
+def thermal_analysis(
         GS: GeneralSetup,
         ts: pd.DataFrame,
         out_all: pd.DataFrame
@@ -82,7 +82,7 @@ def thermal_postproc(
     (SOC_025, SOC_050) = SOC.quantile( [0.25, 0.50], interpolation="nearest", )
     t_SOC0 = (SOC <= 0.01).sum() * STEP_h
 
-    out_overall_th = {key:None for key in TM_POSTPROC_OUTPUT}
+    out_overall_th = {key:None for key in OUTPUT_ANALYSIS_TM}
     out_overall_th["heater_heat_acum"] = heater_heat_acum
     out_overall_th["heater_power_acum"] = heater_power_acum
     out_overall_th["heater_perf_avg"] = heater_perf_avg
@@ -99,7 +99,7 @@ def thermal_postproc(
     return out_overall_th
 
 #------------------
-def economics_postproc(
+def economics_analysis(
         GS: GeneralSetup,
         ts: pd.DataFrame,
         out_all: pd.DataFrame
@@ -130,13 +130,13 @@ def economics_postproc(
         ).sum()
     
     annual_hw_household_cost = calculate_household_energy_cost(
-        GS, ts, out_all
+        GS, ts, out_all,
     )
     annual_hw_retailer_cost = calculate_wholesale_energy_cost(
         GS, ts, out_all
     )
 
-    out_overall_econ = {key:None for key in ECON_POSTPROC_OUTPUT}
+    out_overall_econ = {key:None for key in OUTPUT_ANALYSIS_ECON}
     out_overall_econ["annual_emissions_total"] = emissions_total
     out_overall_econ["annual_emissions_marginal"] = emissions_marginal
     out_overall_econ["solar_ratio_potential"] = solar_ratio_potential

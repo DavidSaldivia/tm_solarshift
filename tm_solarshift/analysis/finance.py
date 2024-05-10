@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
-from typing import Union, Any
+from typing import Union
 
 #--------------------------
 # Internal Solarshift imports
@@ -46,7 +46,7 @@ FILE_MODEL_HOUSEHOLDSIZES = os.path.join(
 )
 LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
-FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.FIN_POSTPROC_OUTPUT
+FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.OUTPUT_ANALYSIS_FIN
 
 #--------------------
 #Default values
@@ -148,6 +148,7 @@ def get_control_load(
             raise ValueError("wrong control_type.")
     return control_load
 
+#-------------------
 def get_daily_hwd(
         household_size: int = DEFAULT_HOUSEHOLD_SIZE
 ) -> float:
@@ -155,10 +156,6 @@ def get_daily_hwd(
 
 #-------------------
 def calculate_capital_cost(GS: GeneralSetup) -> float:
-
-    # if not looking to buy new system, there will be no capital costs
-    # if not row["new_system"]:
-    #     return 0 
 
     heater_type = GS.household.heater_type
     location = GS.household.location

@@ -232,7 +232,6 @@ class GasHeaterInstantaneous():
 
     @property
     def eta(self) -> Variable:
-        
         nom_power = self.nom_power.get_value("MJ/hr")
         deltaT_rise = self.deltaT_rise.get_value("dgrC")
         flow_w = self.flow_water.get_value("m3/s")

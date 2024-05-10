@@ -71,11 +71,6 @@ class GeneralSetup():
             pd.DataFrame: ts, the timeseries dataframe.
         """
 
-        # import tm_solarshift.timeseries.circuits as circuits
-        # import tm_solarshift.timeseries.control as control
-        # import tm_solarshift.timeseries.market as market
-        # import tm_solarshift.timeseries.weather as weather
-
         from tm_solarshift.timeseries import (
             circuits,
             control,

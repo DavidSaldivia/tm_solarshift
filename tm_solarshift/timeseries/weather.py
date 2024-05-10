@@ -278,7 +278,6 @@ def load_tmy(
 
 # -------------
 def load_dataset_meteonorm(
-        ts: pd.DataFrame,
         location: str,
         YEAR: int = 2022,
         START: int = 0,
@@ -359,7 +358,7 @@ def load_montecarlo(
     value = params["value"]
     
     if dataset == "meteonorm":
-        df_dataset = load_dataset_meteonorm(ts, location)
+        df_dataset = load_dataset_meteonorm(location)
     elif dataset == "merra2":
         df_dataset = load_dataset_merra2(ts, location, ts.index.year[0])
     else:

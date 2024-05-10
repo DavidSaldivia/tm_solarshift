@@ -22,18 +22,18 @@ TS_TYPES = SIMULATIONS_IO.TS_TYPES
 TRNSYS_EXECUTABLE = r"C:/TRNSYS18/Exe/TRNExe64.exe"
 TEMPDIR_SIMULATION = "C:/SolarShift_TempDir"
 FILES_TRNSYS_INPUT = {
-    "PV_gen": "0-Input_PVGen.csv",
-    "import_grid": "0-Input_Elec.csv",
-    "m_HWD": "0-Input_HWD.csv",
-    "CS": "0-Input_Control_Signal.csv",
-    "weather": "0-Input_Weather.csv",
-    "HP": "0-Reclaim_HP_Data.dat",
-    "TH": "0-SolarThermal_Data_ones.dat",
+    "PV_gen": "ts_PV_gen.csv",
+    "import_grid": "ts_elec.csv",
+    "m_HWD": "ts_hwd.csv",
+    "CS": "ts_control.csv",
+    "weather": "ts_weather.csv",
+    "HP": "HP_data_reclaim.dat",
+    "STC": "STC_data_ones.dat",
 }
 FILES_TRNSYS_OUTPUT = {
-    "RESULTS_DETAILED" : "TRNSYS_Out_Detailed.dat",
-    "RESULTS_TANK": "TRNSYS_Out_TankTemps.dat",
-    "RESULTS_SIGNAL": "TRNSYS_Out_Signals.dat",
+    "RESULTS_DETAILED" : "TRNSYS_out_detailed.dat",
+    "RESULTS_TANK": "TRNSYS_out_tank_temps.dat",
+    "RESULTS_SIGNAL": "TRNSYS_out_control.dat",
 }
 # METEONORM_FOLDER = r"C:/TRNSYS18/Weather/Meteonorm/Australia-Oceania"
 METEONORM_FOLDER = os.path.join("C:/TRNSYS18/Weather/Meteonorm/Australia-Oceania")
@@ -86,7 +86,7 @@ METEONORM_FILES = {
 
 #------------------------------
 #### DEFINING TRNSYS CLASSES
-class TrnsysSetup():
+class Trnsys_DEWH():
     def __init__(self, GS: GeneralSetup, **kwargs):
         # Directories
         self.tempDir = None
@@ -114,7 +114,7 @@ class TrnsysSetup():
         else:
             raise ValueError("Solar system object is not a valid one for TRNSYS simulation")
 
-        self.layout_v = 0
+        self.layout_v = 1
         self.layout_TC = "MX"
         self.layout_WF = "W9a"
         self.weather_source = None
@@ -125,7 +125,7 @@ class TrnsysSetup():
 
 #------------
 def editing_dck_general(
-        trnsys_setup: TrnsysSetup,
+        trnsys_setup: Trnsys_DEWH,
         dck_editing: list[str],
         ) -> list[str]:
 
@@ -153,7 +153,6 @@ def editing_dck_general(
     temp_consump = DEWH.temp_consump.get_value("degC")
     temp_high_control = DEWH.temp_high_control.get_value("degC")
 
-
     # Editing .dck file: general parameters of simulation
     tag = "Control cards"
     for idx, line in enumerate(dck_editing):
@@ -165,12 +164,12 @@ def editing_dck_general(
 
     # Editing .dck file: DEWH: resistive single and HP
     gral_params = {
-        "Heater_NomCap": nom_power * CF("W", "kJ/h"),
-        "Heater_F_eta": eta,
-        "Tank_TempHigh": temp_max,
-        "Tank_TempLow": temp_min,
-        "Temp_Consump": temp_consump,
-        "Tank_TempHighControl": temp_high_control,
+        "heater_nom_power": nom_power * CF("W", "kJ/h"),
+        "tank_temp_max": temp_max,
+        "tank_temp_low": temp_min,
+        "temp_consump": temp_consump,
+        "tank_temp_high_ctrl": temp_high_control,
+        "heater_F_eta": eta,
     }
     tag = "!PYTHON_INPUT"
     for idx, line in enumerate(dck_editing):
@@ -182,10 +181,9 @@ def editing_dck_general(
 
     return dck_editing
 
-
 #------------
 def editing_dck_weather(
-        trnsys_setup: TrnsysSetup,
+        trnsys_setup: Trnsys_DEWH,
         dck_editing: list[str],
         ) -> list[str]:
 
@@ -197,7 +195,7 @@ def editing_dck_weather(
         weather_path = trnsys_setup.weather_path
 
     if layout_WF == "W9a":
-        tag1 = "Type9a_Weather"  # Component name. It should be only one per file
+        tag1 = "input_weather"  # Component name. It should be only one per file
         weather_path = os.path.join(trnsys_setup.tempDir, FILES_TRNSYS_INPUT["weather"])
 
     # Start
@@ -231,7 +229,7 @@ def editing_dck_weather(
 #------------
 # Editing dck tank file
 def editing_dck_tank(
-        trnsys_setup: TrnsysSetup,
+        trnsys_setup: Trnsys_DEWH,
         dck_editing: list[str],
         ) -> list[str]:
 
@@ -282,7 +280,7 @@ def editing_dck_tank(
 
     # Replacing into the dck file
     # The start line of the component is identified with tag1 and tag2
-    tag1 = "HotWaterTank_1"  # Component name 
+    tag1 = "hw_tank_1"  # Component name 
     tag2 = "158"  # Component Type
     for idx, line in enumerate(dck_editing):
         if tag1 in line and tag2 in line:
@@ -345,7 +343,7 @@ def editing_dck_tank(
     return dck_editing
 
 #------------
-def editing_dck_file(trnsys_setup: TrnsysSetup) -> str:
+def editing_dck_file(trnsys_setup: Trnsys_DEWH) -> str:
 
     layout_DEWH = trnsys_setup.layout_DEWH
     layout_PV = trnsys_setup.layout_PV
@@ -384,7 +382,7 @@ def editing_dck_file(trnsys_setup: TrnsysSetup) -> str:
 
 #------------
 def creating_timeseries_files(
-        trnsys_setup: TrnsysSetup,
+        trnsys_setup: Trnsys_DEWH,
         timeseries: pd.DataFrame,
         ) -> None:
 
@@ -394,8 +392,8 @@ def creating_timeseries_files(
     location = trnsys_setup.location
     tempDir = trnsys_setup.tempDir
     
-    #Saving files for other than weather
-    lbls = ["PV_gen", "m_HWD", "CS", "import_grid"]
+    #Saving files for hwd and control
+    lbls = ["m_HWD", "CS"]
     for lbl in lbls:
         timeseries[lbl].to_csv(
             os.path.join(tempDir, FILES_TRNSYS_INPUT[lbl]), index=False
@@ -411,11 +409,11 @@ def creating_timeseries_files(
         if trnsys_setup.DEWH.__class__ == HeatPump:
             lbl = "HP"
         elif trnsys_setup.DEWH.__class__ == SolarThermalElecAuxiliary:
-            lbl = "TH"
+            lbl = "STC"
         file_lbl_data = FILES_TRNSYS_INPUT[lbl]
         shutil.copyfile(
             os.path.join(DIR_DATA["specs"], file_lbl_data),
-            os.path.join(tempDir, FILES_TRNSYS_INPUT["HP"])
+            os.path.join(tempDir, FILES_TRNSYS_INPUT["HP"]),
         )
 
     if layout_WF == "W15":
@@ -432,7 +430,7 @@ def creating_timeseries_files(
 
 #------------------------------
 def postprocessing_detailed(
-        trnsys_setup: TrnsysSetup,
+        trnsys_setup: Trnsys_DEWH,
         timeseries: pd.DataFrame,
         )-> pd.DataFrame:
     
@@ -523,7 +521,7 @@ def run_simulation(
         print("Running TRNSYS Simulation")
     
     with TemporaryDirectory(dir=TEMPDIR_SIMULATION) as tmpdir:
-        trnsys_setup = TrnsysSetup(GS)
+        trnsys_setup = Trnsys_DEWH(GS)
         trnsys_setup.tempDir = tmpdir
 
         stime = time.time()
