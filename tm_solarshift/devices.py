@@ -40,7 +40,7 @@ class SolarSystem():
             ts: pd.DataFrame,
             tz: str = 'Australia/Brisbane',
             unit: str = "kW",
-    ) -> pd.DataFrame:
+    ) -> pd.Series:
     
         latitude = self.lat.get_value("-")
         longitude = self.lon.get_value("-")

@@ -15,7 +15,7 @@ def run_thermal_model(
         ts: pd.DataFrame = None,
         verbose: bool = False,
         tz: str = DEFAULT_TZ,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, dict[str,float]]:
     
     STEP_h = GS.simulation.STEP.get_value("hr")
 

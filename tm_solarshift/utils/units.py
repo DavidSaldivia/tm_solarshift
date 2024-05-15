@@ -1,5 +1,5 @@
 import numpy as np
-
+from typing import Optional
 #-------------------------
 # Unit conversion factors
 CONVERSIONS = {
@@ -133,7 +133,12 @@ class Variable():
     In this way you make sure you are getting the value with the expected unit.
     get_value internally converts unit if it is possible.
     """
-    def __init__(self, value: float, unit: str = None, type="scalar"):
+    def __init__(
+            self,
+            value: Optional[float] = None,
+            unit: Optional[str] = None,
+            type: Optional[str] = "scalar",
+        ):
         self.value = value
         self.unit = unit
         self.type = type

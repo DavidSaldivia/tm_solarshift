@@ -33,7 +33,8 @@ def load_household_import_rate(
         return_energy_plan: bool = True,
         control_load: int = 1,
 
-) -> tuple[pd.DataFrame,dict] | pd.DataFrame:
+) -> pd.DataFrame:
+# ) -> tuple[pd.DataFrame,dict] | pd.DataFrame:
 
     # Preparing ts to the format required by Rui's code
     ts2 = pd.DataFrame(index=ts.index, columns = [
@@ -100,11 +101,12 @@ def load_household_import_rate(
     #Output
     ts["tariff"] = ts2["tariff"]
     ts["rate_type"] = ts2["rate_type"]
+    return ts
 
-    if return_energy_plan:
-        return (ts, energy_plan)
-    else:
-        return ts
+    # if return_energy_plan:
+    #     return (ts, energy_plan)
+    # else:
+    #     return ts
 
 #-------------
 def load_household_gas_rate(
@@ -132,11 +134,12 @@ def load_household_gas_rate(
     specific_energy = (nom_power / flow_water * CF("min", "hr")) #[MJ/L]
 
     hw_flow = ts["m_HWD"]
-    STEP_h = ts.index.freq.n * CF("min", "hr")
+    ts_index = pd.to_datetime(ts.index)
+    STEP_h = ts_index.freq.n * CF("min", "hr")
 
     ts2 = ts.copy()
     ts2["E_HWD"] = specific_energy * hw_flow * STEP_h         #[MJ]
-    ts2["E_HWD_cum_day"] = ts2.groupby(ts2.index.date)['E_HWD'].cumsum()
+    ts2["E_HWD_cum_day"] = ts2.groupby(ts_index.date)['E_HWD'].cumsum()
     ts2["tariff"] = pd.cut(
         ts2["E_HWD_cum_day"],
         bins = edges, labels = rates, right = False
@@ -172,10 +175,11 @@ def load_emission_index_year(
     )
     emissions.index = pd.to_datetime(emissions.index)
 
+    STEP = pd.to_datetime(timeseries.index).freq.n
     timeseries[columns] = emissions[
         emissions["Region"] == DEFINITIONS.LOCATIONS_NEM_REGION[location]
         ][columns].resample(
-            f"{timeseries.index.freq.n}T"
+            f"{STEP}T"
         ).interpolate('linear')
     return timeseries
 
@@ -198,10 +202,11 @@ def load_wholesale_prices(
     elif type(location) == Location:
         nem_region = DEFINITIONS.STATES_NEM_REGION[location.state]
 
+    STEP = pd.to_datetime(timeseries.index).freq.n
     timeseries["Wholesale_Market"] = df_SP[
         nem_region
         ].resample(
-            f"{timeseries.index.freq.n}T"
+            f"{STEP}T"
         ).interpolate('linear')
 
     return timeseries

@@ -9,18 +9,29 @@ TS_TYPES = SIMULATIONS_IO.TS_TYPES
 
 
 # Basic functions for profiles
-def profile_gaussian(df: pd.DataFrame, mu1: float, sig1: float, A1:float, base:float=0) -> pd.DataFrame:
-    aux = df.index.hour + df.index.minute / 60.0
+def profile_gaussian(
+        idx: pd.DatetimeIndex,
+        mu1: float, sig1: float,
+        A1:float, base:float=0
+    ) -> pd.Series:
+    aux = (idx.hour + idx.minute / 60.0).values
     Amp = A1 * sig1 * (2 * np.pi) ** 0.5
     series = base + (Amp / sig1 / (2 * np.pi) ** 0.5) * np.exp(
         -0.5 * (aux - mu1) ** 2 / sig1**2
     )
-    return series
+    
+    return pd.Series(series, index=idx)
 
-def profile_step(df:pd.DataFrame, t1:float, t2:float, A1:float, A0:float=0)-> pd.DataFrame:
-    aux = df.index.hour + df.index.minute / 60.0
+def profile_step(
+        idx: pd.DatetimeIndex,
+        t1: float,
+        t2: float,
+        A1: float,
+        A0: float = 0
+    )-> pd.Series:
+    aux = (idx.hour + idx.minute / 60.0).values
     series = np.where((aux >= t1) & (aux < t2), A1, A0)
-    return series
+    return pd.Series(series, index=idx)
 
 #---------------
 def load_PV_generation(
@@ -54,7 +65,8 @@ def load_PV_generation(
         if profile_PV == 0:
             df_PV[lbl] = 0.0
         elif profile_PV == 1:
-            df_PV[lbl] = profile_gaussian( df_PV, 12.0, 2.0, nom_power )
+            idx = pd.DatetimeIndex(df_PV.index)
+            df_PV[lbl] = profile_gaussian( idx, 12.0, 2.0, nom_power )
         else:
             raise ValueError("profile_PV not valid. The simulation will finish.")
     
@@ -87,6 +99,10 @@ def main():
     from tm_solarshift.general import GeneralSetup
     GS = GeneralSetup()
     ts = GS.create_ts()
+
+    profile = profile_step(ts.index, t1=10., t2=14., A1=2.0)
+    print(profile)
+
     solar_system = GS.solar_system
     
     COLS = TS_TYPES["electric"]

@@ -17,6 +17,7 @@ class DIRECTORY():
         "specs" : os.path.join(DIR_MAIN, "data", "device_specs"),
         "tariffs" : os.path.join(DIR_MAIN, "data", "tariffs_json_2023-24"),
         "gas" : os.path.join(DIR_MAIN, "data", "tariffs_gas"),
+        "control" : os.path.join(DIR_MAIN, "data", "control"),
         "weather" : os.path.join(DIR_MAIN, "data", "weather"),
         }
     DIR_RESULTS = os.path.join(DIR_MAIN, "results")
@@ -250,7 +251,12 @@ class DEFINITIONS():
     CONTROL_TYPES = {
         "GS": "general supply",
         "CL": "controlled load",
+        "CL1": "controlled load 1",
+        "CL2": "controlled load 2",
+        "CL3": "controlled load, solar soak option",
         "timer": "timer",
+        "timer_SS": "timer for solar soak",
+        "timer_OP": "timer for off-peak periods (tou)",
         "diverter": "diverter",
     }
     CL_NAMES = {

@@ -310,7 +310,6 @@ def calculate_household_energy_cost(
     STEP_h = GS.simulation.STEP.get_value("hr")
     if ts is None:
         ts = GS.create_ts()
-
     if df_tm is None:
         (df_tm, _) = GS.run_thermal_simulation(ts, verbose = True)
 
@@ -352,7 +351,7 @@ def calculate_wholesale_energy_cost(
         df_tm = GS.run_thermal_simulation(ts)
         
     heater_power = df_tm["heater_power"] * CF("kJ/h", "MW")
-    energy_cost = ( ts["wholesale_market"] * heater_power * STEP_h).sum()
+    energy_cost = (ts["wholesale_market"] * heater_power * STEP_h).sum()
     return energy_cost
 
 #------------------------
@@ -364,8 +363,6 @@ def calculate_annual_bill(
     ) -> float:
     
     # calculate annual energy cost
-    if ts is None:
-        ts = GS.create_ts()
     energy_cost = calculate_household_energy_cost(GS, ts, out_all)
     DAYS = GS.simulation.DAYS.get_value("d")
     DAILY_CHARGE = 1.0  #AUD (just an average value for now, read tariff instead)

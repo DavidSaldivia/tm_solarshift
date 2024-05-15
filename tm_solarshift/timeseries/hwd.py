@@ -1,8 +1,8 @@
 import os
 import warnings
-
 import pandas as pd
 import numpy as np
+from typing import Optional
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
 
@@ -21,16 +21,21 @@ DAILY_DISTRIBUTIONS = [
 
 #------------------------------------
 class HWD():
-    def __init__(self, id: int = np.random.SeedSequence().entropy):
-        self.seed_id = id
-        self.method = "standard"
-        self.profile_HWD = 1
-        self.daily_distribution = None
+    def __init__(
+            self,
+            id: int = -1
+        ):
+        if id == -1:
+            id = np.random.SeedSequence().entropy
+        self.seed_id: int = id
+        self.method: str = "standard"
+        self.profile_HWD: int = 1
+        self.daily_distribution: Optional[str] = None
 
-        self.daily_avg: Variable = None
-        self.daily_std: Variable = None
-        self.daily_min: Variable = None
-        self.daily_max: Variable = None
+        self.daily_avg = Variable(None,None)
+        self.daily_std = Variable(None,None)
+        self.daily_min = Variable(None,None)
+        self.daily_max = Variable(None,None)
 
     #-------------------------
     #Alternative initialiser
@@ -51,7 +56,7 @@ class HWD():
     
     #----------------------
     @staticmethod
-    def event_basic():
+    def event_basic() -> dict:
         event_basic = {
             "name": "custom",  # Event type label
             "basis": "daily",  # To determine number of events
@@ -69,7 +74,11 @@ class HWD():
         return event_basic
     
     @staticmethod
-    def event_file(file_name: str=None, sheet_name="Basic"):
+    def event_file(
+        file_name: Optional[str] = None,
+        sheet_name: str = "Basic",
+        ) -> pd.DataFrame:
+
         if file_name is None:
             file_name = FILES_HWD_SAMPLES["HWD_events"]
             warnings.warn("No file path for events is given. Sample file is used.")
@@ -84,7 +93,7 @@ class HWD():
     def interday_distribution(
         self,
         list_dates: list|pd.DataFrame|pd.DatetimeIndex,
-        sample_file: str = None,
+        sample_file: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         To create HWDP we need two distribution: an hourly (or instantaneous) distribution (intra-days) and
@@ -107,7 +116,7 @@ class HWD():
         if type(list_dates) == pd.DatetimeIndex:
             list_dates_unique = np.unique(list_dates.date)
         elif type(list_dates) == pd.DataFrame:
-            list_dates_unique = np.unique(list_dates.index.date)
+            list_dates_unique = np.unique(pd.to_datetime(list_dates.index).date)
         else:
             list_dates_unique = np.unique(list_dates)
         list_dates_unique = pd.to_datetime(list_dates_unique)
@@ -144,8 +153,8 @@ class HWD():
         elif daily_distribution == "sample":
             if sample_file is None:
                 sample_file = FILES_HWD_SAMPLES["HWD_daily"]
-            sample = pd.read_csv(sample_file)['m_HWD_day']
-            sample = sample[sample>0].to_list()
+            sample_aux = pd.read_csv(sample_file)['m_HWD_day']
+            sample = sample_aux[sample_aux>0].to_list()
             m_HWD_day = rng.choice(sample, size=DAYS)
             
     
@@ -159,9 +168,9 @@ class HWD():
         self,
         timeseries: pd.DataFrame,
         method: str = 'standard',
-        interday_dist: pd.DataFrame = None,
-        intraday_dist: int = None, 
-        event_probs: pd.DataFrame = None,
+        interday_dist: Optional[pd.DataFrame] = None,
+        intraday_dist: Optional[int] = None, 
+        event_probs: Optional[pd.DataFrame] = None,
         file_name: str = FILES_HWD_SAMPLES["HWD_events"],
         sheet_name: str = "Custom",
         columns: list[str] = TS_HWD,
@@ -189,8 +198,8 @@ class HWD():
     def generator_standard(
         self,
         timeseries: pd.DataFrame,
-        interday_dist: pd.DataFrame = None,
-        intraday_dist: int = None,
+        interday_dist: Optional[pd.DataFrame] = None,
+        intraday_dist: Optional[int] = None,
         columns: list[str] = TS_HWD,
     ) -> pd.DataFrame:
         """
@@ -207,11 +216,12 @@ class HWD():
         if intraday_dist is None:
             intraday_dist = self.profile_HWD
 
-        STEP_h = timeseries.index.freq.n * CF("min","hr")   # delta t in hours
-        PERIODS = len(timeseries)                 # Number of periods to simulate
+        idx = pd.to_datetime(timeseries.index)
+        STEP_h = idx.freq.n * CF("min","hr")   # delta t in hours
+        PERIODS = len(timeseries)              # Number of periods to simulate
 
         # Creating an auxiliar dataframe to populate the drawings
-        df_aux = pd.DataFrame(index=timeseries.index, columns=columns)
+        df_aux = pd.DataFrame(index=idx, columns=columns)
 
         match intraday_dist:
             case 0:
@@ -225,9 +235,9 @@ class HWD():
                     kind="linear", fill_value="extrapolate"
                 )
                 df_aux["P_HWD"] = f1D(
-                    df_aux.index.hour
-                    + df_aux.index.minute * CF("min","hr")
-                    + df_aux.index.second * CF("s","hr")
+                    idx.hour
+                    + idx.minute * CF("min","hr")
+                    + idx.second * CF("s","hr")
                     )
             case _ :
                 raise ValueError("intraday_distribution is not among the accepted values.")
@@ -254,9 +264,9 @@ class HWD():
     def generator_events(
         self,
         timeseries: pd.DataFrame,
-        interday_dist: pd.DataFrame = None,
-        intraday_dist: int = None,
-        event_probs: pd.DataFrame = None,
+        interday_dist: Optional[pd.DataFrame] = None,
+        intraday_dist: Optional[int] = None,
+        event_probs: Optional[pd.DataFrame] = None,
         file_name: str = FILES_HWD_SAMPLES["HWD_events"],
         sheet_name: str = "Basic",
         columns: list[str] = TS_HWD,
@@ -266,6 +276,7 @@ class HWD():
         consumption variability (defined by interday_dist), and event characteristics
         """
         rng = np.random.default_rng(self.seed_id)
+        ts_index = pd.to_datetime(timeseries.index)
 
         #Checks and some conversions
         if interday_dist is None:
@@ -275,9 +286,9 @@ class HWD():
         if event_probs is None:
             event_probs = self.event_file(file_name=file_name, sheet_name=sheet_name)
 
-        STEP = timeseries.index.freq.n
+        STEP = ts_index.freq.n
         STEP_h = STEP * CF("min","hr")
-        list_dates = np.unique(timeseries.index.date)
+        list_dates = np.unique(ts_index.date)
         DAYS = len(list_dates)
         
         Events_all = []
@@ -352,11 +363,11 @@ class HWD():
             )
             # Deleting events that are outside simulation
             Events = Events.drop(
-                Events[Events.datetime_o > timeseries.index.max()].index
+                Events[Events["datetime_o"] > ts_index.max()].index
             )
 
-            Events.index = pd.to_datetime(Events.datetime)
-            Events["kg_event"] = Events["flow"] * Events["duration"] / 60
+            Events.index = pd.to_datetime(Events["datetime"])
+            Events["kg_event"] = Events["flow"] * Events["duration"] / 60.
             Events["name"] = name
             
             Events["kg_accum"] = Events.groupby(
@@ -393,16 +404,16 @@ class HWD():
         Events_all["kg_miss"] = Events_all["kg_max"] - Events_all["kg_day"]
         Events_aux = Events_all.copy()
         Events_aux["datetime"] = Events_aux["datetime_o"]
-        Events_aux["flow"] = -Events_aux["flow"]
+        Events_aux["flow"] = - Events_aux["flow"]
 
         Events_final = pd.concat([Events_all, Events_aux])[["flow", "datetime"]]
-        Events_final = Events_final.groupby(Events_final.datetime).sum()
+        Events_final = Events_final.groupby(Events_final["datetime"]).sum()
 
         # Generating the final df
-        df_aux = pd.DataFrame(index=timeseries.index, columns=columns)
+        df_aux = pd.DataFrame(index=ts_index, columns=columns)
         df_aux["Events"] = 0.0
         df_aux.loc[Events_final.index, "Events"] = Events_final["flow"]
-        df_aux["m_HWD"] = df_aux.Events.cumsum()
+        df_aux["m_HWD"] = df_aux["Events"].cumsum()
         df_aux["m_HWD"] = np.where(df_aux["m_HWD"] < 1e-5, 0, df_aux["m_HWD"])
         df_aux["m_HWD_day"] = (
             df_aux.groupby(df_aux.index.date)["m_HWD"].transform("sum") 

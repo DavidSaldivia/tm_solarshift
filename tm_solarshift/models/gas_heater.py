@@ -13,7 +13,7 @@ def instantaneous_fixed_eta(
         ts: pd.DataFrame,
         STEP_h: float = 3/60.,
         verbose: bool = False,
-) -> tuple[None, dict[str, float]]:
+) -> tuple[pd.DataFrame, dict[str, float]]:
     
     hw_flow = ts["m_HWD"]
     temp_amb_avg = ts["temp_amb"].mean()

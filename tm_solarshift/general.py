@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from typing import Optional
 
 from tm_solarshift.constants import (DEFINITIONS, SIMULATIONS_IO)
 
@@ -140,7 +141,7 @@ class GeneralSetup():
     #-------------------
     def run_thermal_simulation(
             self,
-            ts: pd.DataFrame = None,
+            ts: Optional[pd.DataFrame] = None,
             verbose: bool = False,
     ) -> tuple[pd.DataFrame, dict]:
         """Run a thermal simulation using the data provided in self.
@@ -197,7 +198,7 @@ class GeneralSetup():
         #-------------------
     def run_only_thermal_simulation(
             self,
-            ts: pd.DataFrame = None,
+            ts: Optional[pd.DataFrame] = None,
             verbose: bool = False,
     ) -> pd.DataFrame:
         """Run a thermal simulation using the data provided in self.
@@ -313,6 +314,7 @@ class ThermalSimulation():
         return pd.DataFrame(index=idx, columns=TS_COLUMNS_ALL)
 
 #-----------
+#-----------
 def main():
 
     GS = GeneralSetup()
@@ -323,6 +325,7 @@ def main():
     print(ts[TS_TYPES["HWDP"]])
     print(ts[TS_TYPES["weather"]])
     print(ts[TS_TYPES["control"]])
+
 
     (out_all, out_overall) = GS.run_thermal_simulation( ts, verbose=True )
     print(out_all)
