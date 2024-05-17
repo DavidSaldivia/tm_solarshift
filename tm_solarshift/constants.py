@@ -23,6 +23,20 @@ class DIRECTORY():
     DIR_RESULTS = os.path.join(DIR_MAIN, "results")
     DIR_PROJECTS = os.path.join(DIR_MAIN, "projects")
     
+    DIR_METEONORM = os.path.join("C:/TRNSYS18/Weather/Meteonorm/Australia-Oceania")
+    FILES_METEONORM = {
+        "Adelaide": "AU-Adelaide-946720.tm2",
+        "Alice_Spring": "AU-Alice-Springs-943260.tm2",
+        "Brisbane": "AU-Brisbane-945780.tm2",
+        "Canberra": "AU-Canberra-949260.tm2",
+        "Darwin": "AU-Darwin-Airport-941200.tm2",
+        "Hobart": "AU-Hobart-Airport-949700.tm2",
+        "Melbourne": "AU-Melbourne-948660.tm2",
+        "Perth": "AU-Perth-946080.tm2",
+        "Sydney": "AU-Sydney-947680.tm2",
+        "Townsville": "AU-Townsville-942940.tm2",
+    }
+
     #FILES
     FILES_MODEL_SPECS = {
         "resistive" : os.path.join(DIR_DATA["specs"], "data_models_RS.csv"),

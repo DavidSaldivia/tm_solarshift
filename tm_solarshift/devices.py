@@ -68,6 +68,7 @@ class ResistiveSingle():
 
         # description
         self.name = "Conventional resistive immersive heater (single unit)."
+        self.label = "resistive"
         self.model = "-"
         self.cost = Variable(np.nan, "AUD")
 
@@ -137,6 +138,7 @@ class HeatPump():
 
         # description
         self.name = "Heat Pump, external heat exchanger with thermostat."
+        self.label = "heat_pump"
         self.model = "-"
         self.cost = Variable(np.nan, "AUD")
 
@@ -205,6 +207,7 @@ class GasHeaterInstantaneous():
         
         # description
         self.name = "Gas heater instantaneous (no storage)."
+        self.label = "gas_instant"
         self.model = "-"
         self.cost = Variable(np.nan, "AUD")
 
@@ -268,6 +271,7 @@ class GasHeaterStorage():
 
         # description
         self.name = "Gas heater with storage tank."
+        self.label = "gas_storage"
         self.model = "-"
         self.cost = Variable(np.nan, "AUD")
         
@@ -354,6 +358,7 @@ class SolarThermalElecAuxiliary():
 
         # description
         self.name = "Solar thermal colector. Tank separated from collector, with electric heater."
+        self.label = "solar_thermal"
         self.model = "-"
         self.cost = Variable(np.nan, "AUD")
         
