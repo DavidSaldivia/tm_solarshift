@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from tm_solarshift.constants import DEFINITIONS
+from tm_solarshift.constants import SIMULATIONS_IO
 from tm_solarshift.utils.location import Location
 from tm_solarshift.utils.units import Variable
 
@@ -50,4 +50,4 @@ class ThermalSimulation():
         start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
         idx = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
 
-        return pd.DataFrame(index=idx, columns=DEFINITIONS.TS_COLUMNS_ALL)
+        return pd.DataFrame(index=idx, columns=SIMULATIONS_IO.TS_COLUMNS_ALL)

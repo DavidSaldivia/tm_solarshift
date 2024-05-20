@@ -1,12 +1,17 @@
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
 import pvlib
 from pvlib.pvarray import pvefficiency_adr
 
 import tm_solarshift.utils.solar as solar
 from tm_solarshift.constants import (DIRECTORY, DEFAULT)
+from tm_solarshift.utils.units import (
+    Variable,
+    conversion_factor as CF
+)
 
+# default values
 DIR_MAIN = DIRECTORY.DIR_MAIN
 DEFAULT_TZ = DEFAULT.TZ
 DEFAULT_LAT = DEFAULT.LAT
@@ -17,7 +22,7 @@ DEFAULT_G_STC = DEFAULT.G_STC
 DEFAULT_PV_NOMPOW = DEFAULT.PV_NOMPOW
 DEFAULT_ADR_PARAMS = DEFAULT.ADR_PARAMS
 
-#most of these columns are from pbliv
+# columns (most are from pbliv)
 COLS_TMY = [
     "temp_air", "GHI", "DNI", "DHI", "WS"
 ]
@@ -36,36 +41,100 @@ COLS_IRRADIANCE_PLANE = [
     "poa_ground_diffuse"
 ]
 
-#-------------------
-def get_PV_generation(
-    ts: pd.DataFrame,
-    tz: str = DEFAULT_TZ,
-    latitude: float = DEFAULT_LAT,
-    longitude: float = DEFAULT_LON,
-    tilt: float = DEFAULT_TILT,
-    orient: float = DEFAULT_ORIENT,
-    PV_nompower: float = DEFAULT_PV_NOMPOW,
-    G_STC: float = DEFAULT_G_STC,
-    adr_params: dict = DEFAULT_ADR_PARAMS,
-) -> pd.DataFrame:
-    
-    temp_amb = ts["temp_amb"]
-    WS = ts["WS"]
-    
-    # Obtain the irradiance in the PV array plane
-    plane_irrad = solar.get_plane_irradiance(ts, latitude, longitude, tilt, orient, tz)
-    
-    df = ts.copy()
-    df["poa_global"] = plane_irrad["poa_global"]
-    
-    # Estimate the expected operating temperature of the PV modules
-    df["temp_pv"] = pvlib.temperature.faiman( df["poa_global"], temp_amb, WS )
-    
-    #Relative efficiency and module power
-    df["eta_rel"] = pvefficiency_adr(df['poa_global'], df['temp_pv'], **adr_params)
-    df["pv_power"] = PV_nompower * df['eta_rel'] * (df['poa_global'] / G_STC)
+#-------------------------
+#PV System and auxiliary devices
+class PVSystem():
+    def __init__(self):
 
-    return df
+        #description
+        self.name = "PV system standard."
+        self.model = "-"
+        self.cost = Variable(np.nan, "AUD")
+
+        #technical data
+        self.nom_power = Variable(5000.0, "W")
+        self.adr_params = {
+            'k_a': 0.99924,
+            'k_d': -5.49097,
+            'tc_d': 0.01918,
+            'k_rs': 0.06999,
+            'k_rsh': 0.26144,
+        }
+        self.G_STC = Variable(1000.0, "W/m2")
+
+        #location (change lat and lon with Location). Create them as properties.
+        self.lat = Variable(-33.86, "deg")
+        self.lon = Variable(151.22, "deg")
+        self.tilt = Variable(abs(self.lat.get_value("deg")),"deg")
+        self.orient = Variable(180.0,"deg")
+        self.tz = 'Australia/Brisbane'
+
+        #generation profile (only used for testing)
+        self.profile_PV = 1
+    
+    def __eq__(self, other) : 
+        return self.__dict__ == other.__dict__
+
+    @property
+    def coords(self) -> tuple[float,float]:
+        return (self.lat, self.lon)
+
+    # def get_PV_generation(
+    #         self,
+    #         ts: pd.DataFrame,
+    #         tz: str = 'Australia/Brisbane',
+    #         unit: str = "kW",
+    # ) -> pd.Series:
+
+    #     df_aux = get_PV_generation(
+    #         ts = ts,
+    #         latitude = self.lat.get_value("deg"),
+    #         longitude = self.lon.get_value("deg"),
+    #         tilt = self.tilt.get_value("deg"),
+    #         orient = self.orient.get_value("deg"),
+    #         PV_nompower = self.nom_power.get_value("W"),
+    #         tz = tz,
+    #     )
+    
+    #     df_aux.index = ts.index
+    #     pv_power =  df_aux["pv_power"] * CF("W", unit)
+    #     return pv_power
+    
+    def sim_generation(
+            self,
+            ts: pd.DataFrame,
+            unit: str = "kW",
+            COLS_PV_SIM: list = ["poa_global", "temp_pv", "eta_rel", "pv_power"]
+    ) -> pd.DataFrame:
+        
+        latitude = self.lat.get_value("deg")
+        longitude = self.lon.get_value("deg")
+        tilt = self.tilt.get_value("deg")
+        orient = self.orient.get_value("deg")
+        nom_power = self.nom_power.get_value("W")
+        tz = self.tz
+        adr_params = self.adr_params
+        G_STC = self.G_STC.get_value("W/m2")
+
+        temp_amb = ts["temp_amb"]
+        WS = ts["WS"]
+
+        #result dataframe
+        df_pv = pd.DataFrame(index=ts.index, columns=COLS_PV_SIM)
+
+        # Estimating: radiation in pv plane, pv temp, relative efficiency, and module power
+        df_pv["poa_global"] = solar.get_plane_irradiance(
+            ts=ts,
+            latitude=latitude, longitude=longitude, tilt=tilt, orient=orient, tz=tz,
+        )["poa_global"]
+        df_pv["temp_pv"] = pvlib.temperature.faiman( df_pv["poa_global"], temp_amb, WS )
+        df_pv["eta_rel"] = pvefficiency_adr(
+            df_pv['poa_global'], df_pv['temp_pv'], **adr_params
+        )
+        df_pv["pv_power"] = (
+            nom_power * df_pv['eta_rel'] * (df_pv['poa_global'] / G_STC) * CF("W", unit)
+        )
+        return df_pv
 
 
 #---------------
@@ -85,7 +154,7 @@ def sample_plots(
 
     plt.figure()
 
-    pc = plt.scatter(df['poa_global'], df['PVPower'], c=df['temp_pv'], cmap='jet')
+    pc = plt.scatter(df['poa_global'], df['pv_power'], c=df['temp_pv'], cmap='jet')
     plt.colorbar(label='Temperature [C]', ax=plt.gca())
     pc.set_alpha(0.25)
     plt.grid(alpha=0.5)
@@ -94,31 +163,22 @@ def sample_plots(
     plt.show()
 
     plt.figure()
-    plt.plot(df['PVPower'][DEMO_DAY])
+    plt.plot(df['pv_power'][DEMO_DAY])
     plt.xticks(rotation=30)
     plt.ylabel('Power [W]')
     plt.show()
 
 
 def main():
-    tz = DEFAULT_TZ
-    lat = DEFAULT_LAT
-    long = DEFAULT_LON
 
-    tilt = DEFAULT_TILT
-    orient = DEFAULT_ORIENT
-    
-    PV_nompower = DEFAULT_PV_NOMPOW
-    G_STC = DEFAULT_G_STC
-    adr_params = DEFAULT_ADR_PARAMS
+    from tm_solarshift.general import GeneralSetup
+    GS = GeneralSetup()
+    ts = GS.create_ts()
 
-    
-    df = get_PV_generation(
-        tz=tz, latitude=lat, longitude=long, tilt=tilt, orient=orient,
-        PV_nompower=PV_nompower, G_STC = G_STC, adr_params=adr_params
-    )
-    print(df)
-    sample_plots(df)
+    pv_system = PVSystem()
+    df_pv = pv_system.sim_generation(ts)
+    print(df_pv)
+    sample_plots(df_pv)
     return
 
 

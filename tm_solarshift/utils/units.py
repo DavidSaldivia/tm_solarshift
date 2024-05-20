@@ -2,10 +2,9 @@ import numpy as np
 from typing import Optional
 #-------------------------
 # Unit conversion factors
-CONVERSIONS = {
+CONVERSIONS: dict[str,dict[Optional[str],float]] = {
     "adim" : {
         "-": 1e0,
-        None: 1e0,
         "": 1e0,
         " ": 1e0,
     },
@@ -106,13 +105,13 @@ CONVERSIONS = {
     },
 }
 
-UNIT_TYPES = dict()
+UNIT_TYPES: dict[Optional[str],str] = dict()
 for type_unit in CONVERSIONS.keys():
     for unit in CONVERSIONS[type_unit].keys():
         UNIT_TYPES[unit] = type_unit
 
 #-------------------------
-def conversion_factor(unit1: str, unit2: str) -> float:
+def conversion_factor(unit1: str|None, unit2: str|None) -> float:
     """ Function to obtain conversion factor between units.
     The units must be in the UNIT_CONV dictionary.
     If they are units from different phyisical quantities an error is raised.
@@ -142,18 +141,19 @@ class Variable():
         self.value = value
         self.unit = unit
         self.type = type
+    
+    def __eq__(self, other) : 
+        return self.__dict__ == other.__dict__
 
-    def get_value(self, unit: str = None):
-        
-        if unit == None:
-            unit = self.unit
+    def get_value(self, unit: Optional[str] = None) -> float:
 
-        if self.unit == unit:
+        if self.value is None:
+            raise ValueError("Variables does not have any value assigned.")
+
+        if unit == self.unit or unit == None:
             return self.value
-        
-        if UNIT_TYPES[unit] == UNIT_TYPES[self.unit]:
-            conv_factor = conversion_factor(self.unit, unit)
-            return self.value * conv_factor
+        elif UNIT_TYPES[unit] == UNIT_TYPES[self.unit]:
+            return self.value * conversion_factor(self.unit, unit)
         else:
             raise ValueError( f"Variable unit ({self.unit}) and wanted unit ({unit}) are not compatible.")
 
@@ -165,7 +165,7 @@ class VariableList():
     """
     Similar to Variable() but for lists.
     """
-    def __init__(self, values: list, unit: str = None, type="scalar"):
+    def __init__(self, values: list, unit: Optional[str] = None, type="scalar"):
         self.values = values
         self.unit = unit
         self.type = type

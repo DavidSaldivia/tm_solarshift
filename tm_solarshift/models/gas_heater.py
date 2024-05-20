@@ -18,7 +18,7 @@ def instantaneous_fixed_eta(
     hw_flow = ts["m_HWD"]
     temp_amb_avg = ts["temp_amb"].mean()
     temp_mains_avg = ts["temp_mains"].mean()
-    DAYS = len(np.unique(ts.index.date))
+    DAYS = len(np.unique(pd.to_datetime(ts.index).date))
 
     kgCO2_TO_kgCH4 = 44. / 16.
 
@@ -57,7 +57,8 @@ def instantaneous_fixed_eta(
     heater_heat_acum = E_HWD_acum / eta
     m_HWD_avg = (hw_flow * STEP_h).sum() / DAYS
 
-    out_all = hw_flow.copy()
+    out_all = pd.DataFrame(index = ts.index)
+    out_all["m_HWD"] = hw_flow
     out_all["eta"] = eta
     out_all["heater_power"] = specific_energy * hw_flow * CF("MJ", "kJ")    #[kJ/h]
 

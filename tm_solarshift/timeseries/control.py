@@ -520,7 +520,7 @@ def load_control_signal(
 #----------------------------
 def convert_periods_to_series(
         idx: pd.DatetimeIndex,
-        periods: list[dict[str,str|int|float]],
+        periods: list[dict[str,int|float]],
 ) -> pd.Series:
 
     month = idx.month

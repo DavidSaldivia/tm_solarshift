@@ -5,7 +5,7 @@ import pandas as pd
 from typing import Optional, Any
 
 from tm_solarshift.general import   GeneralSetup
-from tm_solarshift.models.trnsys import Trnsys_DEWH
+from tm_solarshift.models.trnsys import TrnsysDEWH
 from tm_solarshift.constants import (
     DIRECTORY,
     DEFINITIONS,
@@ -38,7 +38,6 @@ def get_filepath_input(
 
 def save_simulation_input(
         GS: GeneralSetup,
-        ts: Optional[pd.DataFrame] = None,
         file_path: Optional[str] = None,
 ) -> None:
     
@@ -79,6 +78,20 @@ def load_simulation_output(
 
 
 def main():
+
+    
+    GS = GeneralSetup()
+    file_path = "testing.pkl"
+    save_simulation_input(GS, file_path)
+
+    GS_plk = load_simulation_input(file_path)
+
+    print(GS_plk == GS)
+    print(GS_plk.pv_system == GS.pv_system)
+    print(GS_plk.DEWH == GS.DEWH)
+    print(GS_plk)
+    print(GS)
+
     pass
 
 if __name__ == "__main__":

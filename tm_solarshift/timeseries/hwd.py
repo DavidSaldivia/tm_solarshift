@@ -243,17 +243,13 @@ class HWD():
                 raise ValueError("intraday_distribution is not among the accepted values.")
 
         # This is to ensure that each day the accumulated hot water profile fraction is 1.
-        P_HWD_day = (
-            df_aux.groupby(df_aux.index.date)["P_HWD"]
-            .transform("sum") 
-            * STEP_h
+        P_HWD_day = df_aux.groupby(idx.date)["P_HWD"] .transform("sum") * STEP_h
+        df_aux["P_HWD"] = np.where(
+            P_HWD_day > 0, 
+            df_aux["P_HWD"] / P_HWD_day, 
+            0.0
         )
-        df_aux["P_HWD"] = np.where(P_HWD_day > 0, 
-                                df_aux["P_HWD"] / P_HWD_day, 
-                                0.0)
-        df_aux["m_HWD_day"] = interday_dist.loc[
-            timeseries.index.date
-            ]["HWD_day"].values
+        df_aux["m_HWD_day"] = interday_dist.loc[idx.date]["HWD_day"].values
         df_aux["m_HWD"] = df_aux["P_HWD"] * df_aux["m_HWD_day"]
         
         timeseries[columns] = df_aux[columns]
@@ -309,7 +305,7 @@ class HWD():
             )
 
             df_day["N_ev"] = rng.integers(N_ev_min, N_ev_max + 1, size=DAYS)
-            Events_dates = list()
+            Events_dates = []
             for idx, row in df_day.iterrows():
                 Events_dates = Events_dates + [idx for i in range(row["N_ev"])]
             N_events_total = df_day["N_ev"].sum()
@@ -425,14 +421,14 @@ class HWD():
 #----------------------------
 def main():
     
-    from tm_solarshift.general import ThermalSimulation
-    simulation = ThermalSimulation()
+    from tm_solarshift.general import GeneralSetup
+    GS = GeneralSetup()
     
     HWDInfo = HWD.standard_case()
     HWDInfo.daily_distribution = "truncnorm"
     
     #Testing different inputs for dates
-    ts = simulation.create_new_profile()
+    ts = GS.create_ts()
     dates = np.unique(ts.index.date)
     print(HWDInfo.interday_distribution(ts))          #pd.DataFrame with DateTimeIndex
     print(HWDInfo.interday_distribution(dates))       #list of dates

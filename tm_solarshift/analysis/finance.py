@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
-from typing import Union
+from typing import Union, Optional
 
 #--------------------------
 # Internal Solarshift imports
@@ -87,7 +87,7 @@ RESISTIVE_SUPPLY_STATES = ["NSW", "QLD", "VIC"]
 def get_model_number(
         household_size: int,
         heater_type: str,
-) -> float:
+) -> str:
     df = pd.read_csv(FILE_MODEL_HOUSEHOLDSIZES)
     model = df[
         (df["heater_type"] == heater_type) &
@@ -165,26 +165,25 @@ def calculate_capital_cost(GS: GeneralSetup) -> float:
 
     model_number = get_model_number(household_size, heater_type)
     df_heaters = pd.read_csv( FILES_MODEL_SPECS[heater_type], index_col=0 )
-
+    
     match heater_type:
-
         case "resistive":
             state = LOCATIONS_STATE[location]
             if state not in RESISTIVE_SUPPLY_STATES:
                 state = "supply"
                 # if state is in list, capital cost + installation cost
                 # if state non is list, just capital cost on technology 
-            capital_cost = df_heaters.loc[model_number, f'price_{state}']
+            capital_cost = float(df_heaters.loc[model_number, f'price_{state}'])
         
         case "heat_pump":
-            capital_cost = df_heaters.loc[model_number, 'supply_install']
+            capital_cost = float(df_heaters.loc[model_number, 'supply_install'])
             # if in NSW (sydney metropolitan area) call NSW rebate function for dicounted capitl + installation costs
             if old_heater in ['gas_instant', 'gas_storage']:
                 new_electric_setup = DEFAULT_NEW_ELEC_SETUP
                 capital_cost = capital_cost + new_electric_setup
 
         case "gas_instant" | "gas_storage" | "solar_thermal":
-            capital_cost = df_heaters.loc[model_number, 'supply_install']
+            capital_cost = float(df_heaters.loc[model_number, 'supply_install'])
 
         case _:
             raise ValueError("Type of water heater is invalid")
@@ -224,9 +223,10 @@ def calculate_rebates(
             rebate = NSW_rebate(old_heater, new_system)
         case "VIC":
             rebate = VIC_rebate(
-                old_heater,
+                old_heater=old_heater,
                 new_heater=heater_type,
-                new_system=new_system
+                new_system=new_system,
+                capital_cost=capital_cost,
             )
         case "SA":
             rebate = SA_rebate()
@@ -279,7 +279,7 @@ def calculate_disconnection_cost(
 #-----------------
 def calculate_oandm_cost(
         GS: GeneralSetup,
-        out_all: pd.DataFrame = None,
+        out_all: Optional[pd.DataFrame] = None,
         has_solar: bool = False,
     ) -> float:
     
@@ -290,7 +290,7 @@ def calculate_oandm_cost(
 
 #-----------------------
 def calculate_npv(
-        cashflows: list,
+        cashflows: np.ndarray,
         discount_rate: float
     ) -> float:
 
@@ -302,8 +302,8 @@ def calculate_npv(
 #------------------------
 def calculate_household_energy_cost(
         GS: GeneralSetup,
-        ts: pd.DataFrame = None,
-        df_tm: pd.DataFrame = None,
+        ts: Optional[pd.DataFrame] = None,
+        df_tm: Optional[pd.DataFrame] = None,
         ) -> float:
 
     control_type = GS.household.control_type
@@ -315,11 +315,11 @@ def calculate_household_energy_cost(
 
     heater_power = df_tm["heater_power"] * CF("kJ/h", "kW")
 
-    if GS.solar_system == None:
+    if GS.pv_system == None:
         imported_energy = heater_power.copy()
     else:
         tz = 'Australia/Brisbane'
-        pv_power = GS.solar_system.load_PV_generation( ts=ts, tz=tz,  unit="kW" )
+        pv_power = GS.pv_system.sim_generation(ts, unit="kW")["pv_power"]
         if control_type == "diverter":
             #Diverter considers three hours at night plus everything diverted from solar
             control_load = GS.household.control_load
@@ -339,8 +339,8 @@ def calculate_household_energy_cost(
 #-----------------------
 def calculate_wholesale_energy_cost(
         GS: GeneralSetup,
-        ts: pd.DataFrame = None,
-        df_tm: pd.DataFrame = None,
+        ts: Optional[pd.DataFrame] = None,
+        df_tm: Optional[pd.DataFrame] = None,
         ) -> float:
     
     STEP_h = GS.simulation.STEP.get_value("hr")
@@ -348,7 +348,7 @@ def calculate_wholesale_energy_cost(
     if ts is None:
         ts = GS.create_ts()
     if df_tm is None:
-        df_tm = GS.run_thermal_simulation(ts)
+        (df_tm, _) = GS.run_thermal_simulation(ts)
         
     heater_power = df_tm["heater_power"] * CF("kJ/h", "MW")
     energy_cost = (ts["wholesale_market"] * heater_power * STEP_h).sum()
@@ -357,8 +357,8 @@ def calculate_wholesale_energy_cost(
 #------------------------
 def calculate_annual_bill(
         GS: GeneralSetup,
-        ts: pd.DataFrame = None,
-        out_all: pd.DataFrame = None,
+        ts: Optional[pd.DataFrame] = None,
+        out_all: Optional[pd.DataFrame] = None,
         has_solar: bool = False,
     ) -> float:
     
@@ -433,7 +433,7 @@ def financial_analysis(
     verbose: bool = True,
     save_details: bool = False,
     create_cache: bool = True,
-) -> tuple[dict,np.array]:
+) -> tuple[dict,np.ndarray]:
 
 
     #retrieving data
@@ -461,13 +461,11 @@ def financial_analysis(
     year_zero_cost = (capital_cost + disconnection_costs - rebates)
     cashflows = np.zeros(N_years+1)
     cashflows[0] = year_zero_cost
-    cashflows[1:-1] = annual_bill + oandm_cost
-    
+    cashflows[1:-1] = annual_bill + oandm_cost    
     if heater_type == 'resistive':
         major_maintenance = DEFAULT_MAJOR_MAINTANCE
         for i in major_maintance_years:
             cashflows[i] = cashflows[i] + major_maintenance
-
     cashflows = np.array(cashflows)
 
     #Calculating financial parameters
@@ -485,6 +483,7 @@ def financial_analysis(
     output_finance["oandm_cost"] = oandm_cost
     output_finance["rebates"] = rebates
     output_finance["disconnection_costs"] = disconnection_costs
+    
 
     return (output_finance, cashflows)
 

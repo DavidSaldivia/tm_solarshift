@@ -97,6 +97,9 @@ class ResistiveSingle():
         self.temp_min = Variable(45.0, "degC")  # Minimum temperature in the tank
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
 
+    def __eq__(self, other) : 
+            return self.__dict__ == other.__dict__
+    
     @property
     def thermal_cap(self):
         return tank_thermal_capacity(self)

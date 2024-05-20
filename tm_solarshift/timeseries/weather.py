@@ -31,7 +31,7 @@ DIR_NCI = os.path.join(DIR_DATA["weather"], "nci_processed")
 FILES_WEATHER = {
     "METEONORM_TEMPLATE" : os.path.join(DIR_METEONORM, "meteonorm_{:}.csv"),  #expected LOCATIONS_METEONORM
     "MERRA2" : os.path.join(DIR_MERRA2, "merra2_processed_all.nc"),
-    "NCI": None,
+    "NCI": "",
 }
 VARIABLES_NAMES = {
     "GHI": "Irradiance",
@@ -87,17 +87,17 @@ DATASET_ALL = list(dict.fromkeys( [ x for xs in list_aux for x in xs ] )) #flatt
 #----------
 def load_day_constant_random(
     timeseries: pd.DataFrame,
-    ranges: Optional[dict[str,tuple]] = None,
-    seed_id: int = np.random.SeedSequence().entropy,
-    columns: Optional[list[str]] = TS_WEATHER,
+    ranges: dict[str,tuple] = VARIABLE_RANGES,
+    seed_id: Optional[int] = None,
+    columns: list[str] = TS_WEATHER,
 ) -> pd.DataFrame:
     
+    if seed_id is None:
+        seed_id = np.random.SeedSequence().entropy
     rng = np.random.default_rng(seed_id)
-
-    if ranges == None:
-        ranges = VARIABLE_RANGES
     
-    dates = np.unique(timeseries.index.date)
+    idx = pd.to_datetime(timeseries.index)
+    dates = np.unique(idx.date)
     DAYS = len(dates)
 
     df_weather_days = pd.DataFrame( index=dates, columns=columns)
@@ -109,8 +109,8 @@ def load_day_constant_random(
             size=DAYS,
         )
 
-    df_weather = df_weather_days.loc[timeseries.index.date]
-    df_weather.index = timeseries.index
+    df_weather = df_weather_days.loc[idx.date]
+    df_weather.index = idx
     timeseries[columns] = df_weather[columns]
     return timeseries
 
@@ -146,15 +146,18 @@ def random_days_from_dataframe(
     rng = np.random.default_rng(seed_id)
 
     df_sample_new = df_sample.copy()
-    list_dates = np.unique(df_sample_new.index.date)
-    DAYS = len(np.unique(timeseries.index.date))
+    df_sample_idx = pd.to_datetime(df_sample_new.index)
+    ts_index = pd.to_datetime(timeseries.index)
+
+    list_dates = np.unique(df_sample_idx.date)
+    DAYS = len(np.unique(ts_index.date))
     list_picked_dates = rng.choice( list_dates, size=DAYS )
-    df_sample_new["date"] = df_sample_new.index.date
+    df_sample_new["date"] = df_sample_idx.date
     set_picked_days = [
         df_sample_new[df_sample_new["date"]==date] for date in list_picked_dates
     ]
     df_final = pd.concat(set_picked_days)
-    df_final.index = timeseries.index
+    df_final.index = ts_index
     timeseries[columns] = df_final[columns]
     
     return timeseries
@@ -183,10 +186,10 @@ def from_tmy(
 #---------------------------------
 def from_file(
     timeseries: pd.DataFrame,
-    file_path: str = None,
+    file_path: str = "",
     columns: Optional[list[str]] = TS_WEATHER,
     subset_random: Optional[str] = None,
-    subset_value: Union[str, int, pd.Timestamp] = None,
+    subset_value: Optional[Union[str, int, pd.Timestamp]] = None,
 ) -> pd.DataFrame :
     """
     It returns the dataframe timeseries with the weather loaded from a file.
@@ -260,7 +263,7 @@ def load_tmy(
     columns: Optional[list[str]] = TS_WEATHER,
 ) -> pd.DataFrame:
     
-    YEAR = ts.index.year[0]
+    YEAR = pd.to_datetime(ts.index).year[0]
     if type(params["location"]) == str:
         location = params["location"]
     else:
@@ -299,7 +302,7 @@ def load_dataset_meteonorm(
     df_dataset.index = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
     df_dataset["date"] = df_dataset.index
     df_dataset["date"] = df_dataset["date"].apply(lambda x: x.replace(year=YEAR))
-    df_dataset.index = df_dataset["date"]
+    df_dataset.index = pd.to_datetime(df_dataset["date"])
     return df_dataset
 
 #-----------------
@@ -326,7 +329,7 @@ def load_dataset_merra2(
     lat_a = lats[(abs(lats-lat)).argmin()]
     df_w = data_weather.sel(lon=lon_a,lat=lat_a).to_dataframe()
 
-    df_w.index = df_w.index.tz_localize('UTC')
+    df_w.index = pd.to_datetime(df_w.index).tz_localize('UTC')
     tz = 'Australia/Brisbane'
     df_w.index = df_w.index.tz_convert(tz)
     df_w.index = df_w.index.tz_localize(None)
@@ -357,14 +360,16 @@ def load_montecarlo(
     location = params["location"]
     subset = params["subset"]
     value = params["value"]
-    
+    ts_index = pd.to_datetime(ts.index)
+
     if dataset == "meteonorm":
         df_dataset = load_dataset_meteonorm(location)
     elif dataset == "merra2":
-        df_dataset = load_dataset_merra2(ts, location, ts.index.year[0])
+        df_dataset = load_dataset_merra2(ts, location, ts_index.year[0])
     else:
         raise ValueError(f"dataset: {dataset} is not available.")
     
+    df_dataset.index = pd.to_datetime(df_dataset.index)
     if subset is None:
         pass
     elif subset == 'annual':
@@ -391,7 +396,7 @@ def load_historical(
     ts: pd.DataFrame,
     params: dict,
     columns: Optional[list[str]] = TS_WEATHER,
-) -> pd.DataFrame:
+) -> None:
     
     pass
 

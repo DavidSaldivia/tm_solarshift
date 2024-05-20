@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, SIMULATIONS_IO)
-from tm_solarshift.devices import SolarSystem
+from tm_solarshift.models.pv_system import PVSystem
 DIR_DATA = DIRECTORY.DIR_DATA
 DEFINITION_SEASON = DEFINITIONS.SEASON
 TS_TYPES = SIMULATIONS_IO.TS_TYPES
@@ -36,7 +36,7 @@ def profile_step(
 #---------------
 def load_PV_generation(
         timeseries: pd.DataFrame,
-        solar_system: SolarSystem,
+        pv_system: PVSystem,
         columns: list[str] = ["PV_gen"],
         ) -> pd.DataFrame:
     """Function to create/load simple gaussian profile for PV generation.
@@ -56,11 +56,11 @@ def load_PV_generation(
     df_PV = pd.DataFrame(index=timeseries.index, columns=columns)
     lbl = columns[0]
     
-    if solar_system is None:
+    if pv_system is None:
         df_PV[lbl] = 0.0
     else:
-        profile_PV = solar_system.profile_PV
-        nom_power = solar_system.nom_power.get_value("kJ/hr")
+        profile_PV = pv_system.profile_PV
+        nom_power = pv_system.nom_power.get_value("kJ/hr")
         
         if profile_PV == 0:
             df_PV[lbl] = 0.0
@@ -103,11 +103,11 @@ def main():
     profile = profile_step(ts.index, t1=10., t2=14., A1=2.0)
     print(profile)
 
-    solar_system = GS.solar_system
+    pv_system = GS.pv_system
     
     COLS = TS_TYPES["electric"]
 
-    ts = load_PV_generation(ts, solar_system = solar_system)
+    ts = load_PV_generation(ts, pv_system = pv_system)
     print(ts[COLS])
     ts = load_elec_consumption(ts, profile_elec = 0)
     print(ts[COLS])

@@ -3,20 +3,18 @@ import pandas as pd
 from typing import Optional
 
 from tm_solarshift.constants import (DEFINITIONS, SIMULATIONS_IO)
-
 from tm_solarshift.utils.units import Variable
 from tm_solarshift.utils.location import Location
-
-from tm_solarshift.timeseries.hwd import HWD
-
 from tm_solarshift.devices import (
     ResistiveSingle,
     HeatPump,
     GasHeaterInstantaneous,
     GasHeaterStorage,
     SolarThermalElecAuxiliary,
-    SolarSystem,
 )
+from tm_solarshift.models.pv_system import PVSystem
+
+from tm_solarshift.timeseries.hwd import HWD
 
 TS_TYPES = SIMULATIONS_IO.TS_TYPES
 TS_COLUMNS_ALL = SIMULATIONS_IO.TS_COLUMNS_ALL
@@ -28,10 +26,13 @@ class GeneralSetup():
         self.id = np.random.SeedSequence().entropy
         self.household = Household()
         self.DEWH = ResistiveSingle()
-        self.solar_system = SolarSystem()
+        self.pv_system = PVSystem()
         self.HWDInfo = HWD.standard_case( id=self.id )
         self.simulation = ThermalSimulation()
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+    
     #---------------
     def create_ts_empty(
         self,
@@ -86,7 +87,7 @@ class GeneralSetup():
         tariff_type = self.household.tariff_type
         dnsp = self.household.DNSP
 
-        solar_system = self.solar_system
+        pv_system = self.pv_system
         type_sim = self.simulation.type_sim
         YEAR = self.simulation.YEAR.get_value("-")
         HWD_method = self.HWDInfo.method
@@ -98,26 +99,6 @@ class GeneralSetup():
         ts = self.create_ts_empty(ts_columns = ts_columns)
         ts = self.HWDInfo.generator(ts, method = HWD_method)
         ts = weather.load_weather_data( ts, type_sim = type_sim_weather, params = params_weather )
-        ts = circuits.load_PV_generation(ts, solar_system = solar_system)
-        ts = circuits.load_elec_consumption(ts, profile_elec = 0)
-
-        if control_type == "diverter" and solar_system is not None:
-            #Diverter considers three hours at night plus everything diverted from solar
-            tz = 'Australia/Brisbane'
-            pv_power = solar_system.load_PV_generation( ts=ts, tz=tz, unit="kW")
-            ts = control.load_schedule(ts, control_load = control_load, random_ON=False)
-            heater_nom_power = self.DEWH.nom_power.get_value("kW")
-            ts["CS"] = np.where(
-                ts["CS"]>=0.99,
-                ts["CS"],
-                np.where(
-                    (pv_power > 0) & (pv_power < heater_nom_power),
-                    pv_power / heater_nom_power,
-                    np.where(pv_power > heater_nom_power, 1., 0.)
-                )
-            )
-        else:
-            ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
         
         ts = market.load_wholesale_prices(ts, location)
         ts = market.load_emission_index_year(
@@ -135,6 +116,28 @@ class GeneralSetup():
                 return_energy_plan=False,
                 control_load=control_load
             )
+        
+        ts = circuits.load_PV_generation(ts, pv_system = pv_system)
+        ts = circuits.load_elec_consumption(ts, profile_elec = 0)
+        if control_type == "diverter" and pv_system is not None:
+            #Diverter considers three hours at night plus everything diverted from solar
+            tz = 'Australia/Brisbane'
+            pv_power = pv_system.load_PV_generation( ts=ts, tz=tz, unit="kW")
+            pv_power = pv_system.sim_generation(ts)["pv_power"]
+            ts = control.load_schedule(ts, control_load = control_load, random_ON=False)
+            heater_nom_power = self.DEWH.nom_power.get_value("kW")
+            ts["CS"] = np.where(
+                ts["CS"]>=0.99,
+                ts["CS"],
+                np.where(
+                    (pv_power > 0) & (pv_power < heater_nom_power),
+                    pv_power / heater_nom_power,
+                    np.where(pv_power > heater_nom_power, 1., 0.)
+                )
+            )
+        else:
+            ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
+        
 
         return ts[ts_columns]
     
@@ -191,61 +194,26 @@ class GeneralSetup():
             (out_all, out_overall) = solar_thermal.run_thermal_model(self, ts, verbose=verbose)
         
         else:
-            raise TypeError("DEWH class is not supported with any engine.")
+            raise TypeError("DEWH object is not supported with any engine.")
 
         return (out_all, out_overall)
     
         #-------------------
-    def run_only_thermal_simulation(
+    def run_full_simulation(
             self,
             ts: Optional[pd.DataFrame] = None,
             verbose: bool = False,
     ) -> pd.DataFrame:
-        """Run a thermal simulation using the data provided in self.
-
-        Args:
-            ts (pd.DataFrame, optional): timeseries dataframe. If not given is calculated with self. Defaults to None.
-            verbose (bool, optional): Print stage of simulation. Defaults to False.
-
-        Raises:
-            TypeError: DEWH object and thermal model engine are not compatible
-
-        Returns:
-            pd.DataFrame: out_all = the whole set of data (not processed)
-        """
         
         if ts is None:
             ts = self.create_ts()
         
-        DEWH = self.DEWH
+        # pv simulation
         
-        if (DEWH.__class__ == ResistiveSingle):
-            from tm_solarshift.models import trnsys
-            self.simulation.engine = "trnsys"
-            out_all = trnsys.run_simulation(self, ts, verbose=verbose)
-        
-        elif (DEWH.__class__ == HeatPump):
-            from tm_solarshift.models import trnsys
-            self.simulation.engine = "trnsys"
-            out_all = trnsys.run_simulation(self, ts, verbose=verbose)
+        # control update
 
-        elif (DEWH.__class__ == GasHeaterInstantaneous):
-            self.simulation.engine = "own"
-            import tm_solarshift.models.gas_heater as gas_heater
-            (out_all, out_overall) = gas_heater.instantaneous_fixed_eta(DEWH, ts, verbose=verbose)
-        
-        elif (DEWH.__class__ == GasHeaterStorage):
-            self.simulation.engine = "trnsys"
-            import tm_solarshift.models.gas_heater as gas_heater
-            (out_all, out_overall) = gas_heater.storage_fixed_eta(self, ts, verbose=verbose)
-
-        elif self.DEWH.__class__ == SolarThermalElecAuxiliary:
-            self.simulation.engine = "trnsys"
-            import tm_solarshift.models.solar_thermal as solar_thermal
-            (out_all, out_overall) = solar_thermal.run_thermal_model(self, ts, verbose=verbose)
-        
-        else:
-            raise TypeError("DEWH class is not supported with any engine.")
+        # thermal simulation
+        (out_all,out_overall) = self.run_thermal_simulation(ts, verbose=verbose)
 
         return out_all
 

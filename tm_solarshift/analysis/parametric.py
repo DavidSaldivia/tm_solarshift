@@ -7,12 +7,12 @@ import numpy as np
 import pandas as pd
 
 import tm_solarshift.general as general
-from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
+from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import (Variable, VariableList)
 from tm_solarshift.devices import (ResistiveSingle, GasHeaterInstantaneous)
 from  tm_solarshift.models import postprocessing
 
-PARAMS_OUT = DEFINITIONS.PARAMS_OUT
+PARAMS_OUT = SIMULATIONS_IO.PARAMS_OUT
 DIR_DATA = DIRECTORY.DIR_DATA
 DIR_RESULTS = DIRECTORY.DIR_RESULTS
 showfig = False
@@ -61,12 +61,12 @@ def analysis(
     params_out: list = PARAMS_OUT,
     GS_base = general.GeneralSetup(),
     save_results_detailed: bool = False,
-    fldr_results_detailed: bool = None,
+    fldr_results_detailed: str = "",
     gen_plots_detailed: bool = False,
     save_plots_detailed: bool = False,
     save_results_general: bool = False,
-    file_results_general: str = None,
-    fldr_results_general: str = None,
+    file_results_general: str = "",
+    fldr_results_general: str = "",
     append_results_general: bool = False,
     verbose: bool = True,
     ) -> pd.DataFrame:
@@ -105,7 +105,7 @@ def analysis(
             ,index_col=0
             )
       
-    for index, row in runs_out.iterrows():
+    for (index, row) in runs_out.iterrows():
         
         if verbose:
             print(f'RUNNING SIMULATION {index+1}/{len(runs_out)}')
@@ -176,7 +176,7 @@ def analysis(
 def updating_parameters(
         GS: general.GeneralSetup,
         row_in: pd.Series,
-        units_in: list = [],
+        units_in: dict = {},
 ) -> None:
     """updating parameters for those of the specific run.
     This function update the GS object. It takes the string and converts it into GS attributes.

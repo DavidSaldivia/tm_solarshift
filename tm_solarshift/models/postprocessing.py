@@ -27,7 +27,6 @@ def annual_postproc(
 
     out_overall_th = {}
     out_overall_econ = {}
-    out_overall_fin = {}
 
     if "TM" in include:
         out_overall_th = thermal_analysis(GS, ts, out_all)
@@ -35,7 +34,7 @@ def annual_postproc(
     if "ECON" in include:
         out_overall_econ = economics_analysis(GS, ts, out_all)
 
-    return out_overall_th | out_overall_econ | out_overall_fin
+    return out_overall_th | out_overall_econ
 
 #-------------------
 def thermal_analysis(
@@ -82,7 +81,7 @@ def thermal_analysis(
     (SOC_025, SOC_050) = SOC.quantile( [0.25, 0.50], interpolation="nearest", )
     t_SOC0 = (SOC <= 0.01).sum() * STEP_h
 
-    out_overall_th = {key:None for key in OUTPUT_ANALYSIS_TM}
+    out_overall_th = {key:np.nan for key in OUTPUT_ANALYSIS_TM}
     out_overall_th["heater_heat_acum"] = heater_heat_acum
     out_overall_th["heater_power_acum"] = heater_power_acum
     out_overall_th["heater_perf_avg"] = heater_perf_avg
@@ -107,6 +106,7 @@ def economics_analysis(
     
     STEP_h = GS.simulation.STEP.get_value("hr")
 
+    out_all_idx = pd.to_datetime(out_all.index)
     heater_power = out_all["heater_power"]
     heater_power_sum = heater_power.sum()
     if heater_power_sum <= 0.0:
@@ -114,7 +114,7 @@ def economics_analysis(
 
     solar_ratio_potential = (
         heater_power[
-            (heater_power.index.hour >= 8.75) & (heater_power.index.hour <= 17.01)
+            (out_all_idx.hour >= 8.75) & (out_all_idx.hour <= 17.01)
         ].sum()
         / heater_power_sum
     )
@@ -136,7 +136,7 @@ def economics_analysis(
         GS, ts, out_all
     )
 
-    out_overall_econ = {key:None for key in OUTPUT_ANALYSIS_ECON}
+    out_overall_econ = {key:np.nan for key in OUTPUT_ANALYSIS_ECON}
     out_overall_econ["annual_emissions_total"] = emissions_total
     out_overall_econ["annual_emissions_marginal"] = emissions_marginal
     out_overall_econ["solar_ratio_potential"] = solar_ratio_potential
@@ -169,10 +169,11 @@ def events_simulation(
     STEP_h = GS.simulation.STEP.get_value("hr")
     cp = GS.DEWH.fluid.cp.get_value("J/kg-K")
 
-    df = ts.groupby(ts.index.date)[
+    idx = pd.to_datetime(ts.index)
+    df = ts.groupby(idx.date)[
         ["m_HWD_day", "temp_amb", "temp_mains"]
     ].mean()
-    idx = np.unique(ts.index.date)
+    idx = np.unique(idx.date)
     df_aux = out_data.groupby(out_data.index.date)
     df.loc[df.index == idx, "SOC_end"] = df_aux.tail(1)["SOC"].values
     df.loc[df.index == idx,"temp_tstat_end"] = df_aux.tail(1)["TempBottom"].values
