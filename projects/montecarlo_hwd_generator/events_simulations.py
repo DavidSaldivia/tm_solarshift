@@ -16,7 +16,7 @@ from sklearn import linear_model
 from typing import List, Dict, Union
 
 from tm_solarshift.constants import ( DIRECTORY, SIMULATIONS_IO)
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.utils.units import Variable
 from tm_solarshift.models import (trnsys, postprocessing)
 
@@ -33,7 +33,7 @@ DIR_PROJECT = os.path.join(DIRECTORY.DIR_PROJECTS,os.path.dirname(__file__))
 DIR_RESULTS = os.path.join(DIR_PROJECT, "results")
 
 def loading_timeseries(
-    GS: GeneralSetup,
+    simulation: Simulation,
     params_weather: Dict,
     HWDG_method: str = "events",
     ts_columns: List[str] = TS_COLUMNS_ALL,
@@ -44,15 +44,15 @@ def loading_timeseries(
     import tm_solarshift.timeseries.control as control
     import tm_solarshift.timeseries.market as market
     
-    location = GS.household.location
-    control_load = GS.household.control_load
-    random_control = GS.household.control_random_on
-    solar_system = GS.solar_system
+    location = simulation.household.location
+    control_load = simulation.household.control_load
+    random_control = simulation.household.control_random_on
+    solar_system = simulation.solar_system
     
-    YEAR = GS.simulation.YEAR.get_value("-")
+    YEAR = simulation.simulation.YEAR.get_value("-")
 
-    ts = GS.create_ts_empty(ts_columns = ts_columns)
-    ts = GS.HWDInfo.generator( ts, method = HWDG_method,)
+    ts = simulation.create_ts_empty(ts_columns = ts_columns)
+    ts = simulation.HWDInfo.generator( ts, method = HWDG_method,)
     ts = weather.load_montecarlo(ts, params = params_weather)
     ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
     ts = circuits.load_PV_generation(ts, solar_system = solar_system)
@@ -65,17 +65,17 @@ def loading_timeseries(
 
 #-------------------------
 def run_or_load_simulation(
-        GS: GeneralSetup,
+        simulation: Simulation,
         ts: pd.DataFrame,
         runsim: bool = True,
         savefile: bool = True
         ):
     
-    HWD_profile = GS.HWDInfo.profile_HWD
+    HWD_profile = simulation.HWDInfo.profile_HWD
 
     if runsim:
-        out_data = trnsys.run_simulation( GS, ts, verbose=False )
-        df = postprocessing.events_simulation( GS, ts, out_data)
+        out_data = trnsys.run_simulation( simulation, ts, verbose=False )
+        df = postprocessing.events_simulation( simulation, ts, out_data)
     else:
         pass
         # df = pd.read_csv(
@@ -239,7 +239,7 @@ def additional_plots(
 
 #-------------------------
 def plot_histogram_2D(
-    GS: GeneralSetup,
+    simulation: Simulation,
     df : pd.DataFrame,
     out_data: pd.DataFrame,
     case: Union[int, str] = None,
@@ -247,8 +247,8 @@ def plot_histogram_2D(
     showfig: bool = False,
 ):
     
-    STEP = GS.simulation.STEP.get_value("min")
-    DAYS = GS.simulation.DAYS.get_value("d")
+    STEP = simulation.simulation.STEP.get_value("min")
+    DAYS = simulation.simulation.DAYS.get_value("d")
     
     # Probabilities of SOC through the day
     Nx = 96
@@ -294,7 +294,7 @@ def plot_histogram_2D(
 
 #-------------------------
 def plots_sample_simulations(
-    GS: GeneralSetup,
+    simulation: Simulation,
     out_data : pd.DataFrame,
     df: pd.DataFrame,
     case: Union[int, str],
@@ -302,7 +302,7 @@ def plots_sample_simulations(
     showfig: bool = False,
     t_ini: float = 3
 ):
-    DAYS = GS.simulation.DAYS.get_value("d")
+    DAYS = simulation.simulation.DAYS.get_value("d")
 
     # Plot with a sample of 10% of days
 
@@ -370,7 +370,7 @@ def plots_sample_simulations(
 
 #-------------------------
 def regression_analysis_and_plots(
-    GS: GeneralSetup,
+    simulation: Simulation,
     ts : pd.DataFrame,
     df : pd.DataFrame,
     case: Union[int, str] = None,
@@ -378,7 +378,7 @@ def regression_analysis_and_plots(
     showfig: bool = False,
 ):
     
-    HWDP_dist = GS.HWDInfo.profile_HWD
+    HWDP_dist = simulation.HWDInfo.profile_HWD
     
     # Histogram of generated HWDP
     HWDP_generated = ts.groupby(
@@ -488,21 +488,21 @@ def influence_sample_size():
 
         start_time = time.time()
 
-        GS = GeneralSetup()
-        GS.household.control_load = control_load
-        GS.household.control_random_on = random_control
-        GS.HWDInfo.profile_HWD = HWD_profile
-        GS.HWDInfo.daily_distribution = HWD_daily_dist
-        GS.simulation.STOP = Variable(int(24 * DAYS), "hr")
+        simulation = Simulation()
+        simulation.household.control_load = control_load
+        simulation.household.control_random_on = random_control
+        simulation.HWDInfo.profile_HWD = HWD_profile
+        simulation.HWDInfo.daily_distribution = HWD_daily_dist
+        simulation.simulation.STOP = Variable(int(24 * DAYS), "hr")
 
         params_weather = {
             "dataset":"meteonorm",
-            "location": GS.household.location,
+            "location": simulation.household.location,
             "subset": "month",
             "value": 1,
         }
         ts = loading_timeseries(
-            GS = GS,
+            simulation = GS,
             params_weather = params_weather,
             HWDG_method = HWD_generator_method,
         )
@@ -511,7 +511,7 @@ def influence_sample_size():
         
         start_time = time.time()
         (out_data, df) = run_or_load_simulation(
-            GS, ts, runsim = runsim, savefile=savefile
+            simulation, ts, runsim = runsim, savefile=savefile
         )
         time_sim = time.time() - start_time
 
@@ -577,34 +577,34 @@ def function_with_all(case: int) -> List:
     HWD_generator_method = 'events'
     HWD_daily_dist = 'sample'
 
-    GS = GeneralSetup()
-    GS.HWDInfo.profile_HWD = case
+    simulation = Simulation()
+    simulation.HWDInfo.profile_HWD = case
 
-    GS.household.control_load = control_load
-    GS.household.control_random_on = random_control
-    GS.HWDInfo.daily_distribution = HWD_daily_dist
+    simulation.household.control_load = control_load
+    simulation.household.control_random_on = random_control
+    simulation.HWDInfo.daily_distribution = HWD_daily_dist
 
-    GS.simulation.STOP = Variable(int(24 * DAYS), "hr")
-    GS.simulation.STEP = Variable(3, "min")
-    GS.simulation.YEAR = Variable(2022, "-")
+    simulation.simulation.STOP = Variable(int(24 * DAYS), "hr")
+    simulation.simulation.STEP = Variable(3, "min")
+    simulation.simulation.YEAR = Variable(2022, "-")
 
     params_weather = {
         "dataset":"meteonorm",
-        "location": GS.household.location,
+        "location": simulation.household.location,
         "subset": "month",
         "value": 1,
     }
 
     ts = loading_timeseries(
-        GS = GS,
+        simulation = GS,
         params_weather = params_weather,
         HWDG_method = HWD_generator_method,
     )
     (out_data, df) = run_or_load_simulation(
-        GS, ts, runsim = runsim, savefile=savefile
+        simulation, ts, runsim = runsim, savefile=savefile
     )
     postprocessing.detailed_plots(
-            GS, out_data,
+            simulation, out_data,
             fldr_results_detailed = DIR_RESULTS,
             case = f'case_{case}',
             save_plots_detailed = False,
@@ -621,10 +621,10 @@ def function_with_all(case: int) -> List:
         case, savefig, showfig
     )        
     additional_plots(df, case, savefig, showfig)
-    plot_histogram_2D( GS, df, out_data, case, savefig, showfig )
-    plots_sample_simulations(GS, out_data, df, case, savefig, showfig)
+    plot_histogram_2D( simulation, df, out_data, case, savefig, showfig )
+    plots_sample_simulations(simulation, out_data, df, case, savefig, showfig)
     R2_SOC, R2_TempTh = regression_analysis_and_plots(
-        GS, ts, df, case, savefig, showfig
+        simulation, ts, df, case, savefig, showfig
     )
     
     Risk_Shortage01 = len(df[df["SOC_end"] <= 0.1]) / len(df)

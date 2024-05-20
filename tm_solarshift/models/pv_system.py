@@ -78,27 +78,6 @@ class PVSystem():
     @property
     def coords(self) -> tuple[float,float]:
         return (self.lat, self.lon)
-
-    # def get_PV_generation(
-    #         self,
-    #         ts: pd.DataFrame,
-    #         tz: str = 'Australia/Brisbane',
-    #         unit: str = "kW",
-    # ) -> pd.Series:
-
-    #     df_aux = get_PV_generation(
-    #         ts = ts,
-    #         latitude = self.lat.get_value("deg"),
-    #         longitude = self.lon.get_value("deg"),
-    #         tilt = self.tilt.get_value("deg"),
-    #         orient = self.orient.get_value("deg"),
-    #         PV_nompower = self.nom_power.get_value("W"),
-    #         tz = tz,
-    #     )
-    
-    #     df_aux.index = ts.index
-    #     pv_power =  df_aux["pv_power"] * CF("W", unit)
-    #     return pv_power
     
     def sim_generation(
             self,
@@ -171,9 +150,9 @@ def sample_plots(
 
 def main():
 
-    from tm_solarshift.general import GeneralSetup
-    GS = GeneralSetup()
-    ts = GS.create_ts()
+    from tm_solarshift.general import Simulation
+    simulation = Simulation()
+    ts = simulation.create_ts()
 
     pv_system = PVSystem()
     df_pv = pv_system.sim_generation(ts)

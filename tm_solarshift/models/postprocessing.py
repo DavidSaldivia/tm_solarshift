@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.constants import SIMULATIONS_IO
 from tm_solarshift.utils.units import conversion_factor as CF
 from tm_solarshift.analysis.finance import (
@@ -19,7 +19,7 @@ POSTPROC_TYPES = ["TM", "ECON"]
 
 #------------------------------
 def annual_postproc(
-        GS: GeneralSetup,
+        simulation: Simulation,
         ts: pd.DataFrame,
         out_all: pd.DataFrame,
         include: list[str] = POSTPROC_TYPES
@@ -29,24 +29,24 @@ def annual_postproc(
     out_overall_econ = {}
 
     if "TM" in include:
-        out_overall_th = thermal_analysis(GS, ts, out_all)
+        out_overall_th = thermal_analysis(simulation, ts, out_all)
 
     if "ECON" in include:
-        out_overall_econ = economics_analysis(GS, ts, out_all)
+        out_overall_econ = economics_analysis(simulation, ts, out_all)
 
     return out_overall_th | out_overall_econ
 
 #-------------------
 def thermal_analysis(
-        GS: GeneralSetup,
+        simulation: Simulation,
         ts: pd.DataFrame,
         out_all: pd.DataFrame
 ) -> dict[str, float]:
     
-    STEP_h = GS.simulation.STEP.get_value("hr")
-    DAYS = GS.simulation.DAYS.get_value("d")
-    thermal_cap = GS.DEWH.thermal_cap.get_value("kWh")
-    cp = GS.DEWH.fluid.cp.get_value("J/kg-K")
+    STEP_h = simulation.simulation.STEP.get_value("hr")
+    DAYS = simulation.simulation.DAYS.get_value("d")
+    thermal_cap = simulation.DEWH.thermal_cap.get_value("kWh")
+    cp = simulation.DEWH.fluid.cp.get_value("J/kg-K")
 
     heater_heat = out_all["heater_heat"]
     heater_power = out_all["heater_power"]
@@ -99,12 +99,12 @@ def thermal_analysis(
 
 #------------------
 def economics_analysis(
-        GS: GeneralSetup,
+        simulation: Simulation,
         ts: pd.DataFrame,
         out_all: pd.DataFrame
 ) -> dict[str, float]:
     
-    STEP_h = GS.simulation.STEP.get_value("hr")
+    STEP_h = simulation.simulation.STEP.get_value("hr")
 
     out_all_idx = pd.to_datetime(out_all.index)
     heater_power = out_all["heater_power"]
@@ -130,10 +130,10 @@ def economics_analysis(
         ).sum()
     
     annual_hw_household_cost = calculate_household_energy_cost(
-        GS, ts, out_all,
+        simulation, ts, out_all,
     )
     annual_hw_retailer_cost = calculate_wholesale_energy_cost(
-        GS, ts, out_all
+        simulation, ts, out_all
     )
 
     out_overall_econ = {key:np.nan for key in OUTPUT_ANALYSIS_ECON}
@@ -147,7 +147,7 @@ def economics_analysis(
 
 # #-----------------
 # def financial_postproc(
-#     GS: GeneralSetup,
+#     simulation: Simulation,
 #     ts: pd.DataFrame,
 #     out_all: pd.DataFrame,
 #     out_overall_th: dict = None,
@@ -155,19 +155,19 @@ def economics_analysis(
 # ) -> dict:
 
 #     out_overall_fin = financial_analysis(
-#         GS, ts, out_all, out_overall_th, out_overall_econ
+#         simulation, ts, out_all, out_overall_th, out_overall_econ
 #     )
 #     return out_overall_fin
 
 #------------------------------
 def events_simulation(
-        GS: GeneralSetup, 
+        simulation: Simulation, 
         ts: pd.DataFrame,
         out_data: pd.DataFrame,
     ) -> pd.DataFrame:
     
-    STEP_h = GS.simulation.STEP.get_value("hr")
-    cp = GS.DEWH.fluid.cp.get_value("J/kg-K")
+    STEP_h = simulation.simulation.STEP.get_value("hr")
+    cp = simulation.DEWH.fluid.cp.get_value("J/kg-K")
 
     idx = pd.to_datetime(ts.index)
     df = ts.groupby(idx.date)[
@@ -192,7 +192,7 @@ def events_simulation(
 
 #------------------------------
 def detailed_plots(
-    GS: GeneralSetup, 
+    simulation: Simulation, 
     out_all: pd.DataFrame,
     fldr_results_detailed: str = None,
     case: str = None,
@@ -206,7 +206,7 @@ def detailed_plots(
     fs = 16
     xmax = tmax
 
-    DEWH = GS.DEWH
+    DEWH = simulation.DEWH
     temp_min = 20.
     temp_max = DEWH.temp_max.get_value("degC")
 
@@ -278,12 +278,12 @@ def detailed_plots(
 #-------------
 def main():
     
-    GS = GeneralSetup()
-    GS.solar_system = None
-    ts = GS.create_ts()
+    simulation = Simulation()
+    simulation.solar_system = None
+    ts = simulation.create_ts()
     
-    (out_all, out_overall) = GS.run_thermal_simulation(ts, verbose=True)
-    out_overall2 = annual_postproc(GS, ts, out_all)
+    (out_all, out_overall) = simulation.run_thermal_simulation(ts, verbose=True)
+    out_overall2 = annual_postproc(simulation, ts, out_all)
 
     print(out_overall)
     print(out_overall2)

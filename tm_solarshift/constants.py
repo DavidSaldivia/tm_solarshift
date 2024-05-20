@@ -174,6 +174,22 @@ class DEFINITIONS():
     LOCATIONS_FEW = ['Sydney', 'Adelaide', 'Brisbane', 'Melbourne']
     NEM_REGIONS = [ "NSW1", "VIC1", "QLD1", "SA1", "TAS1" ]
     SIMULATION_TYPES = ["annual", "mc", "historical", "hw_only", "forecast"]
+    DNSPS = [
+        "Actewagl", "Ausgrid", "Ausnet", "CitiPower", "Endeavour",
+        "Essential", "Energex", "Ergon", "Evoenergy", "Horizon", "Jemena",
+        "Powercor", "Powerwater", "SAPN", "TasNetworks", "Unitedenergy", "Western",
+    ]
+    LOCATIONS_DNSP = {
+        "Adelaide": "SAPN",
+        "Brisbane": "Energex",
+        "Canberra": "Evoenergy",
+        "Darwin": "Powerwater",
+        "Melbourne": "CitiPower",
+        "Perth": "Western",
+        "Sydney": "Ausgrid",
+        "Townsville": "Ergon",
+    }
+
     STATES = {
         "SA": "South Australia",
         "NSW": "New South Wales",
@@ -287,11 +303,6 @@ class DEFINITIONS():
         3:'Solar Soak (Ausgrid)',
         4:'Solar Soak (only)',
     }
-    LIST_DNSP = [
-        "Actewagl", "Ausgrid", "Ausnet", "CitiPower", "Endeavour",
-        "Essential","Energex","Ergon","Horizon","Jemena","Powercor",
-        "Powerwater","SAPN","TasNetworks","Unitedenergy","Western",
-    ]
     HWDP_NAMES = {
         1:'Mor & Eve Only',
         2:'Mor & Eve w daytime',

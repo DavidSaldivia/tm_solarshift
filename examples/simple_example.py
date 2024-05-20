@@ -2,50 +2,50 @@
 def simplest_use():
 
     #Create a general setup instance. It contains all the settings for the simulation
-    from tm_solarshift.general import GeneralSetup
-    GS = GeneralSetup()
+    from tm_solarshift.general import Simulation
+    simulation = Simulation()
 
     #Create a timeseries dataframe using GS
-    ts = GS.create_ts()
+    ts = simulation.create_ts()
 
     #Run a thermal simulation with the default case
-    (out_all, out_overall) = GS.run_thermal_simulation(ts, verbose=True)
+    (out_all, out_overall) = simulation.run_thermal_simulation(ts, verbose=True)
     print(out_all)          # detailed results, DataFrame
     print(out_overall)      # overall results, dict
 
     #get a sample plot
     from tm_solarshift.models import postprocessing
-    postprocessing.detailed_plots(GS, out_all, save_plots_detailed=False)
+    postprocessing.detailed_plots(simulation, out_all, save_plots_detailed=False)
     
     return None
 
 #--------------------
 def changing_household_parameters():
     
-    from tm_solarshift.general import (GeneralSetup, Household, ThermalSimulation)
+    from tm_solarshift.general import (Simulation, Household, ThermalSimulation)
     from tm_solarshift.devices import (ResistiveSingle, SolarSystem)
     from tm_solarshift.timeseries.hwd import HWD
 
     # the attributes of GS and their default objects:
-    GS = GeneralSetup()
-    GS.household = Household()          # Information of energy plans and control strategies
-    GS.DEWH = ResistiveSingle()         # Technical specifications of heater
-    GS.solar_system = SolarSystem()     # Standard PV system
-    GS.HWDInfo = HWD.standard_case()    # Information of HWD behaviour
-    GS.simulation = ThermalSimulation() # Information of the thermal simulation itself
+    simulation = Simulation()
+    simulation.household = Household()          # Information of energy plans and control strategies
+    simulation.DEWH = ResistiveSingle()         # Technical specifications of heater
+    simulation.solar_system = SolarSystem()     # Standard PV system
+    simulation.HWDInfo = HWD.standard_case()    # Information of HWD behaviour
+    simulation.simulation = ThermalSimulation() # Information of the thermal simulation itself
 
     #----------------------
     # Household() contains information for the energy plans and type of control
-    GS.household.tariff_type = "tou"       # used when not in CL. Options ["CL", "flat", "tou"]
-    GS.household.DNSP = "Ausgrid"           # used to get the tariff rates
-    GS.household.location = "Sydney"        # str for cities, int for postcodes, tuple for coordinates
-    GS.household.control_type = "CL"        # Other options: ["GS", timer, diverter]
-    GS.household.control_load = 1           # Ausgrid schedules
-    GS.household.control_random_on = True   # add randomization to CL schedules?
+    simulation.household.tariff_type = "tou"       # used when not in CL. Options ["CL", "flat", "tou"]
+    simulation.household.DNSP = "Ausgrid"           # used to get the tariff rates
+    simulation.household.location = "Sydney"        # str for cities, int for postcodes, tuple for coordinates
+    simulation.household.control_type = "CL"        # Other options: ["GS", timer, diverter]
+    simulation.household.control_load = 1           # Ausgrid schedules
+    simulation.household.control_random_on = True   # add randomization to CL schedules?
 
     #----------------------
-    #running the simulation. Note: ts is optional (if not provided is calculated using GS.create_ts())
-    (out_all, out_overall) = GS.run_thermal_simulation()
+    #running the simulation. Note: ts is optional (if not provided is calculated using simulation.create_ts())
+    (out_all, out_overall) = simulation.run_thermal_simulation()
     print(out_all)          # detailed results, DataFrame
     print(out_overall)      # overall results, dict
 
@@ -54,8 +54,8 @@ def changing_household_parameters():
 #--------------------
 def changing_DEWH_technology():
     
-    from tm_solarshift.general import GeneralSetup
-    # GS.DEWH must be a heater object in module tm_solarshift.devices
+    from tm_solarshift.general import Simulation
+    # simulation.DEWH must be a heater object in module tm_solarshift.devices
     # The available options are:
     from tm_solarshift.devices import (
         ResistiveSingle,
@@ -65,11 +65,11 @@ def changing_DEWH_technology():
         SolarThermalElecAuxiliary
     )
 
-    GS = GeneralSetup()
-    GS.DEWH = ResistiveSingle.from_model_file(model="491315")   # from catalog
-    GS.DEWH = HeatPump()                                        # default
+    simulation = Simulation()
+    simulation.DEWH = ResistiveSingle.from_model_file(model="491315")   # from catalog
+    simulation.DEWH = HeatPump()                                        # default
 
-    (out_all, out_overall) = GS.run_thermal_simulation()
+    (out_all, out_overall) = simulation.run_thermal_simulation()
     print(out_all)          # detailed results, DataFrame
     print(out_overall)      # overall results, dict
 

@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.utils.units import VariableList
 import tm_solarshift.analysis.parametric as parametric
 PARAMS_OUT = parametric.PARAMS_OUT
@@ -119,7 +119,7 @@ def run_tech_comparison(
     Example of a parametric analysis over parameters in the tank.
     """
 
-    GS_base = GeneralSetup()
+    GS_base = Simulation()
     cases_in = pd.read_csv(
         os.path.join(DIR_PROJECT, "tech_comparison_input.csv")
     )
@@ -148,7 +148,7 @@ def run_city_comparison(
         file_results: str = None,
 ) -> pd.DataFrame:
 
-    GS_base = GeneralSetup()
+    GS_base = Simulation()
     cases_in = pd.read_csv(
         os.path.join(DIR_PROJECT, "city_comparison_input.csv")
     )

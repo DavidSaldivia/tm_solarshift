@@ -45,20 +45,20 @@ def calculate_household_energy_cost(
         df_tm: pd.DataFrame = None,
         ) -> float:
 
-    STEP_h = GS.simulation.STEP.get_value("hr")
+    STEP_h = simulation.simulation.STEP.get_value("hr")
     if ts  is None:
-        ts = GS.create_ts()
+        ts = simulation.create_ts()
 
     if df_tm  is None:
-        df_tm = GS.run_thermal_simulation(ts)
+        df_tm = simulation.run_thermal_simulation(ts)
 
     heater_power = df_tm["heater_power"] * CF("kJ/h", "kW")
 
-    if GS.solar_system == None:
+    if simulation.solar_system == None:
         imported_energy = heater_power.copy()
     else:    
         tz = 'Australia/Brisbane'
-        pv_power = GS.solar_system.load_PV_generation(
+        pv_power = simulation.solar_system.load_PV_generation(
             ts=ts, tz=tz,  unit="kW"
         )
         imported_energy = np.where(
@@ -75,12 +75,12 @@ def calculate_wholesale_energy_cost(
         df_tm: pd.DataFrame = None,
         ) -> float:
     
-    STEP_h = GS.simulation.STEP.get_value("hr")
+    STEP_h = simulation.simulation.STEP.get_value("hr")
 
     if ts is None:
-        ts = GS.create_ts()
+        ts = simulation.create_ts()
     if df_tm is None:
-        df_tm = GS.run_thermal_simulation(ts)
+        df_tm = simulation.run_thermal_simulation(ts)
         
     heater_power = df_tm["heater_power"] * CF("kJ/h", "MW")
     energy_cost = ( ts["wholesale_market"] * heater_power * STEP_h).sum()
@@ -95,7 +95,7 @@ def calculate_annual_bill(
     ) -> float:
     
     # calculate annual energy cost
-    annual_bill = calculate_household_energy_cost(GS, ts, df_tm)
+    annual_bill = calculate_household_energy_cost(simulation, ts, df_tm)
 
     # add other costs (daily/seasonal costs)
     annual_bill = annual_bill + 0.1*365  #(0.1AUD per day, just a random number)
@@ -149,15 +149,15 @@ def financial_analysis(
 
     #include all capital costs: equipment, installation, certification, etc.
     if out_overall_th == None:
-        out_overall_th = thermal_postproc(GS, ts, out_all)
+        out_overall_th = thermal_postproc(simulation, ts, out_all)
     if out_overall_econ == None:
-        out_overall_econ = economics_postproc(GS, ts, out_all)
+        out_overall_econ = economics_postproc(simulation, ts, out_all)
 
     energy_annual = out_overall_th["heater_power_acum"]
     energy_cost = out_overall_econ["annual_hw_household_cost"]
 
-    capital_cost = calculate_capital_cost(GS.DEWH)
-    oandm_cost = calculate_oandm_cost(GS, ts, out_all)
+    capital_cost = calculate_capital_cost(simulation.DEWH)
+    oandm_cost = calculate_oandm_cost(simulation, ts, out_all)
     
     NPF = 8.
     variable_cost = (energy_cost + oandm_cost)
@@ -184,11 +184,11 @@ def financial_analysis(
 #-----------------
 def main():
 
-    GS = GeneralSetup()
-    ts = GS.create_ts()
+    simulation = GeneralSetup()
+    ts = simulation.create_ts()
 
-    (out_all, out_overall) = GS.run_thermal_simulation(verbose=True)
-    output_finance = financial_analysis(GS, ts, out_all)
+    (out_all, out_overall) = simulation.run_thermal_simulation(verbose=True)
+    output_finance = financial_analysis(simulation, ts, out_all)
 
     print(out_all)
     print(out_overall)

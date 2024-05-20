@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 import tm_solarshift.general as general
 from tm_solarshift.constants import DIRECTORY
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.devices import (Variable, ResistiveSingle)
 from tm_solarshift.models import (tank_0D, trnsys)
 
@@ -138,15 +138,15 @@ def detailed_plot_comparison(
 #------------------------
 def main():
     
-    GS = GeneralSetup()
-    GS.DEWH = ResistiveSingle()
-    GS.simulation.STOP = Variable(100., "hr")
-    GS.household.control_load = -1
-    GS.household.control_random_on = False
+    simulation = Simulation()
+    simulation.DEWH = ResistiveSingle()
+    simulation.simulation.STOP = Variable(100., "hr")
+    simulation.household.control_load = -1
+    simulation.household.control_random_on = False
 
     if False:
         output_state = tank_0D.SOC_based(
-            GS.DEWH,
+            simulation.DEWH,
             verbose=True,)
         plot_main_vars(output_state)
         print(output_state)
@@ -159,7 +159,7 @@ def main():
 
     if True:
         out_all_trnsys = trnsys.run_simulation(
-            GS, ts, verbose=True
+            simulation, ts, verbose=True
             )
         trnsys.detailed_plots(
             GS,
@@ -172,7 +172,7 @@ def main():
         print()
 
     if True:
-        out_all_0D = tank_0D.SOC_profiles(GS.DEWH, ts, verbose=True)
+        out_all_0D = tank_0D.SOC_profiles(simulation.DEWH, ts, verbose=True)
         print(out_all_0D)
         
         detailed_plot_comparison(

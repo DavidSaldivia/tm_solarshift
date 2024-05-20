@@ -4,7 +4,7 @@ import pandas as pd
 from functools import cache
 import tm_solarshift.devices as devices
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.utils.units import (Variable, Water)
 
 #Control parameters
@@ -136,7 +136,7 @@ def node_containing_components(DEWH: HotWaterTank):
     return (fractions, nodes)
 
 def load_default_values(GS):
-    ts = GS.create_ts_default()
+    ts = simulation.create_ts_default()
     better_names = {
         "Temp_Amb": "temp_amb",
         "Temp_Mains": "temp_mains",
@@ -154,7 +154,7 @@ def load_default_values(GS):
 #----------------------------
 def main():
 
-    GS = GeneralSetup()
+    simulation = Simulation()
     ts_cache = os.path.join(DIRECTORY.DIR_MAIN, "dev", "ts_cache.csv")
     if os.path.isfile(ts_cache):
         ts = pd.read_csv(ts_cache, index_col=0)
@@ -170,9 +170,9 @@ def main():
 
     #Get the Global Trnsys Simulation Variables
     # Time = inputs["TIME"]
-    START = GS.simulation.START.get_value("hr")
-    STOP = GS.simulation.STOP.get_value("hr")
-    STEP = GS.simulation.STEP.get_value("min")
+    START = simulation.simulation.START.get_value("hr")
+    STOP = simulation.simulation.STOP.get_value("hr")
+    STEP = simulation.simulation.STEP.get_value("min")
 
     #DEHW specifications
     #number of components

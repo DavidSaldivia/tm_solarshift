@@ -13,7 +13,7 @@ from tm_solarshift.utils.units import conversion_factor as CF
 
 if TYPE_CHECKING:
     from tm_solarshift.general import (
-        GeneralSetup,
+        Simulation,
         ThermalSimulation
     )
     from tm_solarshift.utils.location import Location
@@ -453,7 +453,7 @@ def editing_dck_tank(
 
 #------------------------------
 def run_simulation(
-        GS: GeneralSetup,
+        simulation: Simulation,
         ts: Optional[pd.DataFrame] = None,
         verbose: bool = False,
         ) -> pd.DataFrame:
@@ -465,11 +465,11 @@ def run_simulation(
     if ts is None:
         if verbose:
             print("Creating timeseries file")
-        ts = GS.create_ts()
+        ts = simulation.create_ts()
     
     trnsys_setup = TrnsysDEWH(
-        simulation = GS.simulation,
-        DEWH = GS.DEWH,
+        simulation = simulation.simulation,
+        DEWH = simulation.DEWH,
         ts=ts,
     )
     with TemporaryDirectory(dir=TEMPDIR_SIMULATION) as tmpdir:
@@ -496,9 +496,9 @@ def run_simulation(
 #------------------------------
 def main():
 
-    from tm_solarshift.general import GeneralSetup
-    GS = GeneralSetup()
-    out_all = run_simulation(GS, verbose=True)
+    from tm_solarshift.general import Simulation
+    simulation = Simulation()
+    out_all = run_simulation(simulation, verbose=True)
     print(out_all)
 
 if __name__=="__main__":

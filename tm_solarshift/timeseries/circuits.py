@@ -96,14 +96,14 @@ def main():
 
     #Creating a timeseries dataframe
     
-    from tm_solarshift.general import GeneralSetup
-    GS = GeneralSetup()
-    ts = GS.create_ts()
+    from tm_solarshift.general import Simulation
+    simulation = Simulation()
+    ts = simulation.create_ts()
 
     profile = profile_step(ts.index, t1=10., t2=14., A1=2.0)
     print(profile)
 
-    pv_system = GS.pv_system
+    pv_system = simulation.pv_system
     
     COLS = TS_TYPES["electric"]
 

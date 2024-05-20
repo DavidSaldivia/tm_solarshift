@@ -644,11 +644,11 @@ def main():
 
     #Creating a ts dataframe
     import tm_solarshift.timeseries.control as control
-    from tm_solarshift.general import GeneralSetup
-    GS = GeneralSetup()
+    from tm_solarshift.general import Simulation
+    simulation = Simulation()
 
-    control_load = GS.household.control_load
-    ts = GS.create_ts()
+    control_load = simulation.household.control_load
+    ts = simulation.create_ts()
     
     #Creating a schedule Control timeseries
     ts_CL1 = control.load_schedule(ts, control_load = control_load)

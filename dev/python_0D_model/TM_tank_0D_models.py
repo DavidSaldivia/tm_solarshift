@@ -523,12 +523,12 @@ def detailed_plot_comparison(
 #------------------------
 def main():
     
-    from tm_solarshift.general import (GeneralSetup, MAIN_DIR)
+    from tm_solarshift.general import (Simulation, MAIN_DIR)
     import tm_solarshift.profiles as profiles
     import tm_solarshift.trnsys as trnsys
     from TL_parametric import load_profiles_all
 
-    general_setup = GeneralSetup(
+    general_setup = Simulation(
         DEWH = ResistiveSingle(),
         STOP = 100.,
         profile_control=-1,

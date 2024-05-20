@@ -432,26 +432,26 @@ def load_weather_data(
 
 def main():
     #Creating a timeseries
-    from tm_solarshift.general import GeneralSetup
+    from tm_solarshift.general import Simulation
     from tm_solarshift.utils.units import Variable
 
-    GS = GeneralSetup()
-    ts = GS.create_ts_empty()
+    simulation = Simulation()
+    ts = simulation.create_ts_empty()
 
     #----------------
     type_sim = "tmy"
     params = {
         "dataset": "meteonorm",
-        "location": GS.household.location
+        "location": simulation.household.location
     }
     ts = load_weather_data(ts, type_sim, params)
     print(ts[TS_WEATHER])
 
     #----------------
     type_sim = "tmy"
-    GS.simulation.YEAR = Variable(2020,"-")
-    GS.simulation.location = Location(2035)
-    ts = GS.create_ts_empty()
+    simulation.simulation.YEAR = Variable(2020,"-")
+    simulation.simulation.location = Location(2035)
+    ts = simulation.create_ts_empty()
     params = {
         "dataset": "merra2",
         "location": Location(2035)
@@ -463,7 +463,7 @@ def main():
     type_sim = "mc"
     params = {
         "dataset": "meteonorm",
-        "location": GS.household.location,
+        "location": simulation.household.location,
         "subset": "month",
         "value": 5
     }

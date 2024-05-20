@@ -4,7 +4,7 @@ import pickle
 import pandas as pd
 from typing import Optional, Any
 
-from tm_solarshift.general import   GeneralSetup
+from tm_solarshift.general import   Simulation
 from tm_solarshift.models.trnsys import TrnsysDEWH
 from tm_solarshift.constants import (
     DIRECTORY,
@@ -37,17 +37,17 @@ def get_filepath_input(
  
 
 def save_simulation_input(
-        GS: GeneralSetup,
+        simulation: Simulation,
         file_path: Optional[str] = None,
 ) -> None:
     
-    id_sim = GS.id
+    id_sim = simulation.id
     if file_path is None:
         file_path = FORMAT_SIM_INPUT.format(id_sim)
 
     try:
         with open(file_path, "wb") as file:
-            pickle.dump(GS, file, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(simulation, file, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
     
@@ -62,17 +62,17 @@ def save_simulation_output(
 
 def load_simulation_input(
         file_path: str,
-) -> GeneralSetup:
+) -> Simulation:
     try:
         with open(file_path, "rb") as f:
-            GS = pickle.load(f)
+            simulation = pickle.load(f)
     except Exception as ex:
         print("Error during unpickling object (Possibly unsupported):", ex)
     return GS
 
 def load_simulation_output(
         file_path: str,
-) -> GeneralSetup:
+) -> Simulation:
     df_tm = pickle.load(file_path)
     return df_tm
 
@@ -80,15 +80,15 @@ def load_simulation_output(
 def main():
 
     
-    GS = GeneralSetup()
+    simulation = Simulation()
     file_path = "testing.pkl"
-    save_simulation_input(GS, file_path)
+    save_simulation_input(simulation, file_path)
 
     GS_plk = load_simulation_input(file_path)
 
     print(GS_plk == GS)
-    print(GS_plk.pv_system == GS.pv_system)
-    print(GS_plk.DEWH == GS.DEWH)
+    print(GS_plk.pv_system == simulation.pv_system)
+    print(GS_plk.DEWH == simulation.DEWH)
     print(GS_plk)
     print(GS)
 

@@ -20,10 +20,12 @@ TS_TYPES = SIMULATIONS_IO.TS_TYPES
 TS_COLUMNS_ALL = SIMULATIONS_IO.TS_COLUMNS_ALL
 
 #------------------------------------
-class GeneralSetup():
+class Simulation():
 
     def __init__(self):
-        self.id = np.random.SeedSequence().entropy
+        self.id = 1
+        self.seed = None
+        self.location = Location("Sydney")
         self.household = Household()
         self.DEWH = ResistiveSingle()
         self.pv_system = PVSystem()
@@ -219,7 +221,10 @@ class GeneralSetup():
 
 #------------------------------------
 class Household():
-    def __init__(self):
+    def __init__(
+            self,
+            location: Location = Location("Sydney"),
+        ):
 
         self.tariff_type = "flat"
         self.DNSP = "Ausgrid"
@@ -285,9 +290,9 @@ class ThermalSimulation():
 #-----------
 def main():
 
-    GS = GeneralSetup()
-    ts = GS.create_ts_empty()
-    ts = GS.create_ts()
+    simulation = Simulation()
+    ts = simulation.create_ts_empty()
+    ts = simulation.create_ts()
 
     print(ts.head(20))
     print(ts[TS_TYPES["HWDP"]])
@@ -295,7 +300,7 @@ def main():
     print(ts[TS_TYPES["control"]])
 
 
-    (out_all, out_overall) = GS.run_thermal_simulation( ts, verbose=True )
+    (out_all, out_overall) = simulation.run_thermal_simulation( ts, verbose=True )
     print(out_all)
     print(out_overall)
     

@@ -12,7 +12,7 @@ def parametric_analysis_tank() -> pd.DataFrame:
     Example of a parametric analysis over parameters in the tank.
     """
 
-    GS_base = general.GeneralSetup()
+    GS_base = general.Simulation()
     params_in = {
         'DEWH.nom_power' : VariableList([2400., 3600., 4800.], "W"),
         'DEWH.temp_max'  : VariableList([55., 65., 75.], 'degC'),
@@ -41,7 +41,7 @@ def parametric_analysis_HP() -> pd.DataFrame:
     """
 
     from tm_solarshift.devices import HeatPump
-    GS_base = general.GeneralSetup()
+    GS_base = general.Simulation()
     GS_base.DEWH = HeatPump()
     
     params_in = {

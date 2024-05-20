@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.utils.units import conversion_factor as CF
 from tm_solarshift.devices import (
     GasHeaterInstantaneous,
@@ -88,23 +88,23 @@ def instantaneous_fixed_eta(
 
 #--------------------------------
 def storage_fixed_eta(
-        GS: GeneralSetup,
+        simulation: Simulation,
         ts: pd.DataFrame,
         verbose: bool = False,
 ) -> tuple[pd.DataFrame,dict[str, float]]:
 
     
     from tm_solarshift.models import (trnsys, postprocessing)
-    DEWH: GasHeaterStorage = GS.DEWH
+    DEWH: GasHeaterStorage = simulation.DEWH
     if DEWH.__class__ == GasHeaterStorage:
         kgCO2_TO_kgCH4 = 44. / 16. #Assuming pure methane for gas
         heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
-        eta = GS.DEWH.eta.get_value("-")
+        eta = simulation.DEWH.eta.get_value("-")
     else:
         raise ValueError("DEWH type is not compatible with this function.")
 
-    out_all = trnsys.run_simulation(GS, ts, verbose=verbose)
-    out_overall = postprocessing.annual_postproc(GS, ts, out_all)
+    out_all = trnsys.run_simulation(simulation, ts, verbose=verbose)
+    out_overall = postprocessing.annual_postproc(simulation, ts, out_all)
     sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
 
     emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]

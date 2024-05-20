@@ -39,7 +39,7 @@ def parametric_run_tank():
         }
     
     runs = parametric_settings(params_in, PARAMS_OUT)
-    GS_base = general.GeneralSetup()
+    GS_base = general.Simulation()
 
     runs = parametric_run(
         runs, params_in, PARAMS_OUT,
@@ -65,7 +65,7 @@ def parametric_run_RS():
         'household.control_load' : [0,1,2,3,4],
         }
     runs = parametric_settings(params_in, PARAMS_OUT)
-    GS_base = general.GeneralSetup()
+    GS_base = general.Simulation()
     GS_base.DEWH = ResistiveSingle()
 
     runs = parametric_run(
@@ -93,7 +93,7 @@ def parametric_run_HP():
         }
     runs = parametric_settings(params_in, PARAMS_OUT)
     
-    GS_base = general.GeneralSetup()
+    GS_base = general.Simulation()
     GS_base.DEWH = HeatPump()
     
     runs = parametric_run(
@@ -128,7 +128,7 @@ def parametric_run_tariffs():
     
     runs = parametric_settings(params_in, PARAMS_OUT)
     
-    GS_base = general.GeneralSetup()
+    GS_base = general.Simulation()
     GS_base.DEWH = HeatPump()
     GS_base.household.location = "Sydney"
     GS_base.household.control_load = 0
@@ -157,7 +157,7 @@ def parametric_run_test():
         'household.control_load'  : [0,1,2],
         }
     
-    GS_base = general.GeneralSetup()
+    GS_base = general.Simulation()
     GS_base.DEWH = ResistiveSingle.from_model_file(model="491315")
 
     runs = parametric_settings(params_in, PARAMS_OUT)

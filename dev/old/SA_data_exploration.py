@@ -401,8 +401,8 @@ def plot_SolAsites_merra2(
 
 
 def main():
-    GS = GeneralSetup()
-    GS.simulation.YEAR = Variable(2020,"-")
+    simulation = GeneralSetup()
+    simulation.simulation.YEAR = Variable(2020,"-")
 
     get_location_SolA_sites()
     plot_SolA_locations( Weather.FILES["SOLA_POSTCODES_INFO"], showfig=True )

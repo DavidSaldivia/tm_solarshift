@@ -421,14 +421,14 @@ class HWD():
 #----------------------------
 def main():
     
-    from tm_solarshift.general import GeneralSetup
-    GS = GeneralSetup()
+    from tm_solarshift.general import Simulation
+    simulation = Simulation()
     
     HWDInfo = HWD.standard_case()
     HWDInfo.daily_distribution = "truncnorm"
     
     #Testing different inputs for dates
-    ts = GS.create_ts()
+    ts = simulation.create_ts()
     dates = np.unique(ts.index.date)
     print(HWDInfo.interday_distribution(ts))          #pd.DataFrame with DateTimeIndex
     print(HWDInfo.interday_distribution(dates))       #list of dates

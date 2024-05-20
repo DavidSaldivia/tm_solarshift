@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from tm_solarshift.constants import DEFAULT
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.devices import SolarThermalElecAuxiliary
 from tm_solarshift.models import postprocessing
 from tm_solarshift.utils.units import conversion_factor as CF
@@ -11,22 +11,22 @@ from tm_solarshift.utils.solar import (get_plane_irradiance, get_plane_angles)
 DEFAULT_TZ = DEFAULT.TZ
 
 def run_thermal_model(
-        GS: GeneralSetup,
+        simulation: Simulation,
         ts: pd.DataFrame = None,
         verbose: bool = False,
         tz: str = DEFAULT_TZ,
 ) -> tuple[pd.DataFrame, dict[str,float]]:
     
-    STEP_h = GS.simulation.STEP.get_value("hr")
+    STEP_h = simulation.simulation.STEP.get_value("hr")
 
     #Running a trnsys simulation assuming all energy from resistive
-    out_all = trnsys.run_simulation(GS, ts, verbose=verbose)
-    out_overall = postprocessing.annual_postproc(GS, ts, out_all)
+    out_all = trnsys.run_simulation(simulation, ts, verbose=verbose)
+    out_overall = postprocessing.annual_postproc(simulation, ts, out_all)
 
     #Calculating energy provided by solar thermal and the solar fraction
     #Emissions and tariffs are recalculated
 
-    DEWH: SolarThermalElecAuxiliary = GS.DEWH
+    DEWH: SolarThermalElecAuxiliary = simulation.DEWH
     massflowrate = DEWH.massflowrate.get_value("kg/s")
     area = DEWH.area.get_value("m2")
     FRta = DEWH.FRta.get_value("-")

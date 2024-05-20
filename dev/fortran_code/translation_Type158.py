@@ -19,7 +19,7 @@ import os
 import numpy as np
 import pandas as pd
 import tm_solarshift.devices as devices
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.utils.units import (Variable, Water)
 
 
@@ -247,8 +247,8 @@ def generate_output(
 
 def main():
 
-    # GS = GeneralSetup()
-    # ts = GS.create_ts_default()
+    # simulation = Simulation()
+    # ts = simulation.create_ts_default()
     tank = HotWaterTank()
 
     input = {

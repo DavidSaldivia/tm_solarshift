@@ -108,9 +108,9 @@ if __name__ == "__main__":
     tilt = DEFAULT_TILT
     orient = DEFAULT_ORIENT
 
-    from tm_solarshift.general import GeneralSetup
-    GS = GeneralSetup()
-    ts = GS.create_ts()
+    from tm_solarshift.general import Simulation
+    simulation = Simulation()
+    ts = simulation.create_ts()
     
     df = test_functions( ts=ts, latitude=lat, longitude=long, tilt=tilt, orient=orient, tz=tz,)
     print(df)

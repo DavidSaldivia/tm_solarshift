@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from tm_solarshift.constants import (DIRECTORY,DEFINITIONS)
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.utils.units import conversion_factor as CF
 from tm_solarshift.utils.location import Location
 from tm_solarshift.devices import (
@@ -216,40 +216,40 @@ def test_load_household_import_rate():
     
     COLS = DEFINITIONS.TS_TYPES["economic"]
 
-    GS = GeneralSetup()
-    GS.household.DNSP = "Ausgrid"
-    GS.household.tariff_type = "flat"
-    ts = GS.create_ts_empty()
+    simulation = Simulation()
+    simulation.household.DNSP = "Ausgrid"
+    simulation.household.tariff_type = "flat"
+    ts = simulation.create_ts_empty()
     (ts, energy_plan) = load_household_import_rate(ts,
-                                        tariff_type = GS.household.tariff_type,
-                                        dnsp = GS.household.DNSP,
+                                        tariff_type = simulation.household.tariff_type,
+                                        dnsp = simulation.household.DNSP,
                                         return_energy_plan = True,
                                         )
     print(ts)
     print(ts[COLS], energy_plan)
     #-------------------
-    GS = GeneralSetup()
-    GS.household.DNSP = "Ausgrid"
-    GS.household.tariff_type = "tou"
-    ts = GS.create_ts_empty()
+    simulation = Simulation()
+    simulation.household.DNSP = "Ausgrid"
+    simulation.household.tariff_type = "tou"
+    ts = simulation.create_ts_empty()
     (ts, energy_plan) = load_household_import_rate(ts,
-                                        tariff_type = GS.household.tariff_type,
-                                        dnsp = GS.household.DNSP,
+                                        tariff_type = simulation.household.tariff_type,
+                                        dnsp = simulation.household.DNSP,
                                         return_energy_plan = True,
                                         )
     print(ts)
     print(ts[COLS], energy_plan)
 
     #-------------------
-    GS = GeneralSetup()
-    GS.household.DNSP = "Ausgrid"
-    GS.household.tariff_type = "CL"
-    GS.household.control_load = 1
-    ts = GS.create_ts_empty()
+    simulation = Simulation()
+    simulation.household.DNSP = "Ausgrid"
+    simulation.household.tariff_type = "CL"
+    simulation.household.control_load = 1
+    ts = simulation.create_ts_empty()
     (ts, energy_plan) = load_household_import_rate(ts,
-                                        tariff_type = GS.household.tariff_type,
-                                        dnsp = GS.household.DNSP,
-                                        control_load = GS.household.control_load,
+                                        tariff_type = simulation.household.tariff_type,
+                                        dnsp = simulation.household.DNSP,
+                                        control_load = simulation.household.control_load,
                                         return_energy_plan = True,
                                         )
     print(ts)
@@ -260,13 +260,13 @@ def test_load_household_import_rate():
 def test_get_gas_rate():
 
     COLS = DEFINITIONS.TS_TYPES["economic"]
-    GS = GeneralSetup()
-    GS.DEWH = GasHeaterInstantaneous()
-    GS.household.tariff_type = "gas"
+    simulation = Simulation()
+    simulation.DEWH = GasHeaterInstantaneous()
+    simulation.household.tariff_type = "gas"
 
-    ts = GS.create_ts()
+    ts = simulation.create_ts()
 
-    output = load_household_gas_rate( ts, heater = GS.DEWH )
+    output = load_household_gas_rate( ts, heater = simulation.DEWH )
     energy_bill = (output["E_HWD"] * output["tariff"]).sum()
     print(output)
     print(energy_bill)
@@ -286,9 +286,9 @@ if __name__ == "__main__":
 #---------------------------
 def main():
 
-    from tm_solarshift.general import GeneralSetup
-    GS = GeneralSetup()
-    ts = GS.create_ts()
+    from tm_solarshift.general import Simulation
+    simulation = Simulation()
+    ts = simulation.create_ts()
     
     location = Location("Sydney")
     ts = load_emission_index_year( ts, location, index_type='total', year=2022 )

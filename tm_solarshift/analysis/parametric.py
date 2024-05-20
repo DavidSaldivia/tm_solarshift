@@ -59,7 +59,7 @@ def analysis(
     cases_in: pd.DataFrame,
     units_in: dict[str,str],
     params_out: list = PARAMS_OUT,
-    GS_base = general.GeneralSetup(),
+    GS_base = general.Simulation(),
     save_results_detailed: bool = False,
     fldr_results_detailed: str = "",
     gen_plots_detailed: bool = False,
@@ -77,7 +77,7 @@ def analysis(
         cases_in (pd.DataFrame): a dataframe with all the inputss.
         units_in (dict): list of units with params_units[lbl] = unit
         params_out (List): list of labels of expected output. Defaults to PARAMS_OUT.
-        GS_base (_type_, optional): GS object used as base case. Defaults to general.GeneralSetup().
+        GS_base (_type_, optional): GS object used as base case. Defaults to general.Simulation().
         save_results_detailed (bool, optional): Defaults to False.
         fldr_results_detailed (bool, optional): Defaults to None.
         gen_plots_detailed (bool, optional): Defaults to False.
@@ -109,19 +109,19 @@ def analysis(
         
         if verbose:
             print(f'RUNNING SIMULATION {index+1}/{len(runs_out)}')
-        GS = copy.copy(GS_base)
+        simulation = copy.copy(GS_base)
 
-        updating_parameters( GS, row[params_in], units_in )
+        updating_parameters( simulation, row[params_in], units_in )
         
         if verbose:
             print("Creating Timeseries for simulation")
-        ts = GS.create_ts()
+        ts = simulation.create_ts()
 
         if verbose:
             print("Executing thermal simulation")
-        (out_data,out_overall) = GS.run_thermal_simulation(ts, verbose=verbose)
-        # out_data = trnsys.run_simulation(GS, ts)
-        # out_overall = postprocessing.annual_simulation(GS, ts, out_data)
+        (out_data,out_overall) = simulation.run_thermal_simulation(ts, verbose=verbose)
+        # out_data = trnsys.run_simulation(simulation, ts)
+        # out_overall = postprocessing.annual_simulation(simulation, ts, out_data)
         values_out = [out_overall[lbl] for lbl in params_out]
         runs_out.loc[index, params_out] = values_out
         
@@ -158,7 +158,7 @@ def analysis(
         #Detailed plots?
         if gen_plots_detailed:
             postprocessing.detailed_plots(
-                GS, out_data,
+                simulation, out_data,
                 fldr_results_detailed = os.path.join(
                     DIR_RESULTS,
                     fldr_results_detailed
@@ -174,7 +174,7 @@ def analysis(
 
 #-------------
 def updating_parameters(
-        GS: general.GeneralSetup,
+        GS: general.Simulation,
         row_in: pd.Series,
         units_in: dict = {},
 ) -> None:
@@ -182,7 +182,7 @@ def updating_parameters(
     This function update the GS object. It takes the string and converts it into GS attributes.
 
     Args:
-        GS (general.GeneralSetup): GS object
+        GS (general.Simulation): GS object
         row (pd.Series): values of the specific run (it contains all input and output of the parametric study)
         params_in (dict): labels of the parameters (input)
     """
@@ -192,7 +192,7 @@ def updating_parameters(
             (obj_name, param_name) = key.split('.')
 
             #Retrieving first level attribute (i.e.: DEWH, household, simulation, etc.)
-            object = getattr(GS, obj_name)
+            object = getattr(simulation, obj_name)
             
             unit = units_in[key]
             if unit is not None:
@@ -202,16 +202,16 @@ def updating_parameters(
             setattr(object, param_name, param_value)
 
             # Reassigning the first level attribute to GS
-            setattr(GS, obj_name, object)
+            setattr(simulation, obj_name, object)
 
         else:
-            setattr(GS, key, value)
+            setattr(simulation, key, value)
     return None
 
 #------------------------------
 def parametric_run_test():
     
-    GS_base = general.GeneralSetup()
+    GS_base = general.Simulation()
     GS_base.DEWH = ResistiveSingle.from_model_file(model="491315")
 
     params_in = {

@@ -3,12 +3,12 @@ from tm_solarshift.devices import (
     Variable,
     ResistiveSingle,
     HeatPump)
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 
 def main():
     variable1 = Variable(12.,"m")
     variable2 = Variable(50.,"kg/s")
-    general_setup = GeneralSetup()
+    general_setup = Simulation()
     heat_pump = HeatPump()
     
     print(variable1)
