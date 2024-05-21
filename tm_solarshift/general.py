@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional
 
-from tm_solarshift.constants import SIMULATIONS_IO
+from tm_solarshift.constants import (DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import Variable
 
 from tm_solarshift.utils.location import Location
@@ -20,7 +20,7 @@ class Simulation():
 
     def __init__(self):
         self.id = 1
-        self.seed = None
+        # self.seed = None
         self.location = Location("Sydney")
         self.household = Household()
         self.DEWH = ResistiveSingle()
@@ -71,12 +71,7 @@ class Simulation():
             pd.DataFrame: ts, the timeseries dataframe.
         """
 
-        from tm_solarshift.timeseries import (
-            circuits,
-            control,
-            market,
-            weather,
-        )
+        from tm_solarshift.timeseries import ( circuits, control, market, weather )
         
         location = self.household.location
         control_type = self.household.control_type
@@ -85,12 +80,13 @@ class Simulation():
         tariff_type = self.household.tariff_type
         dnsp = self.household.DNSP
         
+        HWD_method = self.HWDInfo.method
+        DEWH = self.DEWH
         pv_system = self.pv_system
         YEAR = self.thermal_sim.YEAR.get_value("-")
+        ts = self.create_ts_empty(ts_columns = ts_columns)
 
         # hwd
-        HWD_method = self.HWDInfo.method
-        ts = self.create_ts_empty(ts_columns = ts_columns)
         ts = self.HWDInfo.generator(ts, method = HWD_method)
         
         # weather
@@ -104,33 +100,14 @@ class Simulation():
         }
         ts = weather.load_weather_data(ts, type_sim = type_sim, params = params_weather)
         
-        # market
-        ts = market.load_wholesale_prices(ts, location)
-        ts = market.load_emission_index_year(
-            ts, index_type= 'total', location = location, year = YEAR,
-        )
-        ts = market.load_emission_index_year(
-            ts, index_type= 'marginal', location = location, year = YEAR,
-        )
-        if tariff_type == "gas":
-            ts = market.load_household_gas_rate(ts, self.DEWH)
-        else:
-            ts = market.load_household_import_rate(
-                ts, tariff_type, dnsp,
-                return_energy_plan=False,
-                control_load=control_load
-            )
-        
-        # circuits
-        ts = circuits.load_PV_generation(ts, pv_system = pv_system)
-        ts = circuits.load_elec_consumption(ts, profile_elec = 0)
+        #control
         if control_type == "diverter" and pv_system is not None:
             #Diverter considers three hours at night plus everything diverted from solar
             tz = 'Australia/Brisbane'
             # pv_power = pv_system.load_PV_generation( ts=ts, tz=tz, unit="kW")
             pv_power = pv_system.sim_generation(ts)["pv_power"]
             ts = control.load_schedule(ts, control_load = control_load, random_ON=False)
-            heater_nom_power = self.DEWH.nom_power.get_value("kW")
+            heater_nom_power = DEWH.nom_power.get_value("kW")
             ts["CS"] = np.where(
                 ts["CS"]>=0.99,
                 ts["CS"],
@@ -142,6 +119,28 @@ class Simulation():
             )
         else:
             ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
+        
+        # market
+        ts = market.load_wholesale_prices(ts, location)
+        ts = market.load_emission_index_year(
+            ts, index_type= 'total', location = location, year = YEAR,
+        )
+        ts = market.load_emission_index_year(
+            ts, index_type= 'marginal', location = location, year = YEAR,
+        )
+        if tariff_type == "gas":
+            ts = market.load_household_gas_rate(ts, DEWH)
+        else:
+            ts = market.load_household_import_rate(
+                ts, tariff_type, dnsp,
+                return_energy_plan=False,
+                control_load=control_load
+            )
+        
+        # circuits
+        ts = circuits.load_PV_generation(ts, pv_system = pv_system)
+        ts = circuits.load_elec_consumption(ts, profile_elec = 0)
+
 
         return ts[ts_columns]
     
@@ -198,8 +197,7 @@ class Household():
         ):
 
         self.tariff_type = "flat"
-        self.DNSP = "Ausgrid"
-        self.location = "Sydney"
+        self.location = location.value
         self.control_type = "CL"
         self.control_load = 1
         self.control_random_on = True
@@ -209,6 +207,10 @@ class Household():
         self.has_solar = False
         self.old_heater = False
         self.new_system = False
+
+    @property
+    def DNSP(self) -> str:
+        return DEFINITIONS.LOCATIONS_DNSP[self.location]
 
 class Weather():
     def __init__(

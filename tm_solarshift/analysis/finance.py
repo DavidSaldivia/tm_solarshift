@@ -1,5 +1,6 @@
 # General imports
 import os
+import pickle
 import numpy as np
 import pandas as pd
 from typing import Union, Optional
@@ -43,6 +44,7 @@ FILE_MODEL_HOUSEHOLDSIZES = os.path.join(
 LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.OUTPUT_ANALYSIS_FIN
+OUTPUT_SIM_DEWH = SIMULATIONS_IO.OUTPUT_SIM_DEWH
 
 #--------------------
 #Default values
@@ -370,7 +372,7 @@ def calculate_annual_bill(
     return annual_bill
 
 #------------------------
-def get_GS_instance(
+def get_simulation_instance(
         row: pd.Series|dict,
         verbose: bool = True,
         ) -> Simulation:
@@ -406,18 +408,68 @@ def get_GS_instance(
     sim.HWDInfo.daily_avg = Variable( daily_avg, "L/d")
     sim.HWDInfo.daily_max = Variable( 2*daily_avg, "L/d")
     sim.HWDInfo.daily_std = Variable( daily_avg/3., "L/d")
+    sim.weather.location = location
 
     if not has_solar:
         sim.pv_system = None
 
     return sim
 
-def save_and_cache(sim, output_finance, cashflows ):
+def cache_financial_tm(
+        row: pd.Series|dict,
+        dir_cache: str,
+        verbose: bool = False,
+) -> tuple[Simulation,pd.DataFrame,dict[str,float]]:
 
-        #Build this later
-        
+    #Retriever required data
+    location = row["location"]
+    profile_HWD = row["profile_HWD"]
+    household_size = row["household_size"]
+    heater_type = row["heater_type"]
+    has_solar = row["has_solar"]
+    control_type = row["control_type"]
 
-    return
+    COLS_FIN_CACHE_TM = [
+        "location", "profile_HWD", "household_size", "heater_type", "has_solar", "control_type",
+    ]
+    row_to_check = row[COLS_FIN_CACHE_TM]
+
+    file_cache = os.path.join(dir_cache,"index.csv")
+    
+    cache_index = pd.read_csv(file_cache, index_col=0)
+    idx_cached = cache_index[(cache_index == row_to_check).all(axis=1)].index
+
+    if len(idx_cached) == 0:
+        # call simulation and save into cache
+        sim = get_simulation_instance(row, verbose=verbose)
+        ts = sim.create_ts()
+        (out_all, out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
+        df_tm = out_all[OUTPUT_SIM_DEWH]
+        # getting a new id and saving into .plk file
+        new_id = 1 if (len(cache_index) == 0) else (cache_index.index.max() + 1)
+        file_path = os.path.join(dir_cache,f"sim_{new_id}.plk")
+        try:
+            #saving results
+            with open(file_path, "wb") as file:
+                sim_output = [sim,df_tm,out_overall]
+                pickle.dump(sim_output, file, protocol=pickle.HIGHEST_PROTOCOL)
+            #updating index
+            cache_index.loc[new_id,:] = row_to_check
+            cache_index.to_csv(file_cache)
+        except Exception as ex:
+            print("Error during pickling object (Possibly unsupported):", ex)
+
+    else:
+        # retrieve the saved data
+        file_path = os.path.join( dir_cache, f"sim_{idx_cached.values[0]}.plk" )
+        try:
+            with open(file_path, "rb") as f:
+                (sim, df_tm, out_overall) = pickle.load(f)
+            df_tm = df_tm[OUTPUT_SIM_DEWH]
+        except Exception as ex:
+            print("Error during unpickling object (Possibly unsupported):", ex)
+
+    return (sim, df_tm, out_overall)
 
 #------------------
 def financial_analysis(
@@ -428,19 +480,21 @@ def financial_analysis(
     major_maintance_years: list[int] = [4, 8],
     verbose: bool = True,
     save_details: bool = False,
-    create_cache: bool = True,
+    use_cache: bool = True,
+    dir_cache: str = "cache/index.csv"
 ) -> tuple[dict,np.ndarray]:
-
 
     #retrieving data
     heater_type = row["heater_type"]
 
-    # creating and instance of GS
-    sim = get_GS_instance(row, verbose=verbose)
-
-    #running thermal simulation
-    ts = sim.create_ts()
-    (out_all, out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
+    # running simulation or searching on cache
+    if use_cache:
+        (sim, out_all, out_overall) = cache_financial_tm(row, dir_cache, verbose=verbose)
+        ts = sim.create_ts()
+    else:
+        sim = get_simulation_instance(row, verbose=verbose)
+        ts = sim.create_ts()
+        (out_all, out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
     energy_HWD_annual = out_overall["E_HWD_acum"]
 
     #Calculating fixed and variable costs
@@ -572,7 +626,7 @@ def SA_rebate():
 
     #Replae or Upgrade Water Heater to - gas,  solar electric, solar gas, heat pump 
     pass
-    return None
+    return 0
 
 def ACT_rebate(old_heater, new_heater, capital_cost):
     
@@ -611,7 +665,7 @@ def ACT_rebate(old_heater, new_heater, capital_cost):
 
 def QLD_rebate():
     pass
-    return None
+    return 0
 
 def TAS_rebate(
 ) -> float:
@@ -630,7 +684,7 @@ def WA_rebate():
 
 def NT_rebate():
     pass
-    return
+    return 0
 
 #-----------------
 def main():

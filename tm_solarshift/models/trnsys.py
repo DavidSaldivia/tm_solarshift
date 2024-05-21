@@ -34,39 +34,11 @@ FILES_TRNSYS_OUTPUT = {
     "RESULTS_SIGNAL": "TRNSYS_out_control.dat",
 }
 
-#------------------------------
-# DEFINING THE PROBLEM.
-# It requires to define the type of layout, general and environmental parameters
-# the profile parameters, and
 
 #------------------------------
-# DEFINING TYPE OF LAYOUT
 # layout_DEWH: Type of DEWH.
-#    'RS': Resistive (single);
-#    'RD': Resistive (dual);
-#    'HPF': Heat Pump (with file data from catalog, interpolator and calculator);
-#    'GH': Gas heater;
-#    'TH': Solar thermal collector.
-
-# layout_PV: Type of PV System.
-#    'PVM': TRNSYS's PV model component;
-#    'PVF': Datafile (historical data, the file has to be provided in file_PV, or generated with generic profiles);
-#    'PVO': Any Python's PV model (the model has to be provided in model_PV, it requires the weather data file);
-
-# layout_TC: Type of temp control System:
-#    'MX': Only max temp control (never Temp > Tank_TempHigh);
-#    'MM': Only min temp control (never Temp < Tank_TempLow);
-#    'MM': Both max and min temp control (always  Tank_TempLow < Temp < Tank_TempHigh);
-
-# layout_WF: Type of Weather File:
-#    'W15': Built-in weather type (Type 15-6);
-#    'W9a': Timeseries provided as a CSV-like file. The file has to be created with a Python function from some sources.
-
-# Version of layout:
-# This allows to choose a specific version if more than one version is for that specific file
-# If there is only one file, then that file is used, regardless of the value here
-# If set to -1, then the latest will be used.
-# If layour_verson>latest available version, then the latest is used.
+#    'RS': Resistive (single) and Gas Storage;
+#    'HPF': Heat Pump and solar thermal;
 
 #------------------------------
 #### DEFINING TRNSYS CLASSES

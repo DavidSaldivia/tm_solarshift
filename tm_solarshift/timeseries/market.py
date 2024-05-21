@@ -113,12 +113,10 @@ def load_household_gas_rate(
         file_path: str = GAS_TARIFF_SAMPLE_FILE,
 ) -> pd.DataFrame:
 
+    #importing the energy plan
     import json
-
     with open(file_path) as f:
         plan = json.load(f)
-    
-    #use pandas pd.cut
     rate_details = plan["charges"]["energy_charges"]["rate_details"]
     rates = []
     edges = [0,]
@@ -126,23 +124,25 @@ def load_household_gas_rate(
         rates.append(bin["rate"])
         edges.append(bin["ceil"])
 
+    #importing data from heater
     nom_power = heater.nom_power.get_value("MJ/hr")
     flow_water = heater.flow_water.get_value("L/min")
     specific_energy = (nom_power / flow_water * CF("min", "hr")) #[MJ/L]
 
-    hw_flow = ts["m_HWD"]
-    ts_index = pd.to_datetime(ts.index)
-    STEP_h = ts_index.freq.n * CF("min", "hr")
 
+    #getting the tariff
     ts2 = ts.copy()
+    ts2_index = pd.to_datetime(ts2.index)
+    hw_flow = ts2["m_HWD"]
+    STEP_h = ts2_index.freq.n * CF("min", "hr")
     ts2["E_HWD"] = specific_energy * hw_flow * STEP_h         #[MJ]
-    ts2["E_HWD_cum_day"] = ts2.groupby(ts_index.date)['E_HWD'].cumsum()
+    ts2["E_HWD_cum_day"] = ts2.groupby(ts2_index.date)['E_HWD'].cumsum()
     ts2["tariff"] = pd.cut(
         ts2["E_HWD_cum_day"],
         bins = edges, labels = rates, right = False
     ).astype("float")
-    ts["rate_type"] = tariff_type
 
+    #output
     ts["tariff"] = ts2["tariff"]
     ts["rate_type"] = tariff_type
     return ts

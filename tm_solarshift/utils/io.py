@@ -72,7 +72,6 @@ def load_simulation_output(
     df_tm = pickle.load(file_path)
     return df_tm
 
-
 def main():
 
     

@@ -120,7 +120,7 @@ class SIMULATIONS_IO():
         'heater_perf',
         'tank_flow_rate',
         'tank_temp_out',
-        'tank_tstat_1',          # ??? in trnsys. CHANGE!
+        # 'tank_tstat_1',          # ??? in trnsys. CHANGE!
         'C_all',
         'tank_temp_avg',         # T_avg in trnsys. CHANGE!
         'SOC',
