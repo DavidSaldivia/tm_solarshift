@@ -13,10 +13,10 @@ from tm_solarshift.general import (
     # Household,
     DATA_DIR,
 )
-from tm_solarshift.devices import (
+from tm_solarshift.models.dewh import (
     ResistiveSingle, 
     HeatPump,
-    SolarSystem,
+    PVSystem,
     conversion_factor
 )
 
@@ -109,7 +109,7 @@ class TrnsysSetup():
         else:
             raise ValueError("DEWH is not a valid class for TRNSYS simulation")
 
-        if household.solar_system.__class__ == SolarSystem:
+        if household.solar_system.__class__ == PVSystem:
             self.layout_PV = "PVF"
 
         self.layout_v = 0

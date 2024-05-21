@@ -108,7 +108,6 @@ def load_day_constant_random(
             ranges[lbl][1],
             size=DAYS,
         )
-
     df_weather = df_weather_days.loc[idx.date]
     df_weather.index = idx
     timeseries[columns] = df_weather[columns]
@@ -397,9 +396,7 @@ def load_historical(
     params: dict,
     columns: Optional[list[str]] = TS_WEATHER,
 ) -> None:
-    
     pass
-
     return None
 
 #----------
@@ -435,23 +432,23 @@ def main():
     from tm_solarshift.general import Simulation
     from tm_solarshift.utils.units import Variable
 
-    simulation = Simulation()
-    ts = simulation.create_ts_empty()
+    sim = Simulation()
+    ts = sim.create_ts_empty()
 
     #----------------
     type_sim = "tmy"
     params = {
         "dataset": "meteonorm",
-        "location": simulation.household.location
+        "location": sim.household.location
     }
     ts = load_weather_data(ts, type_sim, params)
     print(ts[TS_WEATHER])
 
     #----------------
     type_sim = "tmy"
-    simulation.simulation.YEAR = Variable(2020,"-")
-    simulation.simulation.location = Location(2035)
-    ts = simulation.create_ts_empty()
+    sim.ts.YEAR = Variable(2020,"-")
+    sim.ts.location = Location(2035)
+    ts = sim.create_ts_empty()
     params = {
         "dataset": "merra2",
         "location": Location(2035)
@@ -463,7 +460,7 @@ def main():
     type_sim = "mc"
     params = {
         "dataset": "meteonorm",
-        "location": simulation.household.location,
+        "location": sim.household.location,
         "subset": "month",
         "value": 5
     }

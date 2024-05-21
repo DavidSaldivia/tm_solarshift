@@ -7,10 +7,11 @@ import numpy as np
 import pandas as pd
 
 import tm_solarshift.general as general
+from tm_solarshift.models import postprocessing
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import (Variable, VariableList)
-from tm_solarshift.devices import (ResistiveSingle, GasHeaterInstantaneous)
-from  tm_solarshift.models import postprocessing
+from tm_solarshift.models.dewh import ResistiveSingle
+from tm_solarshift.models.gas_heater import GasHeaterInstantaneous
 
 PARAMS_OUT = SIMULATIONS_IO.PARAMS_OUT
 DIR_DATA = DIRECTORY.DIR_DATA
@@ -109,19 +110,19 @@ def analysis(
         
         if verbose:
             print(f'RUNNING SIMULATION {index+1}/{len(runs_out)}')
-        simulation = copy.copy(GS_base)
+        sim = copy.copy(GS_base)
 
-        updating_parameters( simulation, row[params_in], units_in )
+        updating_parameters( sim, row[params_in], units_in )
         
         if verbose:
             print("Creating Timeseries for simulation")
-        ts = simulation.create_ts()
+        ts = sim.create_ts()
 
         if verbose:
             print("Executing thermal simulation")
-        (out_data,out_overall) = simulation.run_thermal_simulation(ts, verbose=verbose)
-        # out_data = trnsys.run_simulation(simulation, ts)
-        # out_overall = postprocessing.annual_simulation(simulation, ts, out_data)
+        (out_data,out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
+        # out_data = trnsys.run_simulation(sim, ts)
+        # out_overall = postprocessing.annual_simulation(sim, ts, out_data)
         values_out = [out_overall[lbl] for lbl in params_out]
         runs_out.loc[index, params_out] = values_out
         
@@ -158,7 +159,7 @@ def analysis(
         #Detailed plots?
         if gen_plots_detailed:
             postprocessing.detailed_plots(
-                simulation, out_data,
+                sim, out_data,
                 fldr_results_detailed = os.path.join(
                     DIR_RESULTS,
                     fldr_results_detailed
@@ -174,7 +175,7 @@ def analysis(
 
 #-------------
 def updating_parameters(
-        GS: general.Simulation,
+        simulation: general.Simulation,
         row_in: pd.Series,
         units_in: dict = {},
 ) -> None:
@@ -191,8 +192,8 @@ def updating_parameters(
         if '.' in key:
             (obj_name, param_name) = key.split('.')
 
-            #Retrieving first level attribute (i.e.: DEWH, household, simulation, etc.)
-            object = getattr(simulation, obj_name)
+            #Retrieving first level attribute (i.e.: DEWH, household, sim, etc.)
+            object = getattr(sim, obj_name)
             
             unit = units_in[key]
             if unit is not None:
@@ -202,10 +203,10 @@ def updating_parameters(
             setattr(object, param_name, param_value)
 
             # Reassigning the first level attribute to GS
-            setattr(simulation, obj_name, object)
+            setattr(sim, obj_name, object)
 
         else:
-            setattr(simulation, key, value)
+            setattr(sim, key, value)
     return None
 
 #------------------------------

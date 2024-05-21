@@ -4,15 +4,11 @@ import pandas as pd
 from tm_solarshift.general import Simulation
 from tm_solarshift.utils.units import VariableList
 import tm_solarshift.analysis.parametric as parametric
-PARAMS_OUT = parametric.PARAMS_OUT
-from tm_solarshift.devices import (
-    ResistiveSingle,
-    HeatPump,
-    GasHeaterInstantaneous,
-    GasHeaterStorage,
-    SolarThermalElecAuxiliary,
-)
+from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
+from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
+from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 
+PARAMS_OUT = parametric.PARAMS_OUT
 DIR_PROJECT = os.path.dirname(os.path.abspath(__file__))
 
 #Initializing all the heaters:
@@ -89,13 +85,11 @@ def plot_city_comparison(
             width=width, label="total" )
         ax[i].bar( df_aux.index+width/2, df_aux["emissions_marginal"],
             width=width, label="marginal" )
-
         ax[i].set_ylim(0.0,3.0)
         ax[i].set_xticks(df_aux.index, labels = df_aux["name"], rotation=45, horizontalalignment='right')
         ax[i].set_xlabel( f'Different cities with {CL_names[CL]}', fontsize=fs)
         ax[i].set_ylabel( r'Annual accumulated emissions (t-$CO_2$-e)', fontsize=fs)
         ax[i].tick_params(axis='both', which='major', labelsize=fs)
-
         ax[i].legend(loc=0, fontsize=fs-2)
         ax[i].grid()
         i+=1

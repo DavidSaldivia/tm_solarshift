@@ -9,21 +9,14 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Optional, TypeAlias
 
 from tm_solarshift.constants import (DIRECTORY, SIMULATIONS_IO)
-from tm_solarshift.utils.units import conversion_factor as CF
+from tm_solarshift.utils.units import (Variable, conversion_factor as CF)
 
 if TYPE_CHECKING:
-    from tm_solarshift.general import (
-        Simulation,
-        ThermalSimulation
-    )
+    from tm_solarshift.general import Simulation
     from tm_solarshift.utils.location import Location
-    from tm_solarshift.devices import (
-        ResistiveSingle, 
-        HeatPump,
-        GasHeaterStorage,
-        SolarThermalElecAuxiliary,
-        SolarSystem,
-    )
+    from tm_solarshift.models.dewh import ( ResistiveSingle, HeatPump)
+    from tm_solarshift.models.gas_heater import GasHeaterStorage
+    from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
     Heater: TypeAlias = ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
 
 # constants
@@ -87,17 +80,16 @@ class TrnsysDEWH():
 
     def __init__(
             self,
-            simulation: ThermalSimulation,
             DEWH: Heater,
             ts: pd.DataFrame,
         ):
     
         self.DEWH = DEWH
         self.ts = ts
-
-        self.START= simulation.START
-        self.STOP = simulation.STOP
-        self.STEP = simulation.STEP
+        ts_idex = pd.to_datetime(ts.index)
+        self.START = Variable(0, "hr")
+        self.STEP = Variable(ts_idex.freq.n, "min")
+        self.STOP = Variable( int(len(ts) * self.STEP.get_value("hr")) ,"hr" )
 
         # layout   
         self.layout_v = 1
@@ -171,6 +163,7 @@ class TrnsysDEWH():
             )
 
         return None
+    
 
     #------------------------------
     def postprocessing(self)-> pd.DataFrame:
@@ -239,6 +232,38 @@ class TrnsysDEWH():
         out_all.index = idx
         
         return out_all
+    
+    def run_simulation(
+            self,
+            ts: pd.DataFrame,
+            verbose: bool = False,
+            ) -> pd.DataFrame:
+
+        stime = time.time()
+        if verbose:
+            print("Running TRNSYS Simulation")
+        
+        with TemporaryDirectory(dir=TEMPDIR_SIMULATION) as tmpdir:
+
+            self.tempDir = tmpdir
+            if verbose:
+                print("Creating the trnsys source code files")
+            self.create_simulation_files()
+
+            if verbose:
+                print("Calling TRNSYS executable")
+            subprocess.run([TRNSYS_EXECUTABLE, self.dck_path, "/h"])
+            
+            if verbose:
+                print("TRNSYS simulation postprocessing.")
+            df_tm = self.postprocessing()
+                
+        elapsed_time = time.time()-stime
+        if verbose:
+            print(f"Execution time: {elapsed_time:.4f} seconds.")
+        
+        return df_tm
+    
 #------------
 def editing_dck_general(
         trnsys_setup: TrnsysDEWH,
@@ -373,7 +398,7 @@ def editing_dck_tank(
             "18 Height fraction of auxiliary input": f_heater,
         }
 
-    elif DEWH.__class__ in ["heat_pump", "solar_thermal"]:
+    elif DEWH.label in ["heat_pump", "solar_thermal"]:
         params_specific = {
             "10 Height fraction of inlet 1": 1.0, # HP inlet, not implemented yet
             "11 Height fraction of outlet 1": 0.0, #HP outlet, not implemented yet
@@ -453,7 +478,7 @@ def editing_dck_tank(
 
 #------------------------------
 def run_simulation(
-        simulation: Simulation,
+        sim: Simulation,
         ts: Optional[pd.DataFrame] = None,
         verbose: bool = False,
         ) -> pd.DataFrame:
@@ -465,11 +490,11 @@ def run_simulation(
     if ts is None:
         if verbose:
             print("Creating timeseries file")
-        ts = simulation.create_ts()
+        ts = sim.create_ts()
     
     trnsys_setup = TrnsysDEWH(
-        simulation = simulation.simulation,
-        DEWH = simulation.DEWH,
+        sim = sim.ts,
+        DEWH = sim.DEWH,
         ts=ts,
     )
     with TemporaryDirectory(dir=TEMPDIR_SIMULATION) as tmpdir:
@@ -497,8 +522,8 @@ def run_simulation(
 def main():
 
     from tm_solarshift.general import Simulation
-    simulation = Simulation()
-    out_all = run_simulation(simulation, verbose=True)
+    sim = Simulation()
+    out_all = run_simulation(sim, verbose=True)
     print(out_all)
 
 if __name__=="__main__":

@@ -5,12 +5,9 @@ import pandas as pd
 import tm_solarshift.general as general
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS)
 from tm_solarshift.utils.units import VariableList
-from tm_solarshift.devices import (HeatPump, ResistiveSingle)
+from tm_solarshift.models.dewh import (HeatPump, ResistiveSingle)
 
-from tm_solarshift.analysis.parametric import (
-    parametric_settings,
-    parametric_run,
-)
+from tm_solarshift.analysis.parametric import (settings, analysis)
 
 DIR_DATA = DIRECTORY.DIR_DATA
 DIR_RESULTS = DIRECTORY.DIR_RESULTS
@@ -38,10 +35,10 @@ def parametric_run_tank():
         'DEWH.vol': VariableList([0.2, 0.3, 0.4], "m3")
         }
     
-    runs = parametric_settings(params_in, PARAMS_OUT)
+    runs = settings(params_in, PARAMS_OUT)
     GS_base = general.Simulation()
 
-    runs = parametric_run(
+    runs = analysis(
         runs, params_in, PARAMS_OUT,
         GS_base = GS_base,
         save_results_detailed = True,
@@ -64,11 +61,11 @@ def parametric_run_RS():
         'HWDInfo.profile_HWD' : [1,2,3,4,5,6],
         'household.control_load' : [0,1,2,3,4],
         }
-    runs = parametric_settings(params_in, PARAMS_OUT)
+    runs = settings(params_in, PARAMS_OUT)
     GS_base = general.Simulation()
     GS_base.DEWH = ResistiveSingle()
 
-    runs = parametric_run(
+    runs = analysis(
         runs, params_in, PARAMS_OUT,
         GS_base = GS_base,
         save_results_detailed = True,
@@ -91,12 +88,12 @@ def parametric_run_HP():
         'HWDInfo.profile_HWD' : [1,2,3,4,5,6],
         'household.control_load' : [0,1,2,3,4],
         }
-    runs = parametric_settings(params_in, PARAMS_OUT)
+    runs = settings(params_in, PARAMS_OUT)
     
     GS_base = general.Simulation()
     GS_base.DEWH = HeatPump()
     
-    runs = parametric_run(
+    runs = analysis(
         runs, params_in, PARAMS_OUT,
         GS_base = GS_base,
         save_results_detailed = True,
@@ -126,7 +123,7 @@ def parametric_run_tariffs():
         'household.tariff_type'  : list_tariff_type
         }
     
-    runs = parametric_settings(params_in, PARAMS_OUT)
+    runs = settings(params_in, PARAMS_OUT)
     
     GS_base = general.Simulation()
     GS_base.DEWH = HeatPump()
@@ -135,7 +132,7 @@ def parametric_run_tariffs():
     GS_base.household.DNSP = "Ausgrid"
     GS_base.household.tariff_type = "flat"
     
-    runs = parametric_run(
+    runs = analysis(
         runs, params_in, PARAMS_OUT,
         GS_base = GS_base,
         save_results_detailed = True,
@@ -160,9 +157,9 @@ def parametric_run_test():
     GS_base = general.Simulation()
     GS_base.DEWH = ResistiveSingle.from_model_file(model="491315")
 
-    runs = parametric_settings(params_in, PARAMS_OUT)
+    runs = settings(params_in, PARAMS_OUT)
 
-    runs = parametric_run(
+    runs = analysis(
         runs, params_in, PARAMS_OUT,
         GS_base = GS_base,
         save_results_detailed = True,

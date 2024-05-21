@@ -15,7 +15,6 @@ LOCATIONS_COORDINATES = DEFINITIONS.LOCATIONS_COORDINATES
 class Location():
     def __init__(self, value: str|int|tuple[float,float] = "Sydney",):
         self.value = value
-        
         if type(value) == str:
             self.input_type = "city"
         elif type(value) == int:

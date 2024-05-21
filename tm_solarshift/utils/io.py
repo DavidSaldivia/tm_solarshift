@@ -34,30 +34,26 @@ def get_filepath_input(
         file_name
     )
     return file_path
- 
+
 
 def save_simulation_input(
-        simulation: Simulation,
+        sim: Simulation,
         file_path: Optional[str] = None,
 ) -> None:
-    
-    id_sim = simulation.id
+    id_sim = sim.id
     if file_path is None:
         file_path = FORMAT_SIM_INPUT.format(id_sim)
-
     try:
         with open(file_path, "wb") as file:
-            pickle.dump(simulation, file, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(sim, file, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
-    
     return None
 
 def save_simulation_output(
         out_tm: pd.DataFrame,
         ts: Optional[pd.DataFrame] = None,
 ) -> None:
-    
     return None
 
 def load_simulation_input(
@@ -65,10 +61,10 @@ def load_simulation_input(
 ) -> Simulation:
     try:
         with open(file_path, "rb") as f:
-            simulation = pickle.load(f)
+            sim = pickle.load(f)
     except Exception as ex:
         print("Error during unpickling object (Possibly unsupported):", ex)
-    return GS
+    return sim
 
 def load_simulation_output(
         file_path: str,
@@ -80,17 +76,17 @@ def load_simulation_output(
 def main():
 
     
-    simulation = Simulation()
+    sim = Simulation()
     file_path = "testing.pkl"
-    save_simulation_input(simulation, file_path)
+    save_simulation_input(sim, file_path)
 
     GS_plk = load_simulation_input(file_path)
 
-    print(GS_plk == GS)
-    print(GS_plk.pv_system == simulation.pv_system)
-    print(GS_plk.DEWH == simulation.DEWH)
+    print(GS_plk == sim)
+    print(GS_plk.pv_system == sim.pv_system)
+    print(GS_plk.DEWH == sim.DEWH)
     print(GS_plk)
-    print(GS)
+    print(sim)
 
     pass
 

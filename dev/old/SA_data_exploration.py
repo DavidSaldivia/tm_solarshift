@@ -61,7 +61,7 @@ from model_constants import SolarShiftConstants
     SolarShiftConstants.CONTROLLED_LOAD_INFO,
 )
 
-from tm_solarshift.devices import Variable
+from tm_solarshift.models.dewh import Variable
 from tm_solarshift.constants import (
     DIRECTORY,
     PROFILES,
@@ -75,7 +75,7 @@ LOCATIONS_METEONORM = DEFINITIONS.LOCATIONS_METEONORM
 CF = UNITS.conversion_factor
 
 from tm_solarshift.general import GeneralSetup
-from tm_solarshift.devices import Variable
+from tm_solarshift.models.dewh import Variable
 from tm_solarshift.timeseries.weather import (
         Weather,
         load_dataset_merra2,
@@ -401,8 +401,8 @@ def plot_SolAsites_merra2(
 
 
 def main():
-    simulation = GeneralSetup()
-    simulation.simulation.YEAR = Variable(2020,"-")
+    sim = GeneralSetup()
+    sim.ts.YEAR = Variable(2020,"-")
 
     get_location_SolA_sites()
     plot_SolA_locations( Weather.FILES["SOLA_POSTCODES_INFO"], showfig=True )

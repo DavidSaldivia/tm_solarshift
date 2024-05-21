@@ -18,7 +18,7 @@ The module is divided in four sections:
 import os
 import numpy as np
 import pandas as pd
-import tm_solarshift.devices as devices
+import tm_solarshift.models.dewh as dewh
 from tm_solarshift.general import Simulation
 from tm_solarshift.utils.units import (Variable, Water)
 
@@ -247,8 +247,8 @@ def generate_output(
 
 def main():
 
-    # simulation = Simulation()
-    # ts = simulation.create_ts_default()
+    # sim = Simulation()
+    # ts = sim.create_ts_default()
     tank = HotWaterTank()
 
     input = {

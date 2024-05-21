@@ -16,13 +16,9 @@ from tm_solarshift.utils.units import (
     conversion_factor as CF,
     Variable
 )
-from tm_solarshift.devices import (
-    ResistiveSingle,
-    HeatPump,
-    GasHeaterInstantaneous,
-    GasHeaterStorage,
-    SolarThermalElecAuxiliary,
-)
+from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
+from tm_solarshift.models.gas_heater import ( GasHeaterInstantaneous, GasHeaterStorage)
+from tm_solarshift.models.solar_thermal import  SolarThermalElecAuxiliary
 
 #-----------------------------
 # Constants for this module
@@ -155,13 +151,13 @@ def get_daily_hwd(
     return DEFAULT_DAILY_HWD * household_size / DEFAULT_HOUSEHOLD_SIZE
 
 #-------------------
-def calculate_capital_cost(simulation: Simulation) -> float:
+def calculate_capital_cost(sim: Simulation) -> float:
 
-    heater_type = simulation.household.heater_type
-    location = simulation.household.location
-    old_heater = simulation.household.old_heater
-    type_control = simulation.household.control_type
-    household_size = simulation.household.size
+    heater_type = sim.household.heater_type
+    location = sim.household.location
+    old_heater = sim.household.old_heater
+    type_control = sim.household.control_type
+    household_size = sim.household.size
 
     model_number = get_model_number(household_size, heater_type)
     df_heaters = pd.read_csv( FILES_MODEL_SPECS[heater_type], index_col=0 )
@@ -205,14 +201,14 @@ def calculate_capital_cost(simulation: Simulation) -> float:
 
 #----------------
 def calculate_rebates(
-    simulation: Simulation,
+    sim: Simulation,
     capital_cost: float,
 ) -> float: 
 
-    old_heater = simulation.household.old_heater
-    heater_type = simulation.household.heater_type
-    new_system = simulation.household.new_system
-    location = simulation.household.location
+    old_heater = sim.household.old_heater
+    heater_type = sim.household.heater_type
+    new_system = sim.household.new_system
+    location = sim.household.location
 
     if location not in LIST_LOCATIONS:
         raise ValueError("Location is invalid")
@@ -278,7 +274,7 @@ def calculate_disconnection_cost(
 
 #-----------------
 def calculate_oandm_cost(
-        simulation: Simulation,
+        sim: Simulation,
         out_all: Optional[pd.DataFrame] = None,
         has_solar: bool = False,
     ) -> float:
@@ -301,28 +297,28 @@ def calculate_npv(
 
 #------------------------
 def calculate_household_energy_cost(
-        simulation: Simulation,
+        sim: Simulation,
         ts: Optional[pd.DataFrame] = None,
         df_tm: Optional[pd.DataFrame] = None,
         ) -> float:
 
-    control_type = simulation.household.control_type
-    STEP_h = simulation.simulation.STEP.get_value("hr")
+    control_type = sim.household.control_type
+    STEP_h = sim.thermal_sim.STEP.get_value("hr")
     if ts is None:
-        ts = simulation.create_ts()
+        ts = sim.create_ts()
     if df_tm is None:
-        (df_tm, _) = simulation.run_thermal_simulation(ts, verbose = True)
+        (df_tm, _) = sim.run_thermal_simulation(ts, verbose = True)
 
     heater_power = df_tm["heater_power"] * CF("kJ/h", "kW")
 
-    if simulation.pv_system == None:
+    if sim.pv_system is None:
         imported_energy = heater_power.copy()
     else:
         tz = 'Australia/Brisbane'
-        pv_power = simulation.pv_system.sim_generation(ts, unit="kW")["pv_power"]
+        pv_power = sim.pv_system.sim_generation(ts, unit="kW")["pv_power"]
         if control_type == "diverter":
             #Diverter considers three hours at night plus everything diverted from solar
-            control_load = simulation.household.control_load
+            control_load = sim.household.control_load
             import tm_solarshift.timeseries.control as control
             CS_timer = control.load_schedule(
                 ts, control_load = control_load, random_ON=False
@@ -338,17 +334,17 @@ def calculate_household_energy_cost(
 
 #-----------------------
 def calculate_wholesale_energy_cost(
-        simulation: Simulation,
+        sim: Simulation,
         ts: Optional[pd.DataFrame] = None,
         df_tm: Optional[pd.DataFrame] = None,
         ) -> float:
     
-    STEP_h = simulation.simulation.STEP.get_value("hr")
+    STEP_h = sim.thermal_sim.STEP.get_value("hr")
 
     if ts is None:
-        ts = simulation.create_ts()
+        ts = sim.create_ts()
     if df_tm is None:
-        (df_tm, _) = simulation.run_thermal_simulation(ts)
+        (df_tm, _) = sim.run_thermal_simulation(ts)
         
     heater_power = df_tm["heater_power"] * CF("kJ/h", "MW")
     energy_cost = (ts["wholesale_market"] * heater_power * STEP_h).sum()
@@ -356,15 +352,15 @@ def calculate_wholesale_energy_cost(
 
 #------------------------
 def calculate_annual_bill(
-        simulation: Simulation,
+        sim: Simulation,
         ts: Optional[pd.DataFrame] = None,
         out_all: Optional[pd.DataFrame] = None,
         has_solar: bool = False,
     ) -> float:
     
     # calculate annual energy cost
-    energy_cost = calculate_household_energy_cost(simulation, ts, out_all)
-    DAYS = simulation.simulation.DAYS.get_value("d")
+    energy_cost = calculate_household_energy_cost(sim, ts, out_all)
+    DAYS = sim.thermal_sim.DAYS.get_value("d")
     DAILY_CHARGE = 1.0  #AUD (just an average value for now, read tariff instead)
     fix_cost = DAYS*DAILY_CHARGE
 
@@ -400,23 +396,23 @@ def get_GS_instance(
     daily_avg = get_daily_hwd(household_size)
 
     #Creating a GS's instance
-    simulation = Simulation()
-    simulation.household.location = location
-    simulation.household.tariff_type = tariff_type
-    simulation.household.control_type = control_type
-    simulation.household.control_load = control_load
-    simulation.DEWH = DEWH
-    simulation.HWDInfo.profile_HWD = profile_HWD
-    simulation.HWDInfo.daily_avg = Variable( daily_avg, "L/d")
-    simulation.HWDInfo.daily_max = Variable( 2*daily_avg, "L/d")
-    simulation.HWDInfo.daily_std = Variable( daily_avg/3., "L/d")
+    sim = Simulation()
+    sim.household.location = location
+    sim.household.tariff_type = tariff_type
+    sim.household.control_type = control_type
+    sim.household.control_load = control_load
+    sim.DEWH = DEWH
+    sim.HWDInfo.profile_HWD = profile_HWD
+    sim.HWDInfo.daily_avg = Variable( daily_avg, "L/d")
+    sim.HWDInfo.daily_max = Variable( 2*daily_avg, "L/d")
+    sim.HWDInfo.daily_std = Variable( daily_avg/3., "L/d")
 
     if not has_solar:
-        simulation.solar_system = None
+        sim.pv_system = None
 
-    return GS
+    return sim
 
-def save_and_cache(simulation, output_finance, cashflows ):
+def save_and_cache(sim, output_finance, cashflows ):
 
         #Build this later
         
@@ -440,18 +436,18 @@ def financial_analysis(
     heater_type = row["heater_type"]
 
     # creating and instance of GS
-    simulation = get_GS_instance(row, verbose=verbose)
+    sim = get_GS_instance(row, verbose=verbose)
 
     #running thermal simulation
-    ts = simulation.create_ts()
-    (out_all, out_overall) = simulation.run_thermal_simulation(ts, verbose=verbose)
+    ts = sim.create_ts()
+    (out_all, out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
     energy_HWD_annual = out_overall["E_HWD_acum"]
 
     #Calculating fixed and variable costs
-    capital_cost = calculate_capital_cost(GS)
-    annual_bill = calculate_annual_bill(simulation = simulation, ts = ts, out_all = out_all)
-    oandm_cost = calculate_oandm_cost(simulation, out_all)
-    rebates = calculate_rebates(simulation, capital_cost)
+    capital_cost = calculate_capital_cost(sim)
+    annual_bill = calculate_annual_bill(sim=sim, ts = ts, out_all = out_all)
+    oandm_cost = calculate_oandm_cost(sim, out_all)
+    rebates = calculate_rebates(sim, capital_cost)
     disconnection_costs = calculate_disconnection_cost(
         old_heater = heater_type,
         permanent_close = permanent_close
@@ -639,11 +635,11 @@ def NT_rebate():
 #-----------------
 def main():
 
-    simulation = Simulation()
-    ts = simulation.create_ts()
+    sim = Simulation()
+    ts = sim.create_ts()
 
-    # (out_all, out_overall) = simulation.run_thermal_simulation(verbose=True)
-    # output_finance = financial_analysis(simulation, ts, out_all)
+    # (out_all, out_overall) = sim.run_thermal_simulation(verbose=True)
+    # output_finance = financial_analysis(sim, ts, out_all)
 
     # print(out_all)
     # print(out_overall)

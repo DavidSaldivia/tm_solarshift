@@ -151,8 +151,8 @@ def sample_plots(
 def main():
 
     from tm_solarshift.general import Simulation
-    simulation = Simulation()
-    ts = simulation.create_ts()
+    sim = Simulation()
+    ts = sim.create_ts()
 
     pv_system = PVSystem()
     df_pv = pv_system.sim_generation(ts)

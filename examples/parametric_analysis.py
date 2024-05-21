@@ -40,7 +40,7 @@ def parametric_analysis_HP() -> pd.DataFrame:
     Example of a parametric analysis using a heat pump heater
     """
 
-    from tm_solarshift.devices import HeatPump
+    from tm_solarshift.models.dewh import HeatPump
     GS_base = general.Simulation()
     GS_base.DEWH = HeatPump()
     

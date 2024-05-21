@@ -1,22 +1,18 @@
 import os
 import numpy as np
 import pandas as pd
-from typing import Union, Any
+from typing import Union, Any, TypeAlias
 
-from tm_solarshift.general import GeneralSetup
+from tm_solarshift.general import Simulation
 from tm_solarshift.constants import SIMULATIONS_IO
 from tm_solarshift.utils.units import conversion_factor as CF
 FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.FIN_POSTPROC_OUTPUT
 
-from tm_solarshift.devices import (
-    ResistiveSingle,
-    HeatPump,
-    GasHeaterInstantaneous,
-    GasHeaterStorage,
-    SolarThermalElecAuxiliary,
-)
+from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
+from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
+from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 
-Heater = Union[
+Heater: TypeAlias = Union[
     ResistiveSingle,
     HeatPump,
     GasHeaterInstantaneous,
@@ -40,25 +36,25 @@ RESISTIVE_SUPPLY_STATES = ["NSW", "QLD", "VIC"]
 
 #------------------------
 def calculate_household_energy_cost(
-        GS: GeneralSetup,
+        sim: Simulation,
         ts: pd.DataFrame = None,
         df_tm: pd.DataFrame = None,
         ) -> float:
 
-    STEP_h = simulation.simulation.STEP.get_value("hr")
+    STEP_h = sim.ts.STEP.get_value("hr")
     if ts  is None:
-        ts = simulation.create_ts()
+        ts = sim.create_ts()
 
     if df_tm  is None:
-        df_tm = simulation.run_thermal_simulation(ts)
+        df_tm = sim.run_thermal_simulation(ts)
 
     heater_power = df_tm["heater_power"] * CF("kJ/h", "kW")
 
-    if simulation.solar_system == None:
+    if sim.pv_system == None:
         imported_energy = heater_power.copy()
     else:    
         tz = 'Australia/Brisbane'
-        pv_power = simulation.solar_system.load_PV_generation(
+        pv_power = sim.pv_system.load_PV_generation(
             ts=ts, tz=tz,  unit="kW"
         )
         imported_energy = np.where(
@@ -70,17 +66,17 @@ def calculate_household_energy_cost(
 
 #-----------------------
 def calculate_wholesale_energy_cost(
-        GS: GeneralSetup,
+        sim: Simulation,
         ts: pd.DataFrame = None,
         df_tm: pd.DataFrame = None,
         ) -> float:
     
-    STEP_h = simulation.simulation.STEP.get_value("hr")
+    STEP_h = sim.ts.STEP.get_value("hr")
 
     if ts is None:
-        ts = simulation.create_ts()
+        ts = sim.create_ts()
     if df_tm is None:
-        df_tm = simulation.run_thermal_simulation(ts)
+        df_tm = sim.run_thermal_simulation(ts)
         
     heater_power = df_tm["heater_power"] * CF("kJ/h", "MW")
     energy_cost = ( ts["wholesale_market"] * heater_power * STEP_h).sum()
@@ -88,14 +84,14 @@ def calculate_wholesale_energy_cost(
 
 #------------------------
 def calculate_annual_bill(
-        GS: GeneralSetup,
+        sim: Simulation,
         ts: pd.DataFrame = None,
         df_tm: pd.DataFrame = None,
         has_solar: bool = False,
     ) -> float:
     
     # calculate annual energy cost
-    annual_bill = calculate_household_energy_cost(simulation, ts, df_tm)
+    annual_bill = calculate_household_energy_cost(sim, ts, df_tm)
 
     # add other costs (daily/seasonal costs)
     annual_bill = annual_bill + 0.1*365  #(0.1AUD per day, just a random number)
@@ -104,7 +100,7 @@ def calculate_annual_bill(
 
 #-----------------
 def calculate_oandm_cost(
-        GS: GeneralSetup,
+        sim: Simulation,
         ts: pd.DataFrame = None,
         df_tm: pd.DataFrame = None,
         has_solar: bool = False,
@@ -135,7 +131,7 @@ def calculate_capital_cost(
 
 #-----------------
 def financial_analysis(
-    GS: GeneralSetup,
+    sim: Simulation,
     ts: pd.DataFrame,
     out_all: pd.DataFrame,
     out_overall_th: dict = None,
@@ -149,15 +145,15 @@ def financial_analysis(
 
     #include all capital costs: equipment, installation, certification, etc.
     if out_overall_th == None:
-        out_overall_th = thermal_postproc(simulation, ts, out_all)
+        out_overall_th = thermal_postproc(sim, ts, out_all)
     if out_overall_econ == None:
-        out_overall_econ = economics_postproc(simulation, ts, out_all)
+        out_overall_econ = economics_postproc(sim, ts, out_all)
 
     energy_annual = out_overall_th["heater_power_acum"]
     energy_cost = out_overall_econ["annual_hw_household_cost"]
 
-    capital_cost = calculate_capital_cost(simulation.DEWH)
-    oandm_cost = calculate_oandm_cost(simulation, ts, out_all)
+    capital_cost = calculate_capital_cost(sim.DEWH)
+    oandm_cost = calculate_oandm_cost(sim, ts, out_all)
     
     NPF = 8.
     variable_cost = (energy_cost + oandm_cost)
@@ -184,11 +180,11 @@ def financial_analysis(
 #-----------------
 def main():
 
-    simulation = GeneralSetup()
-    ts = simulation.create_ts()
+    sim = Simulation()
+    ts = sim.create_ts()
 
-    (out_all, out_overall) = simulation.run_thermal_simulation(verbose=True)
-    output_finance = financial_analysis(simulation, ts, out_all)
+    (out_all, out_overall) = sim.run_thermal_simulation(verbose=True)
+    output_finance = financial_analysis(sim, ts, out_all)
 
     print(out_all)
     print(out_overall)

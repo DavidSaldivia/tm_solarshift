@@ -43,7 +43,7 @@ def load_PV_generation(
 
     Args:
         timeseries (pd.DataFrame): timeseries dataframe
-        solar_system (SolarSystem): devices.SolarSystem object
+        solar_system (PVSystem): devices.PVSystem object
         columns (list[str], optional): Columns to be replaced in ts. Defaults to ["PV_Gen"].
 
     Raises:
@@ -97,13 +97,13 @@ def main():
     #Creating a timeseries dataframe
     
     from tm_solarshift.general import Simulation
-    simulation = Simulation()
-    ts = simulation.create_ts()
+    sim = Simulation()
+    ts = sim.create_ts()
 
     profile = profile_step(ts.index, t1=10., t2=14., A1=2.0)
     print(profile)
 
-    pv_system = simulation.pv_system
+    pv_system = sim.pv_system
     
     COLS = TS_TYPES["electric"]
 

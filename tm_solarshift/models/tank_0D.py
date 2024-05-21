@@ -1,11 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from tm_solarshift.devices import (
-    ResistiveSingle, 
-    Variable,
-    conversion_factor as CF
-    )
+from tm_solarshift.models.dewh import ResistiveSingle
+from tm_solarshift.utils.units import (Variable, conversion_factor as CF)
 
 def two_temps(
         heater: ResistiveSingle = ResistiveSingle(),

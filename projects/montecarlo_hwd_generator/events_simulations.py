@@ -47,9 +47,9 @@ def loading_timeseries(
     location = simulation.household.location
     control_load = simulation.household.control_load
     random_control = simulation.household.control_random_on
-    solar_system = simulation.solar_system
+    solar_system = simulation.pv_system
     
-    YEAR = simulation.simulation.YEAR.get_value("-")
+    YEAR = simulation.ts.YEAR.get_value("-")
 
     ts = simulation.create_ts_empty(ts_columns = ts_columns)
     ts = simulation.HWDInfo.generator( ts, method = HWDG_method,)
@@ -247,8 +247,8 @@ def plot_histogram_2D(
     showfig: bool = False,
 ):
     
-    STEP = simulation.simulation.STEP.get_value("min")
-    DAYS = simulation.simulation.DAYS.get_value("d")
+    STEP = simulation.ts.STEP.get_value("min")
+    DAYS = simulation.ts.DAYS.get_value("d")
     
     # Probabilities of SOC through the day
     Nx = 96
@@ -302,7 +302,7 @@ def plots_sample_simulations(
     showfig: bool = False,
     t_ini: float = 3
 ):
-    DAYS = simulation.simulation.DAYS.get_value("d")
+    DAYS = simulation.ts.DAYS.get_value("d")
 
     # Plot with a sample of 10% of days
 
@@ -493,7 +493,7 @@ def influence_sample_size():
         simulation.household.control_random_on = random_control
         simulation.HWDInfo.profile_HWD = HWD_profile
         simulation.HWDInfo.daily_distribution = HWD_daily_dist
-        simulation.simulation.STOP = Variable(int(24 * DAYS), "hr")
+        simulation.ts.STOP = Variable(int(24 * DAYS), "hr")
 
         params_weather = {
             "dataset":"meteonorm",
@@ -584,9 +584,9 @@ def function_with_all(case: int) -> List:
     simulation.household.control_random_on = random_control
     simulation.HWDInfo.daily_distribution = HWD_daily_dist
 
-    simulation.simulation.STOP = Variable(int(24 * DAYS), "hr")
-    simulation.simulation.STEP = Variable(3, "min")
-    simulation.simulation.YEAR = Variable(2022, "-")
+    simulation.ts.STOP = Variable(int(24 * DAYS), "hr")
+    simulation.ts.STEP = Variable(3, "min")
+    simulation.ts.YEAR = Variable(2022, "-")
 
     params_weather = {
         "dataset":"meteonorm",

@@ -3,11 +3,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from tm_solarshift.devices import (
-    ResistiveSingle, 
-    Variable,
-    conversion_factor
-    )
+from tm_solarshift.utils.units import (Variable, conversion_factor)
+from tm_solarshift.models.dewh import ResistiveSingle
 
 def tank_0D_two_temps(
         heater: ResistiveSingle = ResistiveSingle(),
@@ -523,7 +520,7 @@ def detailed_plot_comparison(
 #------------------------
 def main():
     
-    from tm_solarshift.general import (Simulation, MAIN_DIR)
+    from tm_solarshift.general import Simulation
     import tm_solarshift.profiles as profiles
     import tm_solarshift.trnsys as trnsys
     from TL_parametric import load_profiles_all

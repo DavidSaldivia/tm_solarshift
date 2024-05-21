@@ -189,7 +189,6 @@ class DEFINITIONS():
         "Sydney": "Ausgrid",
         "Townsville": "Ergon",
     }
-
     STATES = {
         "SA": "South Australia",
         "NSW": "New South Wales",

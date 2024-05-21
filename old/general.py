@@ -3,12 +3,12 @@ import sys
 import pandas as pd
 import numpy as np
 
-from tm_solarshift.devices import (
+from tm_solarshift.models.dewh import (
     Variable,
     VariableList,
     ResistiveSingle,
     HeatPump,
-    SolarSystem,
+    PVSystem,
 )
 
 from tm_solarshift.constants import PROFILES
@@ -28,7 +28,7 @@ class GeneralSetup():
         self.tariff_type = "flat"
 
         self.DEWH = ResistiveSingle()
-        self.solar_system = SolarSystem()
+        self.solar_system = PVSystem()
 
         # Profile/Behavioural Parameters
         self.profile_PV = 0  # See above for the meaning of these options
