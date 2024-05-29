@@ -141,7 +141,6 @@ class Simulation():
         ts = circuits.load_PV_generation(ts, pv_system = pv_system)
         ts = circuits.load_elec_consumption(ts, profile_elec = 0)
 
-
         return ts[ts_columns]
     
     #-------------------

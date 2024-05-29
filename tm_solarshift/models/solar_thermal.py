@@ -26,7 +26,7 @@ class SolarThermalElecAuxiliary():
         #Nominal values
         self.massflowrate = Variable(0.05, "kg/s")
         self.fluid = Water()
-        self.area = Variable(2.0, "m2")
+        self.area = Variable(4.0, "m2")
         self.FRta = Variable(0.6, "-")
         self.FRUL = Variable(3.0, "W/m2-K")
         self.IAM = Variable(0.05, "-")
@@ -166,11 +166,9 @@ def run_thermal_model(
     from tm_solarshift.models import postprocessing
     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=sim.DEWH, ts=ts)
     df_tm = trnsys_dewh.run_simulation(ts, verbose=verbose)
-    out_overall = postprocessing.annual_postproc(sim, ts, df_tm)
+    out_th = postprocessing.thermal_analysis(sim, ts, df_tm)
 
-    #Calculating energy provided by solar thermal and the solar fraction
-    #Emissions and tariffs are recalculated
-
+    # running an own-made thermal model
     DEWH: SolarThermalElecAuxiliary = sim.DEWH
     massflowrate = DEWH.massflowrate.get_value("kg/s")
     area = DEWH.area.get_value("m2")
@@ -186,6 +184,7 @@ def run_thermal_model(
     temp_amb = df_tm["temp_amb"]
     temp_inlet = df_tm["Node10"]
 
+    # calculating angles
     ts_index = pd.to_datetime(ts.index)
     plane_irrad = get_plane_irradiance(ts, latitude, longitude, tilt, orient, tz)
     plane_irrad.index = ts_index.tz_localize(None)
@@ -208,24 +207,45 @@ def run_thermal_model(
         0.
     )
     df_tm["solar_energy_u"] = df_tm["heater_perf"] * df_tm["total_irrad"]  #["W"]
-
-    out_overall["solar_energy_u"] = (df_tm["solar_energy_u"] * STEP_h * CF("Wh", "kWh")).sum()
-    out_overall["solar_energy_in"] = (df_tm["total_irrad"] * STEP_h * CF("Wh", "kWh")).sum()
-    out_overall["solar_ratio"] =  out_overall["solar_energy_u"] / out_overall["heater_heat_acum"]
-    out_overall["heater_perf_avg"] = out_overall["solar_energy_u"] / out_overall["solar_energy_in"]
-
     temp_outlet = temp_inlet + df_tm["solar_energy_u"] / (massflowrate * cp)
 
-    #Recalculate total emissions and tariffs
+    # updating out_th
+    out_th["solar_energy_u"] = (df_tm["solar_energy_u"] * STEP_h * CF("Wh", "kWh")).sum()
+    out_th["solar_energy_in"] = (df_tm["total_irrad"] * STEP_h * CF("Wh", "kWh")).sum()
+
+    out_th["heater_perf_avg"] = out_th["solar_energy_u"] / out_th["solar_energy_in"]
+    out_th["heater_power_acum"] = (out_th["heater_power_acum"] - out_th["solar_energy_u"])
+
+    # performing economic analysis
+    out_econ = postprocessing.economics_analysis(sim, ts, df_tm)
+    out_th["solar_ratio"] =  out_th["solar_energy_u"] / out_th["heater_heat_acum"]
+
+    # THERE IS A BUG HERE!
+    # THE ECONOMIC ANALYS IS STILL USING all the energy from trnsys, not the one minus solar_thermal
+
+    # recalculate total emissions and tariffs
     df_tm["heater_power_no_solar"] = ( df_tm["heater_power"] - df_tm["solar_energy_u"] * CF("W","kJ/h") )
-    out_overall["emissions_total"] = (
+    out_th["emissions_total"] = (
         (df_tm["heater_power_no_solar"] * CF("kJ/h", "MW")) * STEP_h
         * ts["intensity_index"]
         ).sum()
-    out_overall["emissions_marginal"] = (
+    out_th["emissions_marginal"] = (
         (df_tm["heater_power_no_solar"] * CF("kJ/h", "MW")) * STEP_h
         * ts["marginal_index"]
         ).sum()
-    out_overall["heater_power_acum"] = (out_overall["heater_power_acum"] - out_overall["solar_energy_u"])
+
+    out_overall = out_th | out_econ
 
     return (df_tm, out_overall)
+
+def main():
+    from tm_solarshift.general import Simulation
+    sim = Simulation()
+    sim.DEWH = SolarThermalElecAuxiliary()
+
+    (df_tm, out_overall) = sim.run_thermal_simulation(verbose=True)
+    pass
+
+if __name__ == "__main__":
+    main()
+    pass

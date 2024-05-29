@@ -48,7 +48,7 @@ class TrnsysDEWH():
     "detailed" : "TRNSYS_out_detailed.dat",
     "tank": "TRNSYS_out_tank_temps.dat",
     "signal": "TRNSYS_out_control.dat",
-}
+    }
 
     def __init__(
             self,
