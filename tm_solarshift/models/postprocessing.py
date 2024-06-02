@@ -117,7 +117,12 @@ def economics_analysis(
     STEP_h = sim.thermal_sim.STEP.get_value("hr")
 
     out_all_idx = pd.to_datetime(out_all.index)
-    heater_power = out_all["heater_power"]
+
+    if sim.DEWH.label == "solar_thermal":
+        heater_power = out_all["heater_power_no_solar"]
+    else:
+        heater_power = out_all["heater_power"]
+        
     heater_power_sum = heater_power.sum()
     if heater_power_sum <= 0.0:
         heater_power_sum = np.nan

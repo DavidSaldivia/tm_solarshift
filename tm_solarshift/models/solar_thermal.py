@@ -26,7 +26,7 @@ class SolarThermalElecAuxiliary():
         #Nominal values
         self.massflowrate = Variable(0.05, "kg/s")
         self.fluid = Water()
-        self.area = Variable(4.0, "m2")
+        self.area = Variable(2.0, "m2")
         self.FRta = Variable(0.6, "-")
         self.FRUL = Variable(3.0, "W/m2-K")
         self.IAM = Variable(0.05, "-")
@@ -249,23 +249,10 @@ def run_thermal_model(
     out_th["heater_power_acum"] = (out_th["heater_power_acum"] - out_th["solar_energy_u"])
 
     # performing economic analysis
-    out_econ = postprocessing.economics_analysis(sim, ts, df_tm)
-    out_th["solar_ratio"] =  out_th["solar_energy_u"] / out_th["heater_heat_acum"]
-
-    # THERE IS A BUG HERE!
-    # THE ECONOMIC ANALYS IS STILL USING all the energy from trnsys, not the one minus solar_thermal
-
-    # recalculate total emissions and tariffs
+    
     df_tm["heater_power_no_solar"] = ( df_tm["heater_power"] - df_tm["solar_energy_u"] * CF("W","kJ/h") )
-    out_th["emissions_total"] = (
-        (df_tm["heater_power_no_solar"] * CF("kJ/h", "MW")) * STEP_h
-        * ts["intensity_index"]
-        ).sum()
-    out_th["emissions_marginal"] = (
-        (df_tm["heater_power_no_solar"] * CF("kJ/h", "MW")) * STEP_h
-        * ts["marginal_index"]
-        ).sum()
 
+    out_econ = postprocessing.economics_analysis(sim, ts, df_tm)
     out_overall = out_th | out_econ
 
     return (df_tm, out_overall)
