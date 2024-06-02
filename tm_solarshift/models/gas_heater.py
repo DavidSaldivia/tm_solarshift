@@ -280,8 +280,6 @@ def storage_fixed_eta(
         verbose: bool = False,
 ) -> tuple[pd.DataFrame,dict[str, float]]:
 
-
-
     from tm_solarshift.models import (trnsys, postprocessing)
     DEWH: GasHeaterStorage = sim.DEWH
     kgCO2_TO_kgCH4 = 44. / 16. #Assuming pure methane for gas
@@ -290,7 +288,6 @@ def storage_fixed_eta(
 
     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=DEWH, ts=ts)
     df_tm = trnsys_dewh.run_simulation(ts, verbose=verbose)
-    # out_all = trnsys.run_simulation(sim, ts, verbose=verbose)
     out_overall = postprocessing.annual_postproc(sim, ts, df_tm)
     sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
 

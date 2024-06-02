@@ -73,7 +73,7 @@ LIST_HEATERS_TYPES = ["resistive", "heat_pump", "gas_instant",
                       "gas_storage", "solar_thermal"]
 LIST_CONTROL_TYPES = ["GS", "CL1", "CL2", "CL3",
                       "timer_SS", "timer_OP", "diverter"]
-LIST_TARIFF_TYPES = ["CL", "flat", "tou"]
+LIST_TARIFF_TYPES = ["CL", "flat", "tou", "gas"]
 LIST_HOUSEHOLD_SIZES = [1, 2, 3, 4, 5]
 LIST_HWDP = [1, 2, 3, 4, 5, 6]
 LIST_DNSP = ["Ausgrid"]
@@ -366,12 +366,20 @@ def calculate_annual_bill(
     # calculate annual energy cost
     energy_cost = calculate_household_energy_cost(sim, ts, out_all)
     DAYS = sim.thermal_sim.DAYS.get_value("d")
+    
+    #BUG ADD DAILY CHARGE PROPERLY
+    suply_charge = {
+        "CL": True,
+        "flat": False,
+        "tou": False,
+        "gas": True
+    }
+    
     DAILY_CHARGE = 1.0  #AUD (just an average value for now, read tariff instead)
     fix_cost = DAYS*DAILY_CHARGE
 
     # add other costs (daily/seasonal costs)
     annual_bill = energy_cost + fix_cost
-    
     return annual_bill
 
 #------------------------
