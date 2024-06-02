@@ -311,7 +311,10 @@ def calculate_household_energy_cost(
     if df_tm is None:
         (df_tm, _) = sim.run_thermal_simulation(ts, verbose = True)
 
-    heater_power = df_tm["heater_power"] * CF("kJ/h", "kW")
+    if sim.DEWH.label == "solar_thermal":
+        heater_power = df_tm["heater_power_no_solar"] * CF("kJ/h", "kW")
+    else:
+        heater_power = df_tm["heater_power"] * CF("kJ/h", "kW")
 
     if sim.pv_system is None:
         imported_energy = heater_power.copy()
