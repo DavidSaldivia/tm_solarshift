@@ -29,6 +29,9 @@ class Simulation():
         self.thermal_sim = ThermalSim()
         self.weather = Weather()
 
+        self.results = None
+
+
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
     

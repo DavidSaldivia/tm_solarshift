@@ -190,6 +190,7 @@ def main():
     plot_city_comparison(runs, savefig=True, showfig=True,dirfig=DIR_RESULTS)
     return
 
+
 if __name__=="__main__":
     main()
     

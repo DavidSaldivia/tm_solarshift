@@ -193,7 +193,7 @@ def updating_parameters(
             (obj_name, param_name) = key.split('.')
 
             #Retrieving first level attribute (i.e.: DEWH, household, sim, etc.)
-            object = getattr(sim, obj_name)
+            object = getattr(simulation, obj_name)
             
             unit = units_in[key]
             if unit is not None:
@@ -203,14 +203,14 @@ def updating_parameters(
             setattr(object, param_name, param_value)
 
             # Reassigning the first level attribute to GS
-            setattr(sim, obj_name, object)
+            setattr(simulation, obj_name, object)
 
         else:
-            setattr(sim, key, value)
+            setattr(simulation, key, value)
     return None
 
 #------------------------------
-def parametric_run_test():
+def test_parametric_run():
     
     GS_base = general.Simulation()
     GS_base.DEWH = ResistiveSingle.from_model_file(model="491315")
@@ -239,7 +239,7 @@ def parametric_run_test():
 #-------
 def main():
 
-    parametric_run_test()
+    test_parametric_run()
 
     return
 
