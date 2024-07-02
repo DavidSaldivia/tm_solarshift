@@ -176,7 +176,7 @@ def load_emission_index_year(
     timeseries[columns] = emissions[
         emissions["Region"] == DEFINITIONS.LOCATIONS_NEM_REGION[location]
         ][columns].resample(
-            f"{STEP}T"
+            f"{STEP}min"
         ).interpolate('linear')
     return timeseries
 
@@ -203,7 +203,7 @@ def load_wholesale_prices(
     timeseries["Wholesale_Market"] = df_SP[
         nem_region
         ].resample(
-            f"{STEP}T"
+            f"{STEP}min"
         ).interpolate('linear')
 
     return timeseries

@@ -242,8 +242,8 @@ def run_thermal_model(
     temp_outlet = temp_inlet + df_tm["solar_energy_u"] / (massflowrate * cp)
 
     # updating out_th
-    out_th["solar_energy_u"] = (df_tm["solar_energy_u"] * STEP_h * CF("Wh", "kWh")).sum()
-    out_th["solar_energy_in"] = (df_tm["total_irrad"] * STEP_h * CF("Wh", "kWh")).sum()
+    out_th["solar_energy_u"] = df_tm["solar_energy_u"].sum() * STEP_h * CF("Wh", "kWh")
+    out_th["solar_energy_in"] = df_tm["total_irrad"].sum() * STEP_h * CF("Wh", "kWh")
 
     out_th["heater_perf_avg"] = out_th["solar_energy_u"] / out_th["solar_energy_in"]
     out_th["heater_power_acum"] = (out_th["heater_power_acum"] - out_th["solar_energy_u"])

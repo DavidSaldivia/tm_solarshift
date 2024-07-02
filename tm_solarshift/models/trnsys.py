@@ -28,11 +28,11 @@ DEFAULT_HEATER_DATA = {
     "heat_pump": os.path.join(DIR_DATA["specs"],"HP_data_reclaim.dat"),
     "solar_thermal": os.path.join(DIR_DATA["specs"],"STC_data_ones.dat"),
 }
-FILES_TRNSYS_OUTPUT = {
-    "RESULTS_DETAILED" : "TRNSYS_out_detailed.dat",
-    "RESULTS_TANK": "TRNSYS_out_tank_temps.dat",
-    "RESULTS_SIGNAL": "TRNSYS_out_control.dat",
-}
+# FILES_TRNSYS_OUTPUT = {
+#     "RESULTS_DETAILED" : "TRNSYS_out_detailed.dat",
+#     "RESULTS_TANK": "TRNSYS_out_tank_temps.dat",
+#     "RESULTS_SIGNAL": "TRNSYS_out_control.dat",
+# }
 
 
 #------------------------------
@@ -41,7 +41,6 @@ FILES_TRNSYS_OUTPUT = {
 #    'HPF': Heat Pump and solar thermal;
 
 #------------------------------
-#### DEFINING TRNSYS CLASSES
 class TrnsysDEWH():
 
     FILES_OUTPUT = {
@@ -94,8 +93,8 @@ class TrnsysDEWH():
     @property
     def dck_file(self) -> list[str]:
         dck_name = self.dck_name
-        dck_path_base = os.path.join(DIR_DATA["layouts"], dck_name)
-        with open(dck_path_base, "r") as file_in:
+        dck_base_path = os.path.join(DIR_DATA["layouts"], dck_name)
+        with open(dck_base_path, "r") as file_in:
             dck_original = file_in.read().splitlines()
 
         dck_file = dck_original.copy()
@@ -106,7 +105,6 @@ class TrnsysDEWH():
 
 
     def create_simulation_files(self) -> None:
-
         ts = self.ts
         DEWH = self.DEWH
         tempDir = self.tempDir
@@ -205,9 +203,9 @@ class TrnsysDEWH():
         
         return out_all
     
+    #------------------------------
     def run_simulation(
             self,
-            ts: pd.DataFrame,
             verbose: bool = False,
             ) -> pd.DataFrame:
 
@@ -238,17 +236,17 @@ class TrnsysDEWH():
     
 #------------
 def editing_dck_general(
-        trnsys_setup: TrnsysDEWH,
+        trnsys_dewh: TrnsysDEWH,
         dck_editing: list[str],
         ) -> list[str]:
 
     #General settings
-    START = trnsys_setup.START.get_value("hr")
-    STOP = trnsys_setup.STOP.get_value("hr")
-    STEP = trnsys_setup.STEP.get_value("min")
+    START = trnsys_dewh.START.get_value("hr")
+    STOP = trnsys_dewh.STOP.get_value("hr")
+    STEP = trnsys_dewh.STEP.get_value("min")
 
     #DEWH settings
-    DEWH = trnsys_setup.DEWH
+    DEWH = trnsys_dewh.DEWH
     match DEWH.label:
         case "resistive":
             nom_power = DEWH.nom_power.get_value("W")
@@ -297,12 +295,12 @@ def editing_dck_general(
 
 #------------
 def editing_dck_weather(
-        trnsys_setup: TrnsysDEWH,
+        trnsys_dewh: TrnsysDEWH,
         dck_editing: list[str],
         ) -> list[str]:
 
     tag1 = "input_weather"  # Component name
-    weather_path = os.path.join(trnsys_setup.tempDir, trnsys_setup.file_names["weather"])
+    weather_path = os.path.join(trnsys_dewh.tempDir, trnsys_dewh.file_names["weather"])
 
     # Start
     for idx, line in enumerate(dck_editing):
@@ -328,20 +326,18 @@ def editing_dck_weather(
             break
 
     # Joining the edited lines with the rest of the text
-    dck_editing = dck_editing[:idx_start] + comp_lines + dck_editing[idx_end:]
-
-    return dck_editing
+    return dck_editing[:idx_start] + comp_lines + dck_editing[idx_end:]
 
 #------------
 # Editing dck tank file
 def editing_dck_tank(
-        trnsys_setup: TrnsysDEWH,
+        trnsys_dewh: TrnsysDEWH,
         dck_editing: list[str],
         ) -> list[str]:
 
 
     #Defining tank_params
-    DEWH = trnsys_setup.DEWH
+    DEWH = trnsys_dewh.DEWH
 
     # Common parameters
     params_common = {
@@ -441,61 +437,59 @@ def editing_dck_tank(
                 )
             break
 
-    # Joining the edited lines with the old set
-    dck_editing = (dck_editing[:idx_start] 
-                   + comp_lines 
-                   + dck_editing[idx_end:])
+    return dck_editing[:idx_start] + comp_lines + dck_editing[idx_end:]
 
-    return dck_editing
+# #------------------------------
+# def run_simulation(
+#         sim: Simulation,
+#         ts: Optional[pd.DataFrame] = None,
+#         verbose: bool = False,
+#         ) -> pd.DataFrame:
 
-#------------------------------
-def run_simulation(
-        sim: Simulation,
-        ts: Optional[pd.DataFrame] = None,
-        verbose: bool = False,
-        ) -> pd.DataFrame:
+#     stime = time.time()
+#     if verbose:
+#         print("Running TRNSYS Simulation")
 
-    stime = time.time()
-    if verbose:
-        print("Running TRNSYS Simulation")
-
-    if ts is None:
-        if verbose:
-            print("Creating timeseries file")
-        ts = sim.create_ts()
+#     if ts is None:
+#         if verbose:
+#             print("Creating timeseries file")
+#         ts = sim.create_ts()
     
-    trnsys_setup = TrnsysDEWH(
-        sim = sim.ts,
-        DEWH = sim.DEWH,
-        ts=ts,
-    )
-    with TemporaryDirectory(dir=TEMPDIR_SIMULATION) as tmpdir:
+#     trnsys_dewh = TrnsysDEWH(
+#         DEWH = sim.DEWH,
+#         ts=ts,
+#     )
+#     with TemporaryDirectory(dir=TEMPDIR_SIMULATION) as tmpdir:
 
-        trnsys_setup.tempDir = tmpdir
-        if verbose:
-            print("Creating the trnsys source code files")
-        trnsys_setup.create_simulation_files()
+#         trnsys_dewh.tempDir = tmpdir
+#         if verbose:
+#             print("Creating the trnsys source code files")
+#         trnsys_dewh.create_simulation_files()
 
-        if verbose:
-            print("Calling TRNSYS executable")
-        subprocess.run([TRNSYS_EXECUTABLE, trnsys_setup.dck_path, "/h"])
+#         if verbose:
+#             print("Calling TRNSYS executable")
+#         subprocess.run([TRNSYS_EXECUTABLE, trnsys_dewh.dck_path, "/h"])
         
-        if verbose:
-            print("TRNSYS simulation postprocessing.")
-        out_all = trnsys_setup.postprocessing()
+#         if verbose:
+#             print("TRNSYS simulation postprocessing.")
+#         out_all = trnsys_dewh.postprocessing()
             
-    elapsed_time = time.time()-stime
-    if verbose:
-        print(f"Execution time: {elapsed_time:.4f} seconds.")
+#     elapsed_time = time.time()-stime
+#     if verbose:
+#         print(f"Execution time: {elapsed_time:.4f} seconds.")
     
-    return out_all
+#     return out_all
 
 #------------------------------
 def main():
 
     from tm_solarshift.general import Simulation
     sim = Simulation()
-    out_all = run_simulation(sim, verbose=True)
+    trnsys_dewh = TrnsysDEWH(
+        DEWH = sim.DEWH,
+        ts = sim.create_ts()
+    )
+    out_all = trnsys_dewh.run_simulation(verbose=True)
     print(out_all)
 
 if __name__=="__main__":
