@@ -263,11 +263,6 @@ def main():
     ts = sim.create_ts_empty()
     ts = sim.create_ts()
 
-    # print(ts.head(20))
-    # print(ts[TS_TYPES["HWDP"]])
-    # print(ts[TS_TYPES["weather"]])
-    # print(ts[TS_TYPES["control"]])
-
     sim.DEWH = SolarThermalElecAuxiliary()
     sim.DEWH = ResistiveSingle()
     (out_all, out_overall) = sim.run_thermal_simulation( verbose=True )

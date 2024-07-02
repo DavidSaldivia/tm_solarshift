@@ -1,5 +1,6 @@
 #own folders
 projects/
+.dirs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

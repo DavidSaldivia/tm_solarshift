@@ -1,24 +1,30 @@
 import os
 
-class DIRECTORY():
-    
+import json
+
+
+class DIRECTORY():    
     #DIRS
     DIR_MAIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DIR_FILE = os.path.dirname(os.path.abspath(__file__))
+    
+    with open(os.path.join(DIR_MAIN, ".dirs"), "r") as f:
+        private_dirs = json.load(f)
+    DIR_DATA_EXTERNAL = private_dirs["data"]
     DIR_DATA = {
-        "energy_market": os.path.join(DIR_MAIN, "data", "energy_market"),
-        "emissions" : os.path.join(DIR_MAIN, "data", "emissions"),
-        "HWDP" : os.path.join(DIR_MAIN, "data", "HWD_profiles"),
-        "layouts" : os.path.join(DIR_MAIN, "data", "trnsys_layouts"),
-        "location" : os.path.join(DIR_MAIN, "data", "location"),
-        "SA_processed" : os.path.join(DIR_MAIN, "data", "SA_processed"),
-        "SA_raw" : os.path.join(DIR_MAIN, "data", "SA_raw"),
-        "samples" : os.path.join(DIR_MAIN, "data", "samples"),
-        "specs" : os.path.join(DIR_MAIN, "data", "device_specs"),
-        "tariffs" : os.path.join(DIR_MAIN, "data", "tariffs_json_2023-24"),
-        "gas" : os.path.join(DIR_MAIN, "data", "tariffs_gas"),
-        "control" : os.path.join(DIR_MAIN, "data", "control"),
-        "weather" : os.path.join(DIR_MAIN, "data", "weather"),
+        "energy_market": os.path.join(DIR_DATA_EXTERNAL, "energy_market"),
+        "emissions" : os.path.join(DIR_DATA_EXTERNAL, "emissions"),
+        "HWDP" : os.path.join(DIR_DATA_EXTERNAL, "HWD_profiles"),
+        "layouts" : os.path.join(DIR_DATA_EXTERNAL, "trnsys_layouts"),
+        "location" : os.path.join(DIR_DATA_EXTERNAL, "location"),
+        "SA_processed" : os.path.join(DIR_DATA_EXTERNAL, "SA_processed"),
+        "SA_raw" : os.path.join(DIR_DATA_EXTERNAL, "SA_raw"),
+        "samples" : os.path.join(DIR_DATA_EXTERNAL, "samples"),
+        "specs" : os.path.join(DIR_DATA_EXTERNAL, "device_specs"),
+        "tariffs" : os.path.join(DIR_DATA_EXTERNAL, "tariffs_json_2023-24"),
+        "gas" : os.path.join(DIR_DATA_EXTERNAL, "tariffs_gas"),
+        "control" : os.path.join(DIR_DATA_EXTERNAL, "control"),
+        "weather" : os.path.join(DIR_DATA_EXTERNAL, "weather"),
         }
     DIR_RESULTS = os.path.join(DIR_MAIN, "results")
     DIR_PROJECTS = os.path.join(DIR_MAIN, "projects")
