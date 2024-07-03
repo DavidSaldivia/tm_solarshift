@@ -117,7 +117,7 @@ def economics_analysis(
     
     STEP_h = sim.thermal_sim.STEP.get_value("hr")
 
-    out_all_idx = pd.to_datetime(out_all.index)
+    hour = pd.to_datetime(out_all.index).hour.astype(float)
 
     if sim.DEWH.label == "solar_thermal":
         heater_power = out_all["heater_power_no_solar"]
@@ -130,7 +130,7 @@ def economics_analysis(
 
     solar_ratio_potential = (
         heater_power[
-            (out_all_idx.hour >= 8.75) & (out_all_idx.hour <= 17.01)
+            (hour >= 8.75) & (hour <= 17.01)
         ].sum()
         / heater_power_sum
     )
@@ -250,7 +250,8 @@ def events_simulation(
         ["m_HWD_day", "temp_amb", "temp_mains"]
     ].mean()
     idx = np.unique(idx.date)
-    df_aux = out_data.groupby(out_data.index.date)
+    out_data_idx = pd.to_datetime(out_data.index)
+    df_aux = out_data.groupby(out_data_idx.date)
     df.loc[df.index == idx, "SOC_end"] = df_aux.tail(1)["SOC"].values
     df.loc[df.index == idx,"temp_tstat_end"] = df_aux.tail(1)["TempBottom"].values
     df.loc[df.index == idx,"EL_end"] = df_aux.tail(1)["E_Level"].values
@@ -259,7 +260,7 @@ def events_simulation(
         (out_data["tank_flow_rate"] * STEP_h * cp
          * (out_data["temp_top"] - out_data["temp_mains"])
          * CF("J", "kWh")
-         ).groupby(out_data.index.date)
+         ).groupby(out_data_idx.date)
         .sum()
     )
     df.loc[df.index == idx, "E_HWD_day"] = E_HWD_acum
@@ -277,6 +278,7 @@ def detailed_plots(
     showfig: bool = True,
 ):
 
+    out_all_idx = pd.to_datetime(out_all.index)
     ### Temperatures and SOC
     fig, ax = plt.subplots(figsize=(9, 6))
     fs = 16
@@ -322,9 +324,9 @@ def detailed_plots(
     fs = 16
     ax2 = ax.twinx()
     aux = (
-        (out_all.index.dayofyear - 1) * CF("d", "hr")
-        + out_all.index.hour
-        + out_all.index.minute * CF("min", "hr")
+        (out_all_idx.dayofyear - 1) * CF("d", "hr")
+        + out_all_idx.hour
+        + out_all_idx.minute * CF("min", "hr")
     )
 
     # ax.plot( aux, out_all.PVPower/W_TO_kJh, label='E_PV', c='C0',ls='-',lw=2)

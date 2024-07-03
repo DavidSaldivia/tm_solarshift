@@ -17,9 +17,11 @@ from tm_solarshift.utils.units import (
     conversion_factor as CF,
     Variable
 )
-from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
-from tm_solarshift.models.gas_heater import ( GasHeaterInstantaneous, GasHeaterStorage)
-from tm_solarshift.models.solar_thermal import  SolarThermalElecAuxiliary
+from tm_solarshift.models.resistive_single import ResistiveSingle
+from tm_solarshift.models.heat_pump import HeatPump
+from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
+from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
+
 
 #-----------------------------
 # Constants for this module

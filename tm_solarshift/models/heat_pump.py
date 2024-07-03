@@ -19,12 +19,12 @@ class HeatPump(HWTank):
     def __init__(self):
 
         # description
+        super().__init__()
         self.name = "Heat Pump, external heat exchanger with thermostat."
         self.label = "heat_pump"
         self.model = "-"
         self.cost = Variable(np.nan, "AUD")
-
-
+        
         # heater
         self.nom_power_th = Variable(5240.0, "W")
         self.nom_power_el = Variable(870.0, "W")
@@ -32,7 +32,6 @@ class HeatPump(HWTank):
         self.nom_tamb = Variable(32.6, "degC")
         self.nom_tw = Variable(21.1, "degC")
 
-        super().__init__()
         # tank
     #     self.vol = Variable(0.315,"m3")
     #     self.height = Variable(1.45, "m")  # It says 1.640 in specs, but it is external height, not internal
@@ -83,7 +82,7 @@ class HeatPump(HWTank):
                 value = float(value)
             except:
                 pass          
-            setattr(output, lbl, Variable(value, unit) )
+            setattr(output, str(lbl), Variable(value, unit) )
         return output
     
     

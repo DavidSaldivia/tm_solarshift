@@ -9,6 +9,11 @@ FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 
 class HWTank():
     def __init__(self):
+        self.label = "hwtank"
+        self.nom_power = Variable(None, "W")
+        self.nom_power_th = Variable(None, "W")
+        self.eta = Variable(None, "-")
+
         # tank geometry and losses
         self.vol = Variable(0.315,"m3")
         self.height = Variable(1.45, "m")  # It says 1.640 in specs, but it is external height, not internal
@@ -27,19 +32,19 @@ class HWTank():
         self.temp_max = Variable(65.0, "degC")  #Maximum temperature in the tank
         self.temp_deadband = Variable(10.0, "degC") # Dead band for max temp control
         self.temp_min = Variable(45.0, "degC")  # Minimum temperature in the tank
-        # self.temp_consump = Variable(45.0, "degC") #Consumption temperature
+        self.temp_consump = Variable(45.0, "degC") #Consumption temperature
     
     @property
-    def tank_thermal_cap(self) -> Variable:
+    def thermal_cap(self) -> Variable:
         return tank_thermal_capacity(self)
     @property
-    def tank_diam(self) -> Variable:
+    def diam(self) -> Variable:
         return tank_diameter(self)
     @property
-    def tank_area_loss(self) -> Variable:
+    def area_loss(self) -> Variable:
         return tank_area_loss(self)
     @property
-    def tank_temp_high_control(self) -> Variable:
+    def temp_high_control(self) -> Variable:
         return tank_temp_high_control(self)
 
 
@@ -59,7 +64,7 @@ def tank_diameter(tank: HWTank) -> Variable:
     return Variable( diam , "m" )
 
 def tank_area_loss(tank: HWTank) -> Variable:
-    diam = tank.tank_diam.get_value("m")
+    diam = tank.diam.get_value("m")
     height = tank.height.get_value("m")
     area_loss = np.pi * diam * (diam / 2 + height)
     return Variable( area_loss, "m2" ) 

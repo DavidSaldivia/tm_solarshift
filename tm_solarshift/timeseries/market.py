@@ -127,8 +127,7 @@ def load_household_gas_rate(
     #importing data from heater
     nom_power = heater.nom_power.get_value("MJ/hr")
     flow_water = heater.flow_water.get_value("L/min")
-    specific_energy = (nom_power / flow_water * CF("min", "hr")) #[MJ/L]
-
+    specific_energy = (nom_power / flow_water * CF("min", "hr"))        #[MJ/L]
 
     #getting the tariff
     ts2 = ts.copy()

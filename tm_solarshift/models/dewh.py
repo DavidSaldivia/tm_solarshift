@@ -1,8 +1,8 @@
 from __future__ import annotations
-import numpy as np
 import pandas as pd
 from typing import Protocol, Self
-from tm_solarshift.utils.units import (Variable, Water)
+
+from tm_solarshift.utils.units import Variable, Water
 
 # Protocols for DEWH
 class DEWH(Protocol):
@@ -12,8 +12,10 @@ class DEWH(Protocol):
     def run_thermal_model(self, ts: pd.DataFrame, verbose: bool) -> pd.DataFrame:
         ...
 
+
 # # Protocols for DEWH
-# class HWTank(Protocol):
+# class TrnsysCompatibleDEWH(Protocol):
+#     label: str
 #     vol: Variable
 #     height: Variable
 #     height_inlet: Variable

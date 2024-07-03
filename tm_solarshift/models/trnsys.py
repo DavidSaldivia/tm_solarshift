@@ -12,13 +12,12 @@ from tm_solarshift.constants import (DIRECTORY, SIMULATIONS_IO)
 from tm_solarshift.utils.units import (Variable, conversion_factor as CF)
 
 if TYPE_CHECKING:
-    from tm_solarshift.general import Simulation
-    from tm_solarshift.utils.location import Location
-    from tm_solarshift.models.resistive_single import ResistiveSingle
-    from tm_solarshift.models.heat_pump import HeatPump
-    from tm_solarshift.models.gas_heater import GasHeaterStorage
-    from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
-    Heater: TypeAlias = ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
+    from tm_solarshift.models.hw_tank import HWTank
+    # from tm_solarshift.models.resistive_single import ResistiveSingle
+    # from tm_solarshift.models.heat_pump import HeatPump
+    # from tm_solarshift.models.gas_heater import GasHeaterStorage
+    # from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
+    # Heater: TypeAlias = ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
 
 # constants
 DIR_DATA = DIRECTORY.DIR_DATA
@@ -29,12 +28,6 @@ DEFAULT_HEATER_DATA = {
     "heat_pump": os.path.join(DIR_DATA["specs"],"HP_data_reclaim.dat"),
     "solar_thermal": os.path.join(DIR_DATA["specs"],"STC_data_ones.dat"),
 }
-# FILES_TRNSYS_OUTPUT = {
-#     "RESULTS_DETAILED" : "TRNSYS_out_detailed.dat",
-#     "RESULTS_TANK": "TRNSYS_out_tank_temps.dat",
-#     "RESULTS_SIGNAL": "TRNSYS_out_control.dat",
-# }
-
 
 #------------------------------
 # layout_DEWH: Type of DEWH.
@@ -52,18 +45,21 @@ class TrnsysDEWH():
 
     def __init__(
             self,
-            DEWH: Heater,
+            DEWH: HWTank,
             ts: pd.DataFrame,
         ):
     
         self.DEWH = DEWH
         self.ts = ts
-        ts_idex = pd.to_datetime(ts.index)
+        freq = pd.to_datetime(ts.index).freq
+        if freq is None:
+            raise IndexError("timeseries ts has not proper index")
+
         self.START = Variable(0, "hr")
-        self.STEP = Variable(ts_idex.freq.n, "min")
+        self.STEP = Variable(freq.n, "min")
         self.STOP = Variable( int(len(ts) * self.STEP.get_value("hr")) ,"hr" )
 
-        # layout   
+        # layout
         self.layout_v = 1
         if DEWH.label in ["resistive", "gas_storage"]:
             self.layout_DEWH = "RS"
@@ -137,7 +133,7 @@ class TrnsysDEWH():
     
 
     #------------------------------
-    def postprocessing(self)-> pd.DataFrame:
+    def postprocessing(self) -> pd.DataFrame:
 
         tempDir = self.tempDir
         idx = self.ts.index

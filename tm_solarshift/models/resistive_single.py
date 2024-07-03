@@ -4,19 +4,14 @@ import pandas as pd
 
 from tm_solarshift.constants import DIRECTORY
 from tm_solarshift.utils.units import (Variable, Water)
-from tm_solarshift.models.hw_tank import (
-    HWTank,
-    tank_thermal_capacity,
-    tank_diameter,
-    tank_area_loss,
-    tank_temp_high_control
-    )
+from tm_solarshift.models.hw_tank import HWTank
 
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 
 class ResistiveSingle(HWTank):
     def __init__(self):
 
+        super().__init__()
         # description
         self.name = "Conventional resistive immersive heater (single unit)."
         self.label = "resistive"
@@ -28,7 +23,6 @@ class ResistiveSingle(HWTank):
         self.nom_power = Variable(3600.0, "W")
         self.eta = Variable(1.0, "-")
 
-        super().__init__()
 
         # # tank geometry and losses
         # self.vol = Variable(0.315,"m3")
@@ -82,7 +76,7 @@ class ResistiveSingle(HWTank):
                 value = float(value)
             except:
                 pass          
-            setattr(output, lbl, Variable(value, unit) )
+            setattr(output, str(lbl), Variable(value, unit) )
 
         return output
     

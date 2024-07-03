@@ -67,17 +67,17 @@ class GasHeaterInstantaneous():
         ):
         
         df = pd.read_csv(file_path, index_col=0)
-        specs = df.loc[model]
-        units = df.loc["units"]
+        specs = pd.Series(df.loc[model])
+        units = pd.Series(df.loc["units"])
         
         output = cls()
         for (lbl,value) in specs.items():
-            unit = units[lbl]
+            unit = units[str(lbl)]
             try:
                 value = float(value)
             except:
-                pass          
-            setattr(output, lbl, Variable(value, unit) )
+                pass    
+            setattr(output, str(lbl), Variable(value, unit) )
         return output
     
     def run_thermal_model(
@@ -86,13 +86,16 @@ class GasHeaterInstantaneous():
         verbose: bool = False,
     ) -> tuple[pd.DataFrame, dict[str, float]]:
         
+        ts_index = pd.to_datetime(ts.index)
+        DAYS = len(np.unique(ts_index.date))
+        freq = ts_index.freq
+        if freq is None:
+            raise IndexError("timeseries ts has no proper Index")
+        STEP_h = freq.n * CF("min", "hr")
+
         hw_flow = ts["m_HWD"]
         temp_amb_avg = ts["temp_amb"].mean()
         temp_mains_avg = ts["temp_mains"].mean()
-
-        ts_index = pd.to_datetime(ts.index)
-        DAYS = len(np.unique(ts_index.date))
-        STEP_h = ts_index.freq.n * CF("min", "hr")
 
         kgCO2_TO_kgCH4 = 44. / 16.
 
@@ -226,7 +229,7 @@ class GasHeaterStorage():
                 value = float(value)
             except:
                 pass          
-            setattr(output, lbl, Variable(value, unit) )
+            setattr(output, str(lbl), Variable(value, unit) )
         return output
     
     @property

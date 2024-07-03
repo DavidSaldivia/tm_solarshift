@@ -68,15 +68,15 @@ class SolarThermalElecAuxiliary():
     
     @property
     def thermal_cap(self):
-        from tm_solarshift.models.dewh import tank_thermal_capacity
+        from tm_solarshift.models.hw_tank import tank_thermal_capacity
         return tank_thermal_capacity(self)
     @property
     def diam(self):
-        from tm_solarshift.models.dewh import tank_diameter
+        from tm_solarshift.models.hw_tank import tank_diameter
         return tank_diameter(self)
     @property
     def area_loss(self):
-        from tm_solarshift.models.dewh import tank_area_loss
+        from tm_solarshift.models.hw_tank import tank_area_loss
         return tank_area_loss(self)
 
     @classmethod
@@ -92,12 +92,12 @@ class SolarThermalElecAuxiliary():
         
         output = cls()
         for (lbl,value) in specs.items():
-            unit = units[lbl]
+            unit = units[str(lbl)]
             try:
                 value = float(value)
             except:
                 pass
-            setattr(output, lbl, Variable(value, unit) )
+            setattr(output, str(lbl), Variable(value, unit) )
         return output
     
     def run_thermal_model(
@@ -124,14 +124,13 @@ class SolarThermalElecAuxiliary():
                       "heater_perf", "solar_energy_u",
                       "SOC",
                       ]
-        COLS_OUT = []
-        COLS = COLS_IN + COLS_MODEL + COLS_OUT
+        COLS = COLS_IN + COLS_MODEL
         df_tm = pd.DataFrame(index=ts.index, columns = COLS)
         df_tm[COLS_IN] = ts[COLS_IN]
 
         #initial conditions
-        df_tm.iloc[0,"temp_stc_inlet"] = self.initial_conditions["temp_tank_bottom"]
-        df_tm.iloc[0,"temp_hw_outlet"] = self.initial_conditions["temp_tank_bottom"]
+        df_tm.loc[df_tm.index[0],"temp_stc_inlet"] = self.initial_conditions["temp_tank_bottom"]
+        df_tm.loc[df_tm.index[0],"temp_hw_outlet"] = self.initial_conditions["temp_tank_bottom"]
         
         # retrieving DEWH data
         massflowrate = self.massflowrate.get_value("kg/s")
@@ -261,6 +260,7 @@ def main():
     from tm_solarshift.general import Simulation
     sim = Simulation()
     sim.DEWH = SolarThermalElecAuxiliary()
+    df_tm = sim.DEWH.run_thermal_model(sim.create_ts())
 
     (df_tm, out_overall) = sim.run_thermal_simulation(verbose=True)
     pass

@@ -1,38 +1,40 @@
+import pytest
+from tm_solarshift.models.hw_tank import HWTank
+from tm_solarshift.models.dewh import DEWH
 from tm_solarshift.models.resistive_single import ResistiveSingle
+from tm_solarshift.models.heat_pump import HeatPump
+from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
+from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
+
 from tm_solarshift.utils.units import Variable
 
-def test_dewh_from_catalog():
-    
-    #assemble
-    heater = ResistiveSingle.from_model_file(model="491315")
-
+@pytest.mark.parametrize("heater_type, model", [
+    (ResistiveSingle, "491315"),
+    (GasHeaterInstantaneous, "874A26NF"),
+    (HeatPump, "REHP-CO2-315GL"),
+    (SolarThermalElecAuxiliary,"511325"),
+    (GasHeaterStorage,"347170N0"),
+])
+def test_dewh_from_catalog(heater_type: DEWH, model):
+    heater = heater_type.from_model_file(model=model)
     assert type(heater.vol) == Variable
-    assert type(heater.tank_thermal_cap) == Variable
+    assert type(heater.thermal_cap) == Variable
 
-    # print(heater.thermal_cap)
-    # print(heater.diam)
-    # print(heater.area_loss)
-    # print(heater.temp_high_control)
-    # print()
 
-    # #Example of Heat Pump technical information
-    # heater = HeatPump()
-    # print(heater.thermal_cap)
-    # print(heater.diam)
-    # print(heater.area_loss)
-    # print(heater.temp_high_control)
-    # print()
+@pytest.mark.parametrize("heater_type", [
+    ResistiveSingle, HeatPump,
+    GasHeaterStorage, SolarThermalElecAuxiliary, 
+])
+def test_dewh_check_model(heater_type: HWTank):
+    "this test check if the mode can be run"
+    from tempfile import TemporaryDirectory
+    from tm_solarshift.general import Simulation
+    from tm_solarshift.models.trnsys import TrnsysDEWH
 
-    # #Example of Gas Heater Instantenous
-    # from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
-    # heater = GasHeaterInstantaneous()
-    # print(heater.nom_power)
-    # print(heater.eta)
-    # print(heater.vol)
-    # print()
-
-    # #Example of Gas Heater Instantenous
-    # heater = GasHeaterStorage()
-    # print(heater.nom_power)
-    # print(heater.eta)
-    # print(heater.vol)
+    ts_empty = Simulation().create_ts_empty()
+    heater = heater_type()
+    trnsys_dewh = TrnsysDEWH(DEWH=heater, ts=ts_empty)
+    with TemporaryDirectory() as tmpdir:
+        trnsys_dewh.tempDir = tmpdir
+        trnsys_dewh.create_simulation_files()
+    assert True

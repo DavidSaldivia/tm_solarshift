@@ -177,7 +177,7 @@ def create_signal_series(
             )
 
         # Adding the randomization associated with the period
-        if random_ON:
+        if random_ON and sum(df_period["CS"]==1)>0:
             df_period["CS2"] = add_randomization_delay(
                 df_period,
                 random_delay_on=period["random_on"],
