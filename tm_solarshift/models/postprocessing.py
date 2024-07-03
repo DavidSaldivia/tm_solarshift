@@ -15,7 +15,8 @@ from tm_solarshift.analysis.finance import (
 
 if TYPE_CHECKING:
     from tm_solarshift.general import Simulation
-    from tm_solarshift.models.dewh import ( ResistiveSingle, HeatPump)
+    from tm_solarshift.models.resistive_single import ResistiveSingle
+    from tm_solarshift.models.heat_pump import HeatPump
     from tm_solarshift.models.gas_heater import GasHeaterStorage
     from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
     Heater: TypeAlias = ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary

@@ -177,7 +177,7 @@ class SolarThermalElecAuxiliary():
 
         #Running a trnsys simulation assuming all energy from resistive
         trnsys_dewh = trnsys.TrnsysDEWH(DEWH=self, ts=ts)
-        df_tm = trnsys_dewh.run_simulation(ts, verbose=verbose)
+        df_tm = trnsys_dewh.run_simulation(verbose=verbose)
 
         return df_tm
 
@@ -197,7 +197,7 @@ def run_thermal_model(
     from tm_solarshift.models import trnsys
     from tm_solarshift.models import postprocessing
     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=sim.DEWH, ts=ts)
-    df_tm = trnsys_dewh.run_simulation(ts, verbose=verbose)
+    df_tm = trnsys_dewh.run_simulation(verbose=verbose)
     out_th = postprocessing.thermal_analysis(sim, ts, df_tm)
 
     # this is the actual solar thermal model

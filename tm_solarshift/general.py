@@ -6,7 +6,8 @@ from tm_solarshift.constants import (DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import Variable
 
 from tm_solarshift.utils.location import Location
-from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
+from tm_solarshift.models.resistive_single import ResistiveSingle
+from tm_solarshift.models.heat_pump import HeatPump
 from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
 from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 from tm_solarshift.models.pv_system import PVSystem

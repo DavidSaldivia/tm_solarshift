@@ -9,6 +9,8 @@ from tm_solarshift.utils.units import (
     Water,
 )
 
+from tm_solarshift.models import hw_tank
+
 if TYPE_CHECKING:
     from tm_solarshift.general import Simulation
 
@@ -196,19 +198,13 @@ class GasHeaterStorage():
         self.temp_consump = Variable(45.0, "degC") #Consumption temperature
         self.temp_deadband = Variable(10, "degC")
 
-        #finance
-        self.cost = Variable(np.nan, "AUD")
-        self.model = "-"
-
     @property
-    def eta(self) -> Variable:
-        
+    def eta(self) -> Variable:        
         nom_power = self.nom_power.get_value("MJ/hr")
         deltaT_rise = self.deltaT_rise.get_value("dgrC")
         flow_w = self.flow_water.get_value("m3/s")
         cp_w = self.fluid.cp.get_value("J/kg-K")
         rho_w = self.fluid.rho.get_value("kg/m3")
-
         HW_energy = (flow_w * rho_w * cp_w) * deltaT_rise * CF("W", "MJ/hr")  #[MJ/hr]
         return Variable(HW_energy / nom_power, "-")
     
@@ -225,7 +221,7 @@ class GasHeaterStorage():
         
         output = cls()
         for (lbl,value) in specs.items():
-            unit = units[lbl]
+            unit = units[str(lbl)]
             try:
                 value = float(value)
             except:
@@ -235,16 +231,13 @@ class GasHeaterStorage():
     
     @property
     def thermal_cap(self):
-        from tm_solarshift.models.dewh import tank_thermal_capacity
-        return tank_thermal_capacity(self)
+        return hw_tank.tank_thermal_capacity(self)
     @property
     def diam(self):
-        from tm_solarshift.models.dewh import tank_diameter
-        return tank_diameter(self)
+        return hw_tank.tank_diameter(self)
     @property
     def area_loss(self):
-        from tm_solarshift.models.dewh import tank_area_loss
-        return tank_area_loss(self)
+        return hw_tank.tank_area_loss(self)
     
     # def run_thermal_model(
     #         self,
@@ -287,7 +280,7 @@ def storage_fixed_eta(
     eta = sim.DEWH.eta.get_value("-")
 
     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=DEWH, ts=ts)
-    df_tm = trnsys_dewh.run_simulation(ts, verbose=verbose)
+    df_tm = trnsys_dewh.run_simulation(verbose=verbose)
     out_overall = postprocessing.annual_postproc(sim, ts, df_tm)
     sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
 

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from tm_solarshift.models.dewh import ResistiveSingle
+from tm_solarshift.models.resistive_single import ResistiveSingle
 from tm_solarshift.utils.units import (Variable, conversion_factor as CF)
 
 def two_temps(
@@ -13,6 +13,7 @@ def two_temps(
         t_sim_max: Variable = Variable(1., "hr"),
         verbose: bool = True,
 ) -> pd.DataFrame:
+    
     #Inputs
     temp_amb = temp_amb.get_value("degC")
     temp_mains = temp_mains.get_value("degC")
