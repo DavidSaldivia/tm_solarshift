@@ -9,7 +9,7 @@ from tm_solarshift.utils.units import (
     Water,
 )
 
-from tm_solarshift.models import hw_tank
+from tm_solarshift.models.hw_tank import HWTank
 
 if TYPE_CHECKING:
     from tm_solarshift.general import Simulation
@@ -162,9 +162,10 @@ class GasHeaterInstantaneous():
         }
         return (out_all, out_overall)
 #-------------------------
-class GasHeaterStorage():
+class GasHeaterStorage(HWTank):
     def __init__(self):
-
+        
+        super().__init__()
         # description
         self.name = "Gas heater with storage tank."
         self.label = "gas_storage"
@@ -182,25 +183,6 @@ class GasHeaterStorage():
         self.deltaT_rise = Variable(25., "dgrC")
         self.heat_value = Variable(47.,"MJ/kg_gas")
 
-        # tank
-        self.vol = Variable(0.315,"m3")
-        self.height = Variable(1.45, "m")  # It says 1.640 in specs, but it is external height, not internal
-        self.height_inlet = Variable(0.113, "m")
-        self.height_outlet = Variable(1.317, "m")
-        self.height_heater = Variable(0.103, "m")
-        self.height_thermostat = Variable(0.103, "m")
-        self.U = Variable(0.9, "W/m2-K")
-        self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
-        self.temps_ini = 3  # [-] Initial temperature of the tank. Check editing_dck_tank() below for the options
-        self.fluid = Water()
-
-        # control
-        self.temp_max = Variable(63.0, "degC")  #Maximum temperature in the tank
-        self.temp_min = Variable(45.0,"degC")  # Minimum temperature in the tank
-        self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
-        self.temp_consump = Variable(45.0, "degC") #Consumption temperature
-        self.temp_deadband = Variable(10, "degC")
-
     @property
     def eta(self) -> Variable:        
         nom_power = self.nom_power.get_value("MJ/hr")
@@ -210,6 +192,8 @@ class GasHeaterStorage():
         rho_w = self.fluid.rho.get_value("kg/m3")
         HW_energy = (flow_w * rho_w * cp_w) * deltaT_rise * CF("W", "MJ/hr")  #[MJ/hr]
         return Variable(HW_energy / nom_power, "-")
+    @eta.setter
+    def eta(self, value): ...
     
     @classmethod
     def from_model_file(
@@ -217,7 +201,6 @@ class GasHeaterStorage():
         file_path: str = FILES_MODEL_SPECS["gas_storage"],
         model:str = "",
         ):
-        
         df = pd.read_csv(file_path, index_col=0)
         specs = pd.Series(df.loc[model])
         units = pd.Series(df.loc["units"])
@@ -231,16 +214,6 @@ class GasHeaterStorage():
                 pass          
             setattr(output, str(lbl), Variable(value, unit) )
         return output
-    
-    @property
-    def thermal_cap(self):
-        return hw_tank.tank_thermal_capacity(self)
-    @property
-    def diam(self):
-        return hw_tank.tank_diameter(self)
-    @property
-    def area_loss(self):
-        return hw_tank.tank_area_loss(self)
     
     # def run_thermal_model(
     #         self,

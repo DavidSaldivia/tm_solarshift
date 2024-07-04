@@ -2,6 +2,7 @@ import os
 import warnings
 import pandas as pd
 import numpy as np
+import typing
 from typing import Optional
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
@@ -217,6 +218,8 @@ class HWD():
             intraday_dist = self.profile_HWD
 
         idx = pd.to_datetime(timeseries.index)
+        if idx.freq is None:
+            raise IndexError("timeseries ts has not proper index")
         STEP_h = idx.freq.n * CF("min","hr")   # delta t in hours
         PERIODS = len(timeseries)              # Number of periods to simulate
 
@@ -256,7 +259,8 @@ class HWD():
         return timeseries
 
 
-    #-------------------
+    #!!! CORRECT TYPING
+    @typing.no_type_check
     def generator_events(
         self,
         timeseries: pd.DataFrame,
@@ -282,6 +286,8 @@ class HWD():
         if event_probs is None:
             event_probs = self.event_file(file_name=file_name, sheet_name=sheet_name)
 
+        if ts_index.freq is None:
+            raise IndexError("timeseries ts has not proper index")
         STEP = ts_index.freq.n
         STEP_h = STEP * CF("min","hr")
         list_dates = np.unique(ts_index.date)
