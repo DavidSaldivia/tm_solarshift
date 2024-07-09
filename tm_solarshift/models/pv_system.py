@@ -81,7 +81,7 @@ class PVSystem():
     
     def sim_generation(
             self,
-            ts: pd.DataFrame,
+            ts_wea: pd.DataFrame,
             unit: str = "kW",
             COLS_PV_SIM: list = ["poa_global", "temp_pv", "eta_rel", "pv_power"]
     ) -> pd.DataFrame:
@@ -95,15 +95,15 @@ class PVSystem():
         adr_params = self.adr_params
         G_STC = self.G_STC.get_value("W/m2")
 
-        temp_amb = ts["temp_amb"]
-        WS = ts["WS"]
+        temp_amb = ts_wea["temp_amb"]
+        WS = ts_wea["WS"]
 
         #result dataframe
-        df_pv = pd.DataFrame(index=ts.index, columns=COLS_PV_SIM)
+        df_pv = pd.DataFrame(index=ts_wea.index, columns=COLS_PV_SIM)
 
         # Estimating: radiation in pv plane, pv temp, relative efficiency, and module power
         df_pv["poa_global"] = solar.get_plane_irradiance(
-            ts=ts,
+            ts=ts_wea,
             latitude=latitude, longitude=longitude, tilt=tilt, orient=orient, tz=tz,
         )["poa_global"]
         df_pv["temp_pv"] = pvlib.temperature.faiman( df_pv["poa_global"], temp_amb, WS )

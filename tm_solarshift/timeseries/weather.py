@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import xarray as xr
 
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
 from tm_solarshift.constants import (
     DIRECTORY,
@@ -54,7 +54,7 @@ TYPES_SIMULATION = [
     "historical",               # Specific dates for a specific location (SolA, EE, EWS, etc).
     "constant_day",             # Constant values each day
     ]
-SIMS_PARAMS = {
+SIMS_PARAMS: dict[str, dict[str,Any]] = {
     "tmy": {
         "dataset": ['METEONORM',],
         "location": LOCATIONS_METEONORM,
@@ -93,8 +93,10 @@ def load_day_constant_random(
 ) -> pd.DataFrame:
     
     if seed_id is None:
-        seed_id = np.random.SeedSequence().entropy
-    rng = np.random.default_rng(seed_id)
+        seed = np.random.SeedSequence().entropy
+    else:
+        seed = seed_id
+    rng = np.random.default_rng(seed)
     
     idx = pd.to_datetime(timeseries.index)
     dates = np.unique(idx.date)
@@ -118,7 +120,7 @@ def load_day_constant_random(
 def random_days_from_dataframe(
     timeseries: pd.DataFrame,
     df_sample: pd.DataFrame,
-    seed_id: int = np.random.SeedSequence().entropy,
+    seed_id: Optional[int] = None,
     columns: Optional[list[str]] = TS_WEATHER,
 ) -> pd.DataFrame :
     """
@@ -141,8 +143,11 @@ def random_days_from_dataframe(
     timeseries.
 
     """
-
-    rng = np.random.default_rng(seed_id)
+    if seed_id is None:
+        seed = np.random.SeedSequence().entropy
+    else:
+        seed = seed_id
+    rng = np.random.default_rng(seed)
 
     df_sample_new = df_sample.copy()
     df_sample_idx = pd.to_datetime(df_sample_new.index)
@@ -242,7 +247,7 @@ def from_file(
             ]  
     elif subset_random == 'date':
         set_days = set_days[
-            set_days.index.date==subset_value.date()
+            set_days.index.date==pd.to_datetime(subset_value).date()
             ]  
     
     if subset_random is None:
@@ -307,7 +312,7 @@ def load_dataset_meteonorm(
 #-----------------
 def load_dataset_merra2(
         ts: pd.DataFrame,
-        location: Location,
+        location: Location | str | tuple | int,
         YEAR: int,
         STEP:int = 5,
         file_dataset:str = FILES_WEATHER["MERRA2"],
@@ -320,6 +325,8 @@ def load_dataset_merra2(
         (lon,lat) = (loc.lon, loc.lat)
     elif type(location) == tuple: #(longitude, latitude) tuple
         (lon,lat) = (location)
+    elif type(location) == Location:
+        (lon,lat) = (location.lon, location.lat)
 
     data_weather = xr.open_dataset(file_dataset)
     lons = np.array(data_weather.lon)
@@ -395,35 +402,36 @@ def load_historical(
     ts: pd.DataFrame,
     params: dict,
     columns: Optional[list[str]] = TS_WEATHER,
-) -> None:
-    pass
-    return None
+) -> pd.DataFrame:
+    file_path = params["file_path"]
+    ts_ = pd.read_csv(file_path, index_col=0)
+    ts_.index = pd.to_datetime(ts.index)
+    return ts_
 
 #----------
 def load_weather_data(
-        ts: pd.DataFrame,
+        ts: pd.DataFrame | pd.DatetimeIndex,
         type_sim: str,
         params: dict = {},
         columns: Optional[list[str]] = TS_WEATHER,
 ) -> pd.DataFrame:
     
-    #Checking
-    if type_sim in TYPES_SIMULATION:
+    if isinstance(ts, pd.DatetimeIndex):
+        ts_ = pd.DataFrame(index = ts, columns = columns)
+    else:
+        ts_ = ts.copy()
+
+    if type_sim == "tmy":
         pass #Check if minimum params are in kwargs.
+        df_weather = load_tmy(ts_, params, columns)
+    elif type_sim == "mc":
+        df_weather = load_montecarlo(ts_, params, columns)
+    elif type_sim == "historical":
+        df_weather = load_historical(ts_, params, columns)
+    elif type_sim == "constant_day":
+        df_weather = load_day_constant_random(ts_)
     else:
         raise ValueError(f"{type_sim} not in {TYPES_SIMULATION}")
-    
-    if type_sim == "tmy":
-        df_weather = load_tmy(ts, params, columns)
-    
-    if type_sim == "mc":
-        df_weather = load_montecarlo(ts, params, columns)
-
-    if type_sim == "historical":
-        df_weather = load_historical(ts, params, columns)
-
-    if type_sim == "constant_day":
-        df_weather = load_day_constant_random(ts)
     
     return df_weather
 

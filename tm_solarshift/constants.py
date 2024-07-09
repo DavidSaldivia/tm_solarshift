@@ -21,7 +21,7 @@ class DIRECTORY():
         "SA_raw" : os.path.join(DIR_DATA_EXTERNAL, "SA_raw"),
         "samples" : os.path.join(DIR_DATA_EXTERNAL, "samples"),
         "specs" : os.path.join(DIR_DATA_EXTERNAL, "device_specs"),
-        "tariffs" : os.path.join(DIR_DATA_EXTERNAL, "tariffs_json_2023-24"),
+        "tariffs" : os.path.join(DIR_DATA_EXTERNAL, "tariffs"),
         "gas" : os.path.join(DIR_DATA_EXTERNAL, "tariffs_gas"),
         "control" : os.path.join(DIR_DATA_EXTERNAL, "control"),
         "weather" : os.path.join(DIR_DATA_EXTERNAL, "weather"),
@@ -106,8 +106,8 @@ class SIMULATIONS_IO():
     ]
 
     TS_TYPES_TM = ["weather", "control", "HWDP"]    # ts columns for thermal sims
-    TS_TYPES_PV = ["weather", "electric"]           # ts columns for PV sim
-    TS_TYPES_ECO = ["weather", "electric"]          # ts columns for ECO postproc
+    TS_TYPES_PV = ["weather", "electric"]                   # ts columns for PV sim
+    TS_TYPES_ECO = ["weather", "economic", "emissions"]     # ts columns for ECO postproc
 
     PARAMS_OUT = [
         'heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
@@ -117,8 +117,8 @@ class SIMULATIONS_IO():
         'emissions_total', 'emissions_marginal', 'solar_ratio',
     ]
     OUTPUT_SIM_PV = [
-        'PV_gen',                # PVPower in trnsys. CHANGE!
-        'PV_to_HW',              # PV4HW in trnsys.   CHANGE!
+        'PV_gen',
+        'PV_to_HW',
     ]
     OUTPUT_SIM_DEWH = [
         'heater_heat',

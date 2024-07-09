@@ -75,26 +75,9 @@ def tank_temp_high_control(tank: HWTank) -> Variable:
     temp_high_control = temp_max - temp_deadband / 2.0
     return Variable(temp_high_control, "degC")
 
-class Control():
-    def __init__(self):
-        self.temp_max = Variable(65.0, "degC")  #Maximum temperature in the tank
-        self.temp_deadband = Variable(10.0, "degC") # Dead band for max temp control
-        self.temp_min = Variable(45.0, "degC")  # Minimum temperature in the tank
-        self.temp_consump = Variable(45.0, "degC") #Consumption temperature
-
-
-class Resistive(HWTank):
-    def __init__(self):
-        super().__init__()
-        self.name = "resistive"
-        self.label = "resistive"
-        self.model = "-"
-        self.cost = Variable(np.nan, "AUD")
-
-
-if __name__ == "__main__":
-    heater = Resistive()
-    print(heater.vol)
-    print(heater.temp_consump)
-    pass
-
+# class Control():
+#     def __init__(self):
+#         self.temp_max = Variable(65.0, "degC")  #Maximum temperature in the tank
+#         self.temp_deadband = Variable(10.0, "degC") # Dead band for max temp control
+#         self.temp_min = Variable(45.0, "degC")  # Minimum temperature in the tank
+#         self.temp_consump = Variable(45.0, "degC") #Consumption temperature

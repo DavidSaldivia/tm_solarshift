@@ -266,5 +266,4 @@ def storage_fixed_eta(
     out_overall["emissions_total"] = emissions_total
     out_overall["emissions_marginal"] = emissions_marginal
     out_overall["solar_ratio"] = 0.0
-
     return (df_tm, out_overall)

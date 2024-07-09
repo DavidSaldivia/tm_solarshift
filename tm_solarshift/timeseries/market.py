@@ -150,7 +150,7 @@ def load_household_gas_rate(
 # emissions
 def load_emission_index_year(
         timeseries: pd.DataFrame,
-        location: str = "Sydney",
+        location: str|Location = "Sydney",
         index_type: str = "total",
         year: int = 2022,
         ) -> pd.DataFrame:
@@ -161,8 +161,8 @@ def load_emission_index_year(
         location = list(loc_st.keys())[list(loc_st.values()).index(state)]
     
     columns = {
-        "total": "Intensity_Index",
-        "marginal": "Marginal_Index",
+        "total": "intensity_index",
+        "marginal": "marginal_index",
         # "both": PROFILES.TYPES["emissions"]   #Not working well yet
         }[index_type]
     
@@ -170,10 +170,11 @@ def load_emission_index_year(
         FILES["EMISSIONS_TEMPLATE"].format(year, index_type), index_col=0,
     )
     emissions.index = pd.to_datetime(emissions.index)
+    emissions.columns = [x.lower() for x in emissions.columns]
 
     STEP = pd.to_datetime(timeseries.index).freq.n
     timeseries[columns] = emissions[
-        emissions["Region"] == DEFINITIONS.LOCATIONS_NEM_REGION[location]
+        emissions["region"] == DEFINITIONS.LOCATIONS_NEM_REGION[location]
         ][columns].resample(
             f"{STEP}min"
         ).interpolate('linear')
@@ -199,7 +200,7 @@ def load_wholesale_prices(
         nem_region = DEFINITIONS.STATES_NEM_REGION[location.state]
 
     STEP = pd.to_datetime(timeseries.index).freq.n
-    timeseries["Wholesale_Market"] = df_SP[
+    timeseries["wholesale_market"] = df_SP[
         nem_region
         ].resample(
             f"{STEP}min"

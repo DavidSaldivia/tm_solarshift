@@ -13,6 +13,7 @@ TS_TYPES = SIMULATIONS_IO.TS_TYPES
 COLS_CONTROL = TS_TYPES["control"]
 CONTROL_TYPES = DEFINITIONS.CONTROL_TYPES
 DIR_CONTROL = DIRECTORY.DIR_DATA["control"]
+
 #-------------
 def load_schedule(
     ts: pd.DataFrame,
@@ -499,6 +500,7 @@ def load_control_signal(
     match control_type:
         case "GS" | "CL1" | "CL2" | "CL3" | "timer_SS" | "timer_OP":
             periods = periods_from_json(control_type=control_type)
+
         case "diverter" | "timer":
             periods = [
                 period_custom(
