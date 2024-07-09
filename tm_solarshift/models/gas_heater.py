@@ -9,7 +9,7 @@ from tm_solarshift.utils.units import (
     Water,
 )
 
-from tm_solarshift.models.hw_tank import HWTank
+from tm_solarshift.models.dewh import HWTank
 
 if TYPE_CHECKING:
     from tm_solarshift.general import Simulation
@@ -161,7 +161,8 @@ class GasHeaterInstantaneous():
             "SOC_050": np.nan,
         }
         return (out_all, out_overall)
-#-------------------------
+    
+
 class GasHeaterStorage(HWTank):
     def __init__(self):
         
@@ -215,31 +216,15 @@ class GasHeaterStorage(HWTank):
             setattr(output, str(lbl), Variable(value, unit) )
         return output
     
-    # def run_thermal_model(
-    #         self,
-    #         ts: pd.DataFrame,
-    #         verbose: bool = False,
-    # ) -> tuple[pd.DataFrame,dict[str, float]]:
-        
-    #     from tm_solarshift.models import (trnsys, postprocessing)
-    #     kgCO2_TO_kgCH4 = 44./16.
-    #     heat_value = self.heat_value.get_value("MJ/kg_gas")
-    #     eta = self.eta.get_value("-")
-
-    #     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=self, ts=ts)
-    #     df_tm = trnsys_dewh.run_simulation(ts, verbose=verbose)
-
-    #     # out_overall = postprocessing.annual_postproc(sim, ts, out_all)
-    #     # sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta )             #[kg_CO2/kWh_thermal]
-
-    #     # emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
-    #     # emissions_marginal = emissions_total
-        
-    #     # out_overall["emissions_total"] = emissions_total
-    #     # out_overall["emissions_marginal"] = emissions_marginal
-    #     # out_overall["solar_ratio"] = 0.0
-
-    #     return df_tm
+    def run_thermal_model(
+            self,
+            ts: pd.DataFrame,
+            verbose: bool = False,
+    ) -> pd.DataFrame:
+        from tm_solarshift.models import (trnsys, postprocessing)
+        trnsys_dewh = trnsys.TrnsysDEWH(DEWH=self, ts=ts)
+        df_tm = trnsys_dewh.run_simulation(verbose=verbose)
+        return df_tm
 
 
 #--------------------------------
@@ -257,7 +242,7 @@ def storage_fixed_eta(
 
     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=DEWH, ts=ts)
     df_tm = trnsys_dewh.run_simulation(verbose=verbose)
-    out_overall = postprocessing.annual_postproc(sim, ts, df_tm)
+    out_overall = postprocessing.thermal_analysis(sim, ts, df_tm)
     sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
 
     emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]

@@ -17,8 +17,7 @@ from tm_solarshift.utils.units import (
     conversion_factor as CF,
     Variable
 )
-from tm_solarshift.models.resistive_single import ResistiveSingle
-from tm_solarshift.models.heat_pump import HeatPump
+from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
 from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
 from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 
@@ -307,7 +306,7 @@ def calculate_household_energy_cost(
         ) -> float:
 
     control_type = sim.household.control_type
-    STEP_h = sim.thermal_sim.STEP.get_value("hr")
+    STEP_h = sim.time_params.STEP.get_value("hr")
     if ts is None:
         ts = sim.create_ts()
     if df_tm is None:
@@ -346,7 +345,7 @@ def calculate_wholesale_energy_cost(
         df_tm: Optional[pd.DataFrame] = None,
         ) -> float:
     
-    STEP_h = sim.thermal_sim.STEP.get_value("hr")
+    STEP_h = sim.time_params.STEP.get_value("hr")
 
     if ts is None:
         ts = sim.create_ts()
@@ -367,7 +366,7 @@ def calculate_annual_bill(
     
     # calculate annual energy cost
     energy_cost = calculate_household_energy_cost(sim, ts, out_all)
-    DAYS = sim.thermal_sim.DAYS.get_value("d")
+    DAYS = sim.time_params.DAYS.get_value("d")
     
     #BUG ADD DAILY CHARGE PROPERLY
     suply_charge = {

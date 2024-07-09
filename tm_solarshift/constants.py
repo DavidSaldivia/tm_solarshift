@@ -109,17 +109,25 @@ class SIMULATIONS_IO():
     TS_TYPES_PV = ["weather", "electric"]                   # ts columns for PV sim
     TS_TYPES_ECO = ["weather", "economic", "emissions"]     # ts columns for ECO postproc
 
-    PARAMS_OUT = [
-        'heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
-        'E_HWD_acum', 'eta_stg', 'cycles_day', 'SOC_avg',
-        'm_HWD_avg', 'temp_amb_avg', 'temp_mains_avg',
-        'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
-        'emissions_total', 'emissions_marginal', 'solar_ratio',
-    ]
+    # PARAMS_OUT = [
+    #     'heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
+    #     'E_HWD_acum', 'eta_stg', 'cycles_day', 'SOC_avg',
+    #     'm_HWD_avg', 'temp_amb_avg', 'temp_mains_avg',
+    #     'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
+    #     'emissions_total', 'emissions_marginal', 'solar_ratio',
+    # ]
     OUTPUT_SIM_PV = [
-        'PV_gen',
-        'PV_to_HW',
+        "poa_global",
+        "temp_pv",
+        "eta_rel",
+        "pv_power"
     ]
+    OUTPUT_CONTROL = [
+        "CS",
+        "pv_to_hw",
+        "CS_nopv",
+    ]
+
     OUTPUT_SIM_DEWH = [
         'heater_heat',
         'heater_power',

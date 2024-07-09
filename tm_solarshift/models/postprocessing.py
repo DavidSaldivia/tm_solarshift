@@ -51,20 +51,20 @@ def annual_postproc(
 def thermal_analysis(
         sim: Simulation,
         ts: pd.DataFrame,
-        out_all: pd.DataFrame
+        df_tm: pd.DataFrame
 ) -> dict[str, float]:
     
-    STEP_h = sim.thermal_sim.STEP.get_value("hr")
-    DAYS = sim.thermal_sim.DAYS.get_value("d")
+    STEP_h = sim.time_params.STEP.get_value("hr")
+    DAYS = sim.time_params.DAYS.get_value("d")
     thermal_cap = sim.DEWH.thermal_cap.get_value("kWh")
     cp = sim.DEWH.fluid.cp.get_value("J/kg-K")
 
-    heater_heat = out_all["heater_heat"]
-    heater_power = out_all["heater_power"]
-    tank_flowrate = out_all["tank_flow_rate"]
-    temp_out = out_all["tank_temp_out"]
-    temp_mains = out_all["temp_mains"]
-    SOC = out_all["SOC"]
+    heater_heat = df_tm["heater_heat"]
+    heater_power = df_tm["heater_power"]
+    tank_flowrate = df_tm["tank_flow_rate"]
+    temp_out = df_tm["tank_temp_out"]
+    temp_mains = df_tm["temp_mains"]
+    SOC = df_tm["SOC"]
 
     # Calculating overall parameters
     # Accumulated energy values (all in [kWh])
@@ -112,21 +112,23 @@ def thermal_analysis(
 def economics_analysis(
         sim: Simulation,
         ts: pd.DataFrame,
-        out_all: pd.DataFrame
+        df_tm: pd.DataFrame
 ) -> dict[str, float]:
     
-    STEP_h = sim.thermal_sim.STEP.get_value("hr")
+    STEP_h = sim.time_params.STEP.get_value("hr")
+    DEWH = sim.DEWH
 
-    hour = pd.to_datetime(out_all.index).hour.astype(float)
+    hour = pd.to_datetime(df_tm.index).hour.astype(float)
 
-    if sim.DEWH.label == "solar_thermal":
-        heater_power = out_all["heater_power_no_solar"]
+    if DEWH.label == "solar_thermal":
+        heater_power = df_tm["heater_power_no_solar"]
     else:
-        heater_power = out_all["heater_power"]
-        
+        heater_power = df_tm["heater_power"]
     heater_power_sum = heater_power.sum()
     if heater_power_sum <= 0.0:
         heater_power_sum = np.nan
+    
+    heater_heat_acum = ( df_tm["heater_heat"] * STEP_h  * CF("kJ/h", "kW") ).sum()
 
     solar_ratio_potential = (
         heater_power[
@@ -134,22 +136,30 @@ def economics_analysis(
         ].sum()
         / heater_power_sum
     )
-    solar_ratio_real = np.nan   #Not implemented yet. It should calculate as
+    solar_ratio_real = np.nan   #Not implemented yet. It should calculate it with the pv results
 
-    emissions_total = (
-        (heater_power * CF("kJ/h", "MW")) * STEP_h
-        * ts["intensity_index"]
-        ).sum()
-    emissions_marginal = (
-        (heater_power * CF("kJ/h", "MW")) * STEP_h
-        * ts["marginal_index"]
-        ).sum()
+    if DEWH.label in ["resistive", "heat_pump", "solar_thermal"]:
+        emissions_total = (
+            (heater_power * CF("kJ/h", "MW")) * STEP_h * ts["intensity_index"]
+            ).sum()
+        emissions_marginal = (
+            (heater_power * CF("kJ/h", "MW")) * STEP_h * ts["marginal_index"]
+            ).sum()
+        
+    elif DEWH.label in ["gas_instant", "gas_storage"]:
+        kgCO2_TO_kgCH4 = 44. / 16.                          #assuming pure methane for gas
+        heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
+        eta = sim.DEWH.eta.get_value("-")
+        sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
+        emissions_total = heater_heat_acum * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
+        emissions_marginal = emissions_total
+
     
     annual_hw_household_cost = calculate_household_energy_cost(
-        sim, ts, out_all,
+        sim, ts, df_tm,
     )
     annual_hw_retailer_cost = calculate_wholesale_energy_cost(
-        sim, ts, out_all
+        sim, ts, df_tm
     )
 
     out_overall_econ = {key:np.nan for key in OUTPUT_ANALYSIS_ECON}
@@ -162,78 +172,64 @@ def economics_analysis(
     return out_overall_econ
 
 #-------------------
-def thermal_postproc(
-        sim: Simulation,
-        ts: pd.DataFrame,
-        out_all: pd.DataFrame
-) -> dict[str, float]:
+# def thermal_postproc(
+#         sim: Simulation,
+#         ts: pd.DataFrame,
+#         out_all: pd.DataFrame
+# ) -> dict[str, float]:
     
-    STEP_h = sim.thermal_sim.STEP.get_value("hr")
-    DAYS = sim.thermal_sim.DAYS.get_value("d")
-    thermal_cap = sim.DEWH.thermal_cap.get_value("kWh")
-    cp = sim.DEWH.fluid.cp.get_value("J/kg-K")
+#     STEP_h = sim.time_params.STEP.get_value("hr")
+#     DAYS = sim.time_params.DAYS.get_value("d")
+#     thermal_cap = sim.DEWH.thermal_cap.get_value("kWh")
+#     cp = sim.DEWH.fluid.cp.get_value("J/kg-K")
 
-    heater_heat = out_all["heater_heat"]
-    heater_power = out_all["heater_power"]
-    tank_flowrate = out_all["tank_flow_rate"]
-    temp_out = out_all["tank_temp_out"]
-    temp_mains = out_all["temp_mains"]
-    SOC = out_all["SOC"]
+#     heater_heat = out_all["heater_heat"]
+#     heater_power = out_all["heater_power"]
+#     tank_flowrate = out_all["tank_flow_rate"]
+#     temp_out = out_all["tank_temp_out"]
+#     temp_mains = out_all["temp_mains"]
+#     SOC = out_all["SOC"]
 
-    # Calculating overall parameters
-    # Accumulated energy values (all in [kWh])
-    heater_heat_acum = ( heater_heat * STEP_h  * CF("kJ/h", "kW") ).sum()
-    heater_power_acum = ( heater_power * STEP_h  * CF("kJ/h", "kW") ).sum()
-    if heater_heat_acum <= 0:
-        heater_heat_acum = np.nan
-    if heater_power_acum <= 0:
-        heater_power_acum = np.nan
+#     # Calculating overall parameters
+#     # Accumulated energy values (all in [kWh])
+#     heater_heat_acum = ( heater_heat * STEP_h  * CF("kJ/h", "kW") ).sum()
+#     heater_power_acum = ( heater_power * STEP_h  * CF("kJ/h", "kW") ).sum()
+#     if heater_heat_acum <= 0:
+#         heater_heat_acum = np.nan
+#     if heater_power_acum <= 0:
+#         heater_power_acum = np.nan
 
-    heater_perf_avg = heater_heat_acum / heater_power_acum
+#     heater_perf_avg = heater_heat_acum / heater_power_acum
 
-    E_HWD_acum = (
-        tank_flowrate * STEP_h * cp * (temp_out - temp_mains) * CF("J", "kWh")
-    ).sum()
+#     E_HWD_acum = (
+#         tank_flowrate * STEP_h * cp * (temp_out - temp_mains) * CF("J", "kWh")
+#     ).sum()
 
-    E_losses_acum = heater_heat_acum - E_HWD_acum
-    eta_stg = E_HWD_acum / heater_heat_acum
-    cycles_day = heater_heat_acum / thermal_cap / DAYS
+#     E_losses_acum = heater_heat_acum - E_HWD_acum
+#     eta_stg = E_HWD_acum / heater_heat_acum
+#     cycles_day = heater_heat_acum / thermal_cap / DAYS
 
-    # Risks_params
-    SOC_avg = SOC.mean()
-    SOC_min = SOC.min()
-    (SOC_025, SOC_050) = SOC.quantile( [0.25, 0.50], interpolation="nearest", )
-    t_SOC0 = (SOC <= 0.01).sum() * STEP_h
+#     # Risks_params
+#     SOC_avg = SOC.mean()
+#     SOC_min = SOC.min()
+#     (SOC_025, SOC_050) = SOC.quantile( [0.25, 0.50], interpolation="nearest", )
+#     t_SOC0 = (SOC <= 0.01).sum() * STEP_h
 
-    out_overall_th = {key:np.nan for key in OUTPUT_ANALYSIS_TM}
-    out_overall_th["heater_heat_acum"] = heater_heat_acum
-    out_overall_th["heater_power_acum"] = heater_power_acum
-    out_overall_th["heater_perf_avg"] = heater_perf_avg
-    out_overall_th["E_HWD_acum"] = E_HWD_acum
-    out_overall_th["E_losses_acum"] = E_losses_acum
-    out_overall_th["eta_stg"] = eta_stg
-    out_overall_th["cycles_day"] = cycles_day
-    out_overall_th["SOC_avg"] = SOC_avg
-    out_overall_th["SOC_min"] = SOC_min
-    out_overall_th["SOC_025"] = SOC_025
-    out_overall_th["SOC_050"] = SOC_050
-    out_overall_th["t_SOC0"] = t_SOC0
+#     out_overall_th = {key:np.nan for key in OUTPUT_ANALYSIS_TM}
+#     out_overall_th["heater_heat_acum"] = heater_heat_acum
+#     out_overall_th["heater_power_acum"] = heater_power_acum
+#     out_overall_th["heater_perf_avg"] = heater_perf_avg
+#     out_overall_th["E_HWD_acum"] = E_HWD_acum
+#     out_overall_th["E_losses_acum"] = E_losses_acum
+#     out_overall_th["eta_stg"] = eta_stg
+#     out_overall_th["cycles_day"] = cycles_day
+#     out_overall_th["SOC_avg"] = SOC_avg
+#     out_overall_th["SOC_min"] = SOC_min
+#     out_overall_th["SOC_025"] = SOC_025
+#     out_overall_th["SOC_050"] = SOC_050
+#     out_overall_th["t_SOC0"] = t_SOC0
 
-    return out_overall_th
-
-# #-----------------
-# def financial_postproc(
-#     sim: Simulation,
-#     ts: pd.DataFrame,
-#     out_all: pd.DataFrame,
-#     out_overall_th: dict = None,
-#     out_overall_econ: dict = None,
-# ) -> dict:
-
-#     out_overall_fin = financial_analysis(
-#         sim, ts, out_all, out_overall_th, out_overall_econ
-#     )
-#     return out_overall_fin
+#     return out_overall_th
 
 #------------------------------
 def events_simulation(
@@ -242,7 +238,7 @@ def events_simulation(
         out_data: pd.DataFrame,
     ) -> pd.DataFrame:
     
-    STEP_h = sim.thermal_sim.STEP.get_value("hr")
+    STEP_h = sim.time_params.STEP.get_value("hr")
     cp = sim.DEWH.fluid.cp.get_value("J/kg-K")
 
     idx = pd.to_datetime(ts.index)

@@ -3,7 +3,6 @@ import numpy as np
 
 from tm_solarshift.constants import DIRECTORY
 from tm_solarshift.utils.units import (Variable, Water)
-# from tm_solarshift.models.dewh import HWTank
 
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 
@@ -74,10 +73,3 @@ def tank_temp_high_control(tank: HWTank) -> Variable:
     temp_deadband = tank.temp_deadband.get_value("degC")
     temp_high_control = temp_max - temp_deadband / 2.0
     return Variable(temp_high_control, "degC")
-
-# class Control():
-#     def __init__(self):
-#         self.temp_max = Variable(65.0, "degC")  #Maximum temperature in the tank
-#         self.temp_deadband = Variable(10.0, "degC") # Dead band for max temp control
-#         self.temp_min = Variable(45.0, "degC")  # Minimum temperature in the tank
-#         self.temp_consump = Variable(45.0, "degC") #Consumption temperature

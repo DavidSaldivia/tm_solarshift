@@ -1,8 +1,5 @@
 import pytest
-from tm_solarshift.models.hw_tank import HWTank
-from tm_solarshift.models.dewh import DEWH
-from tm_solarshift.models.resistive_single import ResistiveSingle
-from tm_solarshift.models.heat_pump import HeatPump
+from tm_solarshift.models.dewh import (DEWH, HWTank, ResistiveSingle, HeatPump)
 from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
 
@@ -17,15 +14,14 @@ from tm_solarshift.utils.units import Variable
 ])
 def test_dewh_from_catalog(heater_type: DEWH, model):
     heater = heater_type.from_model_file(model=model)
-    assert type(heater.vol) == Variable
-    assert type(heater.thermal_cap) == Variable
+    assert type(heater) == heater_type
 
 
 @pytest.mark.parametrize("heater_type", [
     ResistiveSingle, HeatPump,
     GasHeaterStorage, SolarThermalElecAuxiliary, 
 ])
-def test_dewh_check_model(heater_type: HWTank):
+def test_dewh_check_model_sim_settings(heater_type: HWTank):
     "this test check if the mode can be run"
     from tempfile import TemporaryDirectory
     from tm_solarshift.general import Simulation

@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
-from typing import Optional
+from typing import Optional, TypedDict
 
 from tm_solarshift.constants import (DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import Variable
 
 from tm_solarshift.utils.location import Location
-from tm_solarshift.models.resistive_single import ResistiveSingle
-from tm_solarshift.models.heat_pump import HeatPump
+from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
 from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
 from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 from tm_solarshift.models.pv_system import PVSystem
@@ -23,12 +22,14 @@ class Simulation():
         self.id = 1
         self.location = Location("Sydney")
         self.household = Household()
+
+        self.weather = Weather()
+        self.HWDInfo = HWD.standard_case( id=self.id )
+        
         self.DEWH = ResistiveSingle()
         self.pv_system = PVSystem()
-        self.HWDInfo = HWD.standard_case( id=self.id )
-        self.thermal_sim = ThermalSim()
-        self.weather = Weather()
-
+        
+        self.time_params = TimeParams()
         self.results = None
 
 
@@ -49,10 +50,10 @@ class Simulation():
         Returns:
             pd.DataFrame: ts (timeseries dataframe)
         """
-        START = self.thermal_sim.START.get_value("hr")
-        STEP = self.thermal_sim.STEP.get_value("min")
-        YEAR = self.thermal_sim.YEAR.get_value("-")
-        PERIODS = self.thermal_sim.PERIODS.get_value("-")
+        START = self.time_params.START.get_value("hr")
+        STEP = self.time_params.STEP.get_value("min")
+        YEAR = self.time_params.YEAR.get_value("-")
+        PERIODS = self.time_params.PERIODS.get_value("-")
 
         start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
         idx = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
@@ -86,7 +87,7 @@ class Simulation():
         HWD_method = self.HWDInfo.method
         DEWH = self.DEWH
         pv_system = self.pv_system
-        YEAR = self.thermal_sim.YEAR.get_value("-")
+        YEAR = self.time_params.YEAR.get_value("-")
         ts = self.create_ts_empty(ts_columns = ts_columns)
 
         # hwd
@@ -153,10 +154,10 @@ class Simulation():
         Returns:
             pd.DatetimeIndex: ts_index
         """
-        START = self.thermal_sim.START.get_value("hr")
-        STEP = self.thermal_sim.STEP.get_value("min")
-        YEAR = self.thermal_sim.YEAR.get_value("-")
-        PERIODS = self.thermal_sim.PERIODS.get_value("-")
+        START = self.time_params.START.get_value("hr")
+        STEP = self.time_params.STEP.get_value("min")
+        YEAR = self.time_params.YEAR.get_value("-")
+        PERIODS = self.time_params.PERIODS.get_value("-")
 
         start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
         ts_index = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
@@ -185,17 +186,7 @@ class Simulation():
         for ts_type in list_ts_types:
 
             if ts_type == "weather":
-                ts_wea = weather.load_weather_data(
-                    ts_index,
-                    type_sim = self.weather.type_sim,
-                    params = {
-                        "dataset": self.weather.dataset,
-                        "location": self.weather.location,
-                        "subset": self.weather.subset,
-                        "random": self.weather.random,
-                        "value": self.weather.value,
-                    }
-                )
+                ts_wea = self.weather.load_data(ts_index)
                 ts_gens.append(ts_wea)
 
             elif ts_type == "HWDP":
@@ -210,26 +201,18 @@ class Simulation():
                 ts_control = pd.DataFrame(index=ts_index, columns=TS_TYPES[ts_type])
                 
                 if control_type == "diverter" and pv_system is not None:
-                    type_sim = self.weather.type_sim
-                    params_weather = {
-                            "dataset": self.weather.dataset,
-                            "location": self.weather.location,
-                            "subset": self.weather.subset,
-                            "random": self.weather.random,
-                            "value": self.weather.value,
-                    }
-                    ts_wea = weather.load_weather_data(ts_index, type_sim=type_sim, params=params_weather)
-
                     #Diverter considers three hours at night plus everything diverted from solar
-                    df_pv = pv_system.sim_generation(ts_wea)["pv_power"]
+                    ts_wea = self.weather.load_data(ts_index)
+                    df_pv = pv_system.sim_generation(ts_wea)
                     ts_control = control.load_schedule(
                         ts_control, control_load = control_load, random_ON=False
                     )
                     heater_nom_power = DEWH.nom_power.get_value("kW")
-                    ts_control["CS"] = np.where( ts_control["CS"]>=0.99, ts_control["CS"], np.where(
-                        (df_pv["pv_power"] > 0) & (df_pv["pv_power"] < heater_nom_power),
-                        df_pv["pv_power"] / heater_nom_power,
-                        np.where(df_pv["pv_power"] > heater_nom_power, 1., 0.)
+                    ts_control["CS"] = np.where(
+                        ts_control["CS"]>=0.99, ts_control["CS"], np.where(
+                            (df_pv["pv_power"] > 0) & (df_pv["pv_power"] < heater_nom_power),
+                            df_pv["pv_power"] / heater_nom_power,
+                            np.where(df_pv["pv_power"] > heater_nom_power, 1., 0.)
                         )
                     )
                 else:
@@ -255,7 +238,7 @@ class Simulation():
                 ts_gens.append(ts_econ)
             
             elif ts_type == "emissions":
-                YEAR = self.thermal_sim.YEAR.get_value("-")
+                YEAR = self.time_params.YEAR.get_value("-")
                 ts_emi = pd.DataFrame(index=ts_index, columns=TS_TYPES[ts_type])
                 ts_emi = market.load_emission_index_year(
                     ts_emi, index_type= 'total', location = location, year = YEAR,
@@ -289,41 +272,29 @@ class Simulation():
             TypeError: DEWH object and thermal model engine are not compatible
 
         Returns:
-            tuple[pd.DataFrame, dict]: (out_all, out_overall) = (detailed results, overall results)
+            None
         """
 
         from tm_solarshift.models import postprocessing
 
         self.out: Output = {}
+        ts_index = self.time_params.idx
+        ts_wea = self.weather.load_data(ts_index)
+        ts_hwd = self.HWDInfo.generator(ts_index, method = self.HWDInfo.method)
 
-        if self.pv_system is not None:
-            ts_pv = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_PV)
-            df_pv = self.pv_system.sim_generation(ts_pv)
+        pv_system = self.pv_system
+        if pv_system is not None:
+            df_pv = pv_system.sim_generation(ts_wea, columns=SIMULATIONS_IO.OUTPUT_SIM_PV)
         else:
-            df_pv = pd.DataFrame(index=self.create_ts_index())
+            df_pv = pd.DataFrame(index=self.create_ts_index(),columns=SIMULATIONS_IO.OUTPUT_SIM_PV)
         self.out["df_pv"] = df_pv
 
+        # control
+
+
         # thermal
-        DEWH = self.DEWH
         ts_tm = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_TM+["emissions"])
-        match DEWH.label:
-            case "resistive":
-                df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-                overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-            case "heat_pump":
-                df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-                overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-            case "gas_instant":
-                (df_tm, overall_tm) = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-            case "solar_thermal":
-                from tm_solarshift.models import solar_thermal
-                (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, verbose=verbose)
-            case "gas_storage":
-                from tm_solarshift.models import gas_heater
-                (df_tm, overall_tm) = gas_heater.storage_fixed_eta(self,ts=ts_tm, verbose=verbose)
-            case _:
-                raise ValueError("Not a valid type for DEWH.")
-        
+        (df_tm, overall_tm) = self.run_thermal_simulation(ts_tm,verbose=verbose)
         self.out["df_tm"] = df_tm
         self.out["overall_tm"] = overall_tm
 
@@ -331,7 +302,7 @@ class Simulation():
         self.out["overall_econ"] = postprocessing.economics_analysis(
             self,
             ts=ts_econ,
-            out_all=df_tm
+            df_tm=df_tm
         )
 
         return None
@@ -357,29 +328,54 @@ class Simulation():
 
         from tm_solarshift.models import postprocessing
 
-        if ts is None:
-            ts = self.create_ts()
-
         DEWH = self.DEWH
+        if ts is None:
+            ts_tm = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_TM+["emissions"])
+        else:
+            ts_tm = ts.copy()
+
         match DEWH.label:
             case "resistive":
-                out_all = DEWH.run_thermal_model(ts, verbose=verbose)
-                out_overall = postprocessing.annual_postproc(self, ts, out_all)
+                df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
+                overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
             case "heat_pump":
-                out_all = DEWH.run_thermal_model(ts, verbose=verbose)
-                out_overall = postprocessing.annual_postproc(self, ts, out_all)
+                df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
+                overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
             case "gas_instant":
-                (out_all, out_overall) = DEWH.run_thermal_model(ts, verbose=verbose)
+                (df_tm, overall_tm) = DEWH.run_thermal_model(ts_tm, verbose=verbose)
             case "solar_thermal":
                 from tm_solarshift.models import solar_thermal
-                (out_all, out_overall) = solar_thermal.run_thermal_model(self, verbose=verbose)
+                (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, verbose=verbose)
             case "gas_storage":
-                from tm_solarshift.models import gas_heater
-                (out_all, out_overall) = gas_heater.storage_fixed_eta(self,ts=ts, verbose=verbose)
+                df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
+                overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
+                # from tm_solarshift.models import gas_heater
+                # (df_tm, overall_tm) = gas_heater.storage_fixed_eta(self,ts=ts_tm, verbose=verbose)
             case _:
                 raise ValueError("Not a valid type for DEWH.")
 
-        return (out_all, out_overall)
+        return (df_tm, overall_tm)
+
+
+        # DEWH = self.DEWH
+        # match DEWH.label:
+        #     case "resistive":
+        #         out_all = DEWH.run_thermal_model(ts, verbose=verbose)
+        #         out_overall = postprocessing.annual_postproc(self, ts, out_all)
+        #     case "heat_pump":
+        #         out_all = DEWH.run_thermal_model(ts, verbose=verbose)
+        #         out_overall = postprocessing.annual_postproc(self, ts, out_all)
+        #     case "gas_instant":
+        #         (out_all, out_overall) = DEWH.run_thermal_model(ts, verbose=verbose)
+        #     case "solar_thermal":
+        #         from tm_solarshift.models import solar_thermal
+        #         (out_all, out_overall) = solar_thermal.run_thermal_model(self, verbose=verbose)
+        #     case "gas_storage":
+        #         from tm_solarshift.models import gas_heater
+        #         (out_all, out_overall) = gas_heater.storage_fixed_eta(self,ts=ts, verbose=verbose)
+        #     case _:
+        #         raise ValueError("Not a valid type for DEWH.")
+
 
 #------------------------------------
 class Household():
@@ -415,9 +411,52 @@ class Weather():
         self.subset = None
         self.random = False
         self.value = None
+        
+        self.file_path: str | None = None
+        self.list_dates: pd.DatetimeIndex | pd.Timestamp | None = None
+    
+
+    def params(self) -> dict:
+        if self.type_sim == "tmy":
+            params = {
+                "dataset": self.dataset,
+                "location": self.location,
+            }
+        elif self.type_sim == "mc":
+            params = {
+                "dataset": self.dataset,
+                "location": self.location,
+                "subset": self.subset,
+                "random": self.random,
+                "value": self.value,
+            }
+        elif self.type_sim == "historical":
+            params = {
+                "dataset": self.dataset,
+                "location": self.location,
+                "file_path": self.file_path,
+                "list_dates": self.list_dates,
+            },
+        elif self.type_sim == "constant_day":
+            params = {
+                "dataset": self.dataset,
+                "random": self.random,
+                "value": self.value,
+                "subset": self.subset,
+        }
+        return params
+    
+
+    def load_data(self, ts_index: pd.DatetimeIndex) -> pd.DataFrame:
+        from tm_solarshift.timeseries import weather
+        ts_wea = weather.load_weather_data(
+                    ts_index, type_sim = self.type_sim, params = self.params()
+                )
+        return ts_wea
+
 
 #------------------------------------
-class ThermalSim():
+class TimeParams():
     def __init__(self):
         self.START = Variable(0, "hr")
         self.STOP = Variable(8760, "hr")
@@ -425,30 +464,29 @@ class ThermalSim():
         self.YEAR = Variable(2022, "-")
 
     @property
-    def DAYS(self):
+    def DAYS(self) -> Variable:
         START = self.START.get_value("hr")
         STOP = self.STOP.get_value("hr")
         return Variable( int((STOP-START)/24), "d")
     
     @property
-    def PERIODS(self):
+    def PERIODS(self) -> Variable:
         START = self.START.get_value("hr")
         STOP = self.STOP.get_value("hr")
         STEP_h = self.STEP.get_value("hr")
         return Variable( int(np.ceil((STOP - START)/STEP_h)), "-")
 
     @property
-    def df(self) -> pd.DataFrame:
+    def idx(self) -> pd.DatetimeIndex:
         START = self.START.get_value("hr")
         STEP = self.STEP.get_value("min")
         YEAR = self.YEAR.get_value("-")
         PERIODS = self.PERIODS.get_value("-")
         start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
         idx = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
+        return idx
 
-        return pd.DataFrame(index=idx, columns=TS_COLUMNS_ALL)
 
-from typing import TypedDict
 class Output(TypedDict, total=False):
     df_pv: pd.DataFrame
     df_tm: pd.DataFrame
@@ -462,10 +500,10 @@ def main():
     sim = Simulation()
     # ts = sim.create_ts_empty()
     # ts = sim.create_ts()
+    sim.run_simulation()
 
     ts = sim.load_ts(ts_types= list(SIMULATIONS_IO.TS_TYPES.keys()) )
 
-    sim.run_simulation()
 
     pass
 

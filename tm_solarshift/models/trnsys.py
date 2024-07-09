@@ -12,12 +12,7 @@ from tm_solarshift.constants import (DIRECTORY, SIMULATIONS_IO)
 from tm_solarshift.utils.units import (Variable, conversion_factor as CF)
 
 if TYPE_CHECKING:
-    from tm_solarshift.models.hw_tank import HWTank
-    # from tm_solarshift.models.resistive_single import ResistiveSingle
-    # from tm_solarshift.models.heat_pump import HeatPump
-    # from tm_solarshift.models.gas_heater import GasHeaterStorage
-    # from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
-    # Heater: TypeAlias = ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
+    from tm_solarshift.models.dewh import HWTank
 
 # constants
 DIR_DATA = DIRECTORY.DIR_DATA
@@ -422,7 +417,7 @@ def editing_dck_tank(
         case _:
             raise ValueError(f"Value for temp_ini ({temps_ini}) is not valid [0-5]")
 
-    tag4 = "DERIVATIVES"  # There should be only one on lines_tank
+    tag4 = "DERIVATIVES"  # There should be only one on comp_lines
     for idx, line in enumerate(comp_lines):
         if tag4 in line:
             for i in range(nodes):
@@ -436,50 +431,8 @@ def editing_dck_tank(
 
     return dck_editing[:idx_start] + comp_lines + dck_editing[idx_end:]
 
-# #------------------------------
-# def run_simulation(
-#         sim: Simulation,
-#         ts: Optional[pd.DataFrame] = None,
-#         verbose: bool = False,
-#         ) -> pd.DataFrame:
-
-#     stime = time.time()
-#     if verbose:
-#         print("Running TRNSYS Simulation")
-
-#     if ts is None:
-#         if verbose:
-#             print("Creating timeseries file")
-#         ts = sim.create_ts()
-    
-#     trnsys_dewh = TrnsysDEWH(
-#         DEWH = sim.DEWH,
-#         ts=ts,
-#     )
-#     with TemporaryDirectory(dir=TEMPDIR_SIMULATION) as tmpdir:
-
-#         trnsys_dewh.tempDir = tmpdir
-#         if verbose:
-#             print("Creating the trnsys source code files")
-#         trnsys_dewh.create_simulation_files()
-
-#         if verbose:
-#             print("Calling TRNSYS executable")
-#         subprocess.run([TRNSYS_EXECUTABLE, trnsys_dewh.dck_path, "/h"])
-        
-#         if verbose:
-#             print("TRNSYS simulation postprocessing.")
-#         out_all = trnsys_dewh.postprocessing()
-            
-#     elapsed_time = time.time()-stime
-#     if verbose:
-#         print(f"Execution time: {elapsed_time:.4f} seconds.")
-    
-#     return out_all
-
 #------------------------------
 def main():
-
     from tm_solarshift.general import Simulation
     sim = Simulation()
     trnsys_dewh = TrnsysDEWH(
