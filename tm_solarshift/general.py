@@ -168,7 +168,9 @@ class Simulation():
         self,
         ts_types: list[str] | str | None = None,
     ) -> pd.DataFrame:
-        from tm_solarshift.timeseries import ( circuits, control, market, weather )
+        
+        from tm_solarshift.timeseries import ( circuits, control, market )
+        from tm_solarshift.models.controller import CLController
         
         if isinstance(ts_types, list):
             list_ts_types = ts_types.copy()
@@ -195,6 +197,7 @@ class Simulation():
                 ts_gens.append(ts_hwd)
 
             elif ts_type == "control":
+                
                 control_type = self.household.control_type
                 control_load = self.household.control_load
                 random_control = self.household.control_random_on
@@ -204,6 +207,7 @@ class Simulation():
                     #Diverter considers three hours at night plus everything diverted from solar
                     ts_wea = self.weather.load_data(ts_index)
                     df_pv = pv_system.sim_generation(ts_wea)
+
                     ts_control = control.load_schedule(
                         ts_control, control_load = control_load, random_ON=False
                     )
@@ -216,9 +220,11 @@ class Simulation():
                         )
                     )
                 else:
-                    ts_control = control.load_schedule(
-                        ts_control, control_load = control_load, random_ON = random_control
-                    )
+                    # ts_control = control.load_schedule(
+                    #     ts_control, control_load = control_load, random_ON = random_control
+                    # )
+                    controller = CLController(control_load=control_load, random_on=random_control)
+                    ts_control = controller.create_signal(ts_index)
                 ts_gens.append(ts_control)
             
             elif ts_type == "economic":
@@ -323,7 +329,7 @@ class Simulation():
             TypeError: DEWH object and thermal model engine are not compatible
 
         Returns:
-            tuple[pd.DataFrame, dict]: (out_all, out_overall) = (detailed results, overall results)
+            tuple[pd.DataFrame, dict]: (df_tm, overall_tm) = (detailed results, overall results)
         """
 
         from tm_solarshift.models import postprocessing
@@ -333,6 +339,15 @@ class Simulation():
             ts_tm = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_TM+["emissions"])
         else:
             ts_tm = ts.copy()
+
+        if isinstance(DEWH, ResistiveSingle | HeatPump | GasHeaterInstantaneous | GasHeaterStorage):
+            df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
+        elif isinstance(DEWH, SolarThermalElecAuxiliary):
+            from tm_solarshift.models import solar_thermal
+            (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, verbose=verbose)
+        else:
+            ValueError("Not a valid type for DEWH")
+
 
         match DEWH.label:
             case "resistive":
@@ -349,8 +364,6 @@ class Simulation():
             case "gas_storage":
                 df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
                 overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-                # from tm_solarshift.models import gas_heater
-                # (df_tm, overall_tm) = gas_heater.storage_fixed_eta(self,ts=ts_tm, verbose=verbose)
             case _:
                 raise ValueError("Not a valid type for DEWH.")
 
@@ -399,6 +412,7 @@ class Household():
     @property
     def DNSP(self) -> str:
         return DEFINITIONS.LOCATIONS_DNSP[self.location]
+
 
 class Weather():
     def __init__(

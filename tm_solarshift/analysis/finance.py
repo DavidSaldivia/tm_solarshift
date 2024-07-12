@@ -17,6 +17,7 @@ from tm_solarshift.utils.units import (
     conversion_factor as CF,
     Variable
 )
+from tm_solarshift.models.dewh import DEWH
 from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
 from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
 from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
@@ -24,13 +25,13 @@ from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 
 #-----------------------------
 # Constants for this module
-Heater = Union[
-    ResistiveSingle,
-    HeatPump,
-    GasHeaterInstantaneous,
-    GasHeaterStorage,
-    SolarThermalElecAuxiliary
-]
+# Heater = Union[
+#     ResistiveSingle,
+#     HeatPump,
+#     GasHeaterInstantaneous,
+#     GasHeaterStorage,
+#     SolarThermalElecAuxiliary
+# ]
 TYPE_HEATERS = {
     "resistive": ResistiveSingle,
     "heat_pump": HeatPump,
@@ -98,7 +99,7 @@ def get_model_number(
 def get_heater_object(
     heater_type: str,
     model: str
-) -> Heater:
+) -> DEWH:
 
     match heater_type:
         case "resistive":

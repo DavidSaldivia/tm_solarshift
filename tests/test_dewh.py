@@ -18,8 +18,7 @@ def test_dewh_from_catalog(heater_type: DEWH, model):
 
 
 @pytest.mark.parametrize("heater_type", [
-    ResistiveSingle, HeatPump,
-    GasHeaterStorage, SolarThermalElecAuxiliary, 
+    ResistiveSingle, HeatPump, GasHeaterStorage, SolarThermalElecAuxiliary, 
 ])
 def test_dewh_check_model_sim_settings(heater_type: HWTank):
     "this test check if the mode can be run"

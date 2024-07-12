@@ -15,11 +15,10 @@ from tm_solarshift.analysis.finance import (
 
 if TYPE_CHECKING:
     from tm_solarshift.general import Simulation
-    from tm_solarshift.models.resistive_single import ResistiveSingle
-    from tm_solarshift.models.heat_pump import HeatPump
-    from tm_solarshift.models.gas_heater import GasHeaterStorage
-    from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
-    Heater: TypeAlias = ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
+    # from tm_solarshift.models.dewh import ResistiveSingle, HeatPump
+    # from tm_solarshift.models.gas_heater import GasHeaterStorage
+    # from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
+    # Heater: TypeAlias = ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
 
 
 OUTPUT_ANALYSIS_TM = SIMULATIONS_IO.OUTPUT_ANALYSIS_TM
@@ -353,7 +352,7 @@ def detailed_plots(
 def main():
     
     sim = Simulation()
-    sim.solar_system = None
+    sim.pv_system = None
     ts = sim.create_ts()
     
     (out_all, out_overall) = sim.run_thermal_simulation(ts, verbose=True)
