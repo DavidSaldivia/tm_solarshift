@@ -198,33 +198,33 @@ class Simulation():
                 ts_hwd = self.HWDInfo.generator(ts_index, method = HWD_method)
                 ts_gens.append(ts_hwd)
 
-            elif ts_type == "control":
+            # elif ts_type == "control":
                 
-                control_type = self.household.control_type
-                control_load = self.household.control_load
-                random_control = self.household.control_random_on
-                ts_control = pd.DataFrame(index=ts_index, columns=TS_TYPES[ts_type])
+            #     control_type = self.household.control_type
+            #     control_load = self.household.control_load
+            #     random_control = self.household.control_random_on
+            #     ts_control = pd.DataFrame(index=ts_index, columns=TS_TYPES[ts_type])
                 
-                if control_type == "diverter" and pv_system is not None:
-                    #Diverter considers three hours at night plus everything diverted from solar
-                    ts_wea = self.weather.load_data(ts_index)
-                    df_pv = pv_system.sim_generation(ts_wea)
+            #     if control_type == "diverter" and pv_system is not None:
+            #         #Diverter considers three hours at night plus everything diverted from solar
+            #         ts_wea = self.weather.load_data(ts_index)
+            #         df_pv = pv_system.sim_generation(ts_wea)
 
-                    ts_control = control.load_schedule(
-                        ts_control, control_load = control_load, random_ON=False
-                    )
-                    heater_nom_power = DEWH.nom_power.get_value("kW")
-                    ts_control["CS"] = np.where(
-                        ts_control["CS"]>=0.99, ts_control["CS"], np.where(
-                            (df_pv["pv_power"] > 0) & (df_pv["pv_power"] < heater_nom_power),
-                            df_pv["pv_power"] / heater_nom_power,
-                            np.where(df_pv["pv_power"] > heater_nom_power, 1., 0.)
-                        )
-                    )
-                else:
-                    controller = CLController(control_type = control_load, random_on=random_control)
-                    ts_control = controller.create_signal(ts_index)
-                ts_gens.append(ts_control)
+            #         ts_control = control.load_schedule(
+            #             ts_control, control_load = control_load, random_ON=False
+            #         )
+            #         heater_nom_power = DEWH.nom_power.get_value("kW")
+            #         ts_control["CS"] = np.where(
+            #             ts_control["CS"]>=0.99, ts_control["CS"], np.where(
+            #                 (df_pv["pv_power"] > 0) & (df_pv["pv_power"] < heater_nom_power),
+            #                 df_pv["pv_power"] / heater_nom_power,
+            #                 np.where(df_pv["pv_power"] > heater_nom_power, 1., 0.)
+            #             )
+            #         )
+            #     else:
+            #         controller = CLController(control_type = control_load, random_on=random_control)
+            #         ts_control = controller.create_signal(ts_index)
+            #     ts_gens.append(ts_control)
             
             elif ts_type == "economic":
                 tariff_type = self.household.tariff_type
@@ -267,10 +267,9 @@ class Simulation():
         self,
         verbose: bool = False,
     ) -> None:
-        """Run a thermal simulation using the data provided in self.
+        """Run a simulation using the data provided in self.
 
         Args:
-            ts (pd.DataFrame, optional): timeseries dataframe. If not given is generated. Defaults to None.
             verbose (bool, optional): Print stage of sim. Defaults to False.
 
         Raises:
@@ -312,13 +311,12 @@ class Simulation():
                 type = control_type,
                 time_start=0.,
                 time_stop=3.,
-                heater_nom_power = self.DEWH.nom_power
+                heater_nom_power = self.DEWH.nom_power.get_value("kW")
             ).create_signal(ts_index, df_pv["pv_power"])
 
 
-        # thermal
+        # thermal model
         ts_tm = pd.concat([ts_wea, ts_hwd, ts_control], axis=1)
-        # ts_tm = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_TM)
         (df_tm, overall_tm) = self.run_thermal_simulation(ts_tm,verbose=verbose)
         self.out["df_tm"] = df_tm
         self.out["overall_tm"] = overall_tm
@@ -327,7 +325,6 @@ class Simulation():
         self.out["overall_econ"] = postprocessing.economics_analysis(
             self, ts=ts_econ, df_tm=df_tm
         )
-
         return None
 
 
@@ -359,31 +356,12 @@ class Simulation():
 
         if isinstance(DEWH, ResistiveSingle | HeatPump | GasHeaterInstantaneous | GasHeaterStorage):
             df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
+            overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
         elif isinstance(DEWH, SolarThermalElecAuxiliary):
             from tm_solarshift.models import solar_thermal
             (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, verbose=verbose)
         else:
             ValueError("Not a valid type for DEWH")
-
-
-        match DEWH.label:
-            case "resistive":
-                df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-                overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-            case "heat_pump":
-                df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-                overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-            case "gas_instant":
-                (df_tm, overall_tm) = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-            case "solar_thermal":
-                from tm_solarshift.models import solar_thermal
-                (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, verbose=verbose)
-            case "gas_storage":
-                df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-                overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-            case _:
-                raise ValueError("Not a valid type for DEWH.")
-
         return (df_tm, overall_tm)
 
 

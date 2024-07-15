@@ -102,11 +102,11 @@ class Diverter():
 
     def create_signal(
             self,
-            ts_index: pd.DataFrame,
+            ts_index: pd.DatetimeIndex,
             pv_power: pd.Series | None = None,
         ) -> pd.DataFrame:
 
-        if heater_nom_power is not None:
+        if self.heater_nom_power is not None:
             heater_nom_power = self.heater_nom_power
         else:
             heater_nom_power = 0.
@@ -225,7 +225,7 @@ def convert_periods_to_series(
         ]
         
         #Applying conditions and adding random if needed
-        cs_aux = None
+        cs_aux = np.zeros(len(idx))
         for (i,case) in enumerate(cases):
             if case:
                 cs_aux = np.where(conditions[i], 1, 0)
