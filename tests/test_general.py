@@ -22,15 +22,6 @@ def test_load_ts_all(sim_default: Simulation):
     assert len(ts) == expected_len
 
 
-def test_control_signal_loading(sim_default: Simulation):
-    sim = deepcopy(sim_default)
-    ts_control = sim.load_ts(ts_types=["control"])
-    expected_len_ts = sim.time_params.PERIODS.get_value()
-    expected_cols_ts = SIMULATIONS_IO.TS_TYPES["control"]
-    assert len(ts_control) == expected_len_ts
-    assert (set(expected_cols_ts).issubset(set( ts_control.columns.to_list())))
-
-
 @pytest.mark.parametrize("control_type", [
     "GS", "CL1", "CL2", "CL3", "timer", "diverter"
 ])

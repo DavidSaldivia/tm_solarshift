@@ -10,6 +10,7 @@ from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
 from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
 from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 from tm_solarshift.models.pv_system import PVSystem
+from tm_solarshift.models.controller import (Controller, CLController)
 from tm_solarshift.timeseries.hwd import HWD
 
 TS_TYPES = SIMULATIONS_IO.TS_TYPES
@@ -28,6 +29,7 @@ class Simulation():
         
         self.DEWH = ResistiveSingle()
         self.pv_system = PVSystem()
+        self.controller: Controller = CLController()
         
         self.time_params = TimeParams()
         self.results = None
@@ -220,10 +222,7 @@ class Simulation():
                         )
                     )
                 else:
-                    # ts_control = control.load_schedule(
-                    #     ts_control, control_load = control_load, random_ON = random_control
-                    # )
-                    controller = CLController(control_load=control_load, random_on=random_control)
+                    controller = CLController(control_type = control_load, random_on=random_control)
                     ts_control = controller.create_signal(ts_index)
                 ts_gens.append(ts_control)
             
@@ -281,13 +280,14 @@ class Simulation():
             None
         """
 
-        from tm_solarshift.models import postprocessing
+        from tm_solarshift.models import (postprocessing, controller)
 
         self.out: Output = {}
         ts_index = self.time_params.idx
         ts_wea = self.weather.load_data(ts_index)
         ts_hwd = self.HWDInfo.generator(ts_index, method = self.HWDInfo.method)
 
+        #pv system
         pv_system = self.pv_system
         if pv_system is not None:
             df_pv = pv_system.sim_generation(ts_wea, columns=SIMULATIONS_IO.OUTPUT_SIM_PV)
@@ -296,19 +296,36 @@ class Simulation():
         self.out["df_pv"] = df_pv
 
         # control
+        control_type = self.household.control_type
+        if control_type in ["GS", "CL1", "CL2", "CL3"]:
+            ts_control = controller.CLController(
+                CL_type = control_type,
+                random_delay = self.household.control_random_on,
+                random_seed = self.id
+            ).create_signal(ts_index)
+        elif control_type in ["timer_SS", "timer_OP", "timer"]:
+            ts_control = controller.Timer(
+                timer_type = control_type,
+            ).create_signal(ts_index)
+        elif control_type == "diverter":
+            ts_control = controller.Diverter(
+                type = control_type,
+                time_start=0.,
+                time_stop=3.,
+                heater_nom_power = self.DEWH.nom_power
+            ).create_signal(ts_index, df_pv["pv_power"])
 
 
         # thermal
-        ts_tm = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_TM+["emissions"])
+        ts_tm = pd.concat([ts_wea, ts_hwd, ts_control], axis=1)
+        # ts_tm = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_TM)
         (df_tm, overall_tm) = self.run_thermal_simulation(ts_tm,verbose=verbose)
         self.out["df_tm"] = df_tm
         self.out["overall_tm"] = overall_tm
 
         ts_econ = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_ECO)
         self.out["overall_econ"] = postprocessing.economics_analysis(
-            self,
-            ts=ts_econ,
-            df_tm=df_tm
+            self, ts=ts_econ, df_tm=df_tm
         )
 
         return None
@@ -399,7 +416,7 @@ class Household():
 
         self.tariff_type = "flat"
         self.location = location.value
-        self.control_type = "CL"
+        self.control_type = "CL1"
         self.control_load = 1
         self.control_random_on = True
 
