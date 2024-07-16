@@ -101,6 +101,7 @@ class ResistiveSingle(HWTank):
         specs = pd.Series(df.loc[model])
         units = pd.Series(df.loc["units"])
         output = cls()
+        output.model = model
         for (lbl,value) in specs.items():
             unit = units[str(lbl)]
             try:

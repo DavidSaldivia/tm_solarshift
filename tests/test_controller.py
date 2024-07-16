@@ -5,7 +5,7 @@ import pytest
 
 from tm_solarshift.constants import SIMULATIONS_IO
 from tm_solarshift.general import Simulation
-from tm_solarshift.models.controller import (CLController, Timer, add_random_delay)
+from tm_solarshift.models.control import (CLController, Timer, add_random_delay)
 
 
 @pytest.mark.parametrize("controller_type, time_avg", [

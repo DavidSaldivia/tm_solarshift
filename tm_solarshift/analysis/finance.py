@@ -1,4 +1,5 @@
 # General imports
+import json
 import os
 import pickle
 import numpy as np
@@ -43,6 +44,7 @@ FILE_MODEL_HOUSEHOLDSIZES = os.path.join(
     DIRECTORY.DIR_DATA["specs"],
     "models_householdsize.csv"
 )
+DIR_TARIFFS = DIRECTORY.DIR_DATA["tariffs"]
 LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.OUTPUT_ANALYSIS_FIN
@@ -114,39 +116,38 @@ def get_heater_object(
             DEWH = SolarThermalElecAuxiliary.from_model_file(model=model)
         case _:
             raise ValueError("heater_type not among accepted DEWH.")
-        
     return DEWH
 #-------------------
-def get_control_load(
-        control_type: str,
-        tariff_type: str
-)-> int:
+# def get_control_load(
+#         control_type: str,
+#         tariff_type: str
+# )-> int:
     
-    match control_type:
-        case "GS":
-            control_load = 0
-        case "CL1":
-            control_load = 1
-        case "CL2":
-            control_load = 2
-        case "CL3":
-            control_load = 3
-        case "timer_SS" | "SS":
-            control_load = 4
-        case "timer_OP":
-            control_load = 6
-        case "diverter":
-            if tariff_type == "CL":
-                control_load = 1
-            elif tariff_type == "flat":
-                control_load = 10
-            elif tariff_type == "tou":
-                control_load = 6
-            else:
-                control_load = -1
-        case _:
-            raise ValueError("wrong control_type.")
-    return control_load
+#     match control_type:
+#         case "GS":
+#             control_load = 0
+#         case "CL1":
+#             control_load = 1
+#         case "CL2":
+#             control_load = 2
+#         case "CL3":
+#             control_load = 3
+#         case "timer_SS" | "SS":
+#             control_load = 4
+#         case "timer_OP":
+#             control_load = 6
+#         case "diverter":
+#             if tariff_type == "CL":
+#                 control_load = 1
+#             elif tariff_type == "flat":
+#                 control_load = 10
+#             elif tariff_type == "tou":
+#                 control_load = 6
+#             else:
+#                 control_load = -1
+#         case _:
+#             raise ValueError("wrong control_type.")
+#     return control_load
 
 #-------------------
 def get_daily_hwd(
@@ -157,14 +158,10 @@ def get_daily_hwd(
 #-------------------
 def calculate_capital_cost(sim: Simulation) -> float:
 
-    heater_type = sim.household.heater_type
+    heater_type = sim.DEWH.label
     location = sim.household.location
     old_heater = sim.household.old_heater
     type_control = sim.household.control_type
-    household_size = sim.household.size
-
-    model_number = get_model_number(household_size, heater_type)
-    df_heaters = pd.read_csv( FILES_MODEL_SPECS[heater_type], index_col=0 )
     
     match heater_type:
         case "resistive":
@@ -173,22 +170,17 @@ def calculate_capital_cost(sim: Simulation) -> float:
                 state = "supply"
                 # if state is in list, capital cost + installation cost
                 # if state non is list, just capital cost on technology 
-            capital_cost = float(df_heaters.loc[model_number, f'price_{state}'])
-        
+            capital_cost = getattr(sim.DEWH,f'price_{state}').get_value("AUD")
         case "heat_pump":
-            capital_cost = float(df_heaters.loc[model_number, 'supply_install'])
+            capital_cost = getattr(sim.DEWH,'supply_install').get_value("AUD")
             # if in NSW (sydney metropolitan area) call NSW rebate function for dicounted capitl + installation costs
             if old_heater in ['gas_instant', 'gas_storage']:
                 new_electric_setup = DEFAULT_NEW_ELEC_SETUP
                 capital_cost = capital_cost + new_electric_setup
-
         case "gas_instant" | "gas_storage" | "solar_thermal":
-            capital_cost = float(df_heaters.loc[model_number, 'supply_install'])
-
+            capital_cost = getattr(sim.DEWH,'supply_install').get_value("AUD")
         case _:
             raise ValueError("Type of water heater is invalid")
-
-    capital_cost = float(capital_cost)
     
     if type_control == 'diverter':
         #if getting new diverter (range between $800-$1500) with installation
@@ -203,51 +195,6 @@ def calculate_capital_cost(sim: Simulation) -> float:
     return capital_cost
 
 
-#----------------
-def calculate_rebates(
-    sim: Simulation,
-    capital_cost: float,
-) -> float: 
-
-    old_heater = sim.household.old_heater
-    heater_type = sim.household.heater_type
-    new_system = sim.household.new_system
-    location = sim.household.location
-
-    if location not in LIST_LOCATIONS:
-        raise ValueError("Location is invalid")
-        
-    state = LOCATIONS_STATE[location]
-    match state:
-        case "NSW":
-            rebate = NSW_rebate(old_heater, new_system)
-        case "VIC":
-            rebate = VIC_rebate(
-                old_heater=old_heater,
-                new_heater=heater_type,
-                new_system=new_system,
-                capital_cost=capital_cost,
-            )
-        case "SA":
-            rebate = SA_rebate()
-        case "ACT":
-            rebate = ACT_rebate(
-                old_heater=old_heater,
-                new_heater=heater_type,
-                capital_cost=capital_cost
-            )
-        case "QLD":
-            rebate = QLD_rebate()
-        case "TAS":
-            rebate = TAS_rebate()
-        case "WA":
-            rebate = WA_rebate()
-        case "NT":
-            rebate = NT_rebate()
-        case _:
-            raise ValueError("Location is invalid") 
-    return rebate 
-
 #--------------------
 def calculate_disconnection_cost(
         old_heater: str,
@@ -255,134 +202,103 @@ def calculate_disconnection_cost(
 ) -> float:
 
     disconnection = 0.
-    # no old heater to disconnect
+    # # no old heater to disconnect
     # if (old_heater == "none"): 
     #     disconnection = 0 
+    # elif old_heater not in LIST_HEATERS_TYPES:
+    #     raise ValueError("Water heater is invalid")
 
-    if old_heater not in LIST_HEATERS_TYPES:
-        raise ValueError("Water heater is invalid")
+    # if (old_heater in ['gas_instant', 'gas_storage']):
+    #     if permanent_close:
+    #         # in this gas the daily gas supply charge will not be considerred either 
+    #         disconnection = DEFAULT_PERM_CLOSE_COST
+    #     else:
+    #         # in this case the gas daily supply charge is still charged to the housheold 
+    #         disconnection = DEFAULT_TEMP_CLOSE_COST
 
-    if (old_heater in ['gas_instant', 'gas_storage']):
-        if permanent_close:
-            # in this gas the daily gas supply charge will not be considerred either 
-            disconnection = DEFAULT_PERM_CLOSE_COST
-        else:
-            # in this case the gas daily supply charge is still charged to the housheold 
-            disconnection = DEFAULT_TEMP_CLOSE_COST
-
-    elif old_heater == 'resistive':
-        #read disconecction costs from file?
-        disconnection = 250
+    # elif old_heater == 'resistive':
+    #     #read disconecction costs from file?
+    #     disconnection = 250
 
     return disconnection
 
 #-----------------
-def calculate_oandm_cost(
-        sim: Simulation,
-        out_all: Optional[pd.DataFrame] = None,
-        has_solar: bool = False,
-    ) -> float:
-    
-    # annual oandm cost
-    # include operation, maintance, re-purchase, etc.
-    oandm_cost = 0.
+def calculate_oandm_cost(sim: Simulation,) -> float:
+    oandm_cost = 200.
     return oandm_cost
 
 #-----------------------
-def calculate_npv(
-        cashflows: np.ndarray,
-        discount_rate: float
-    ) -> float:
-
+def calculate_npv(cashflows: np.ndarray, discount_rate: float) -> float:
     npv = 0
     for i, cashflow in enumerate(cashflows):
         npv += cashflow / ((1 + discount_rate) ** i)
     return npv
 
-#------------------------
+
 def calculate_household_energy_cost(
         sim: Simulation,
-        ts: Optional[pd.DataFrame] = None,
-        df_tm: Optional[pd.DataFrame] = None,
-        ) -> float:
-
-    control_type = sim.household.control_type
+        imported_energy: pd.Series,
+    ) -> float:
     STEP_h = sim.time_params.STEP.get_value("hr")
-    if ts is None:
-        ts = sim.create_ts()
-    if df_tm is None:
-        (df_tm, _) = sim.run_thermal_simulation(ts, verbose = True)
+    if "df_tm" not in sim.out:
+        raise AttributeError("No thermal simulation results found.")
+    ts_mkt = sim.load_ts(["economic"])
+    return ((ts_mkt["tariff"] * imported_energy).sum() * STEP_h)
 
-    if sim.DEWH.label == "solar_thermal":
-        heater_power = df_tm["heater_power_no_solar"] * CF("kJ/h", "kW")
-    else:
-        heater_power = df_tm["heater_power"] * CF("kJ/h", "kW")
 
-    if sim.pv_system is None:
-        imported_energy = heater_power.copy()
-    else:
-        tz = 'Australia/Brisbane'
-        pv_power = sim.pv_system.sim_generation(ts, unit="kW")["pv_power"]
-        if control_type == "diverter":
-            #Diverter considers three hours at night plus everything diverted from solar
-            control_load = sim.household.control_load
-            import tm_solarshift.timeseries.control as control
-            CS_timer = control.load_schedule(
-                ts, control_load = control_load, random_ON=False
-            )["CS"]
-            imported_energy = (CS_timer * heater_power)
-        else:
-            imported_energy = np.where(
-                pv_power < heater_power, heater_power - pv_power, 0
-            )
-
-    energy_cost = ( ts["tariff"] * imported_energy * STEP_h  ).sum()
-    return energy_cost
-
-#-----------------------
 def calculate_wholesale_energy_cost(
         sim: Simulation,
-        ts: Optional[pd.DataFrame] = None,
-        df_tm: Optional[pd.DataFrame] = None,
-        ) -> float:
-    
-    STEP_h = sim.time_params.STEP.get_value("hr")
-
-    if ts is None:
-        ts = sim.create_ts()
-    if df_tm is None:
-        (df_tm, _) = sim.run_thermal_simulation(ts)
-        
-    heater_power = df_tm["heater_power"] * CF("kJ/h", "MW")
-    energy_cost = (ts["wholesale_market"] * heater_power * STEP_h).sum()
-    return energy_cost
-
-#------------------------
-def calculate_annual_bill(
-        sim: Simulation,
-        ts: Optional[pd.DataFrame] = None,
-        out_all: Optional[pd.DataFrame] = None,
-        has_solar: bool = False,
+        imported_energy: pd.Series,
     ) -> float:
-    
-    # calculate annual energy cost
-    energy_cost = calculate_household_energy_cost(sim, ts, out_all)
+    STEP_h = sim.time_params.STEP.get_value("hr")
+    if "df_tm" not in sim.out:
+        raise AttributeError("No thermal simulation results found.")
+    wholesale_market = sim.load_ts(["economic"])["wholesale_market"]
+    return ((wholesale_market * imported_energy * CF("kW", "MW")).sum() * STEP_h)
+
+
+def calculate_daily_supply_cost(sim: Simulation) -> float:
     DAYS = sim.time_params.DAYS.get_value("d")
-    
-    #BUG ADD DAILY CHARGE PROPERLY
+    dnsp = sim.household.DNSP
+    tariff_type = sim.household.tariff_type
+    control_type = sim.household.control_type
     suply_charge = {
         "CL": True,
         "flat": False,
         "tou": False,
         "gas": True
     }
-    
-    DAILY_CHARGE = 1.0  #AUD (just an average value for now, read tariff instead)
-    fix_cost = DAYS*DAILY_CHARGE
+    if suply_charge[tariff_type]:
+        if tariff_type == "CL":
+            tariff_type = control_type
+        file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{tariff_type}_plan.json")
+        with open(file_path) as f:
+            plan = json.load(f)
+        daily_supply_charge = plan["charges"]["service_charges"][0]["rate"]
+    else:
+        daily_supply_charge = 0.
+    return (daily_supply_charge * DAYS)
 
-    # add other costs (daily/seasonal costs)
-    annual_bill = energy_cost + fix_cost
-    return annual_bill
+
+# def calculate_annual_bill(
+#         sim: Simulation,
+#         ts: Optional[pd.DataFrame] = None,
+#         out_all: Optional[pd.DataFrame] = None,
+#         has_solar: bool = False,
+#     ) -> float:
+    
+#     # calculate annual energy cost
+#     energy_cost = calculate_household_energy_cost(sim, ts, out_all)
+#     DAYS = sim.time_params.DAYS.get_value("d")
+    
+#     #BUG ADD DAILY CHARGE PROPERLY
+    
+#     DAILY_CHARGE = 1.0  #AUD (just an average value for now, read tariff instead)
+#     fix_cost = DAYS*DAILY_CHARGE
+
+#     # add other costs (daily/seasonal costs)
+#     annual_bill = energy_cost + fix_cost
+#     return annual_bill
 
 #------------------------
 def get_simulation_instance(
@@ -407,15 +323,13 @@ def get_simulation_instance(
     #Obtaining all the derived parameters
     model = get_model_number(household_size, heater_type)
     DEWH = get_heater_object(heater_type, model)
-    control_load = get_control_load(control_type, tariff_type)
     daily_avg = get_daily_hwd(household_size)
 
-    #Creating a GS's instance
+    #Creating a Simulation instance
     sim = Simulation()
     sim.household.location = location
     sim.household.tariff_type = tariff_type
     sim.household.control_type = control_type
-    sim.household.control_load = control_load
     sim.DEWH = DEWH
     sim.HWDInfo.profile_HWD = profile_HWD
     sim.HWDInfo.daily_avg = Variable( daily_avg, "L/d")
@@ -433,14 +347,6 @@ def cache_financial_tm(
         dir_cache: str,
         verbose: bool = False,
 ) -> tuple[Simulation,pd.DataFrame,dict[str,float]]:
-
-    #Retriever required data
-    location = row["location"]
-    profile_HWD = row["profile_HWD"]
-    household_size = row["household_size"]
-    heater_type = row["heater_type"]
-    has_solar = row["has_solar"]
-    control_type = row["control_type"]
 
     COLS_FIN_CACHE_TM = [
         "location", "profile_HWD", "household_size", "heater_type", "has_solar", "control_type",
@@ -485,12 +391,77 @@ def cache_financial_tm(
     return (sim, df_tm, out_overall)
 
 #------------------
-def financial_analysis(
+# def financial_analysis(
+#     row: pd.Series|dict,
+#     N_years: int = DEFAULT_LIFESPAN,
+#     discount_rate: float = DEFAULT_DISCOUNT_RATE,
+#     permanent_close: bool = False,
+#     major_maintance_years: list[int] = [4, 8],
+#     verbose: bool = True,
+#     save_details: bool = False,
+#     use_cache: bool = True,
+#     dir_cache: str = "cache/index.csv"
+# ) -> tuple[dict,np.ndarray]:
+
+#     #retrieving data
+#     heater_type = row["heater_type"]
+
+#     # running simulation or searching on cache
+#     if use_cache:
+#         (sim, out_all, out_overall) = cache_financial_tm(row, dir_cache, verbose=verbose)
+#         ts = sim.create_ts()
+#     else:
+#         sim = get_simulation_instance(row, verbose=verbose)
+#         ts = sim.create_ts()
+#         (out_all, out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
+#     energy_HWD_annual = out_overall["E_HWD_acum"]
+
+#     #Calculating fixed and variable costs
+#     capital_cost = calculate_capital_cost(sim)
+#     annual_bill = calculate_annual_bill(sim=sim, ts = ts, out_all = out_all)
+#     oandm_cost = calculate_oandm_cost(sim, out_all)
+#     rebates = calculate_rebates(sim, capital_cost)
+#     disconnection_costs = calculate_disconnection_cost(
+#         old_heater = heater_type,
+#         permanent_close = permanent_close
+#     )
+
+#     # Generating cashflows
+#     year_zero_cost = (capital_cost + disconnection_costs - rebates)
+#     cashflows = np.zeros(N_years+1)
+#     cashflows[0] = year_zero_cost
+#     cashflows[1:-1] = annual_bill + oandm_cost    
+#     if heater_type == 'resistive':
+#         major_maintenance = DEFAULT_MAJOR_MAINTANCE
+#         for i in major_maintance_years:
+#             cashflows[i] = cashflows[i] + major_maintenance
+#     cashflows = np.array(cashflows)
+
+#     #Calculating financial parameters
+#     net_present_cost = calculate_npv(cashflows, discount_rate)
+#     LCOHW = net_present_cost / (energy_HWD_annual*N_years)      #[AUD/kWh]
+#     payback_period = np.nan
+
+#     #Generating the output
+#     output_finance = {key:np.nan for key in FIN_POSTPROC_OUTPUT}
+#     output_finance["net_present_cost"] = net_present_cost
+#     output_finance["payback_period"] = payback_period
+#     output_finance["LCOHW"] = LCOHW
+#     output_finance["capital_cost"] = capital_cost
+#     output_finance["annual_bill"] = annual_bill
+#     output_finance["oandm_cost"] = oandm_cost
+#     output_finance["rebates"] = rebates
+#     output_finance["disconnection_costs"] = disconnection_costs
+
+#     return (output_finance, cashflows)
+
+#------------------
+def analysis(
     row: pd.Series|dict,
     N_years: int = DEFAULT_LIFESPAN,
     discount_rate: float = DEFAULT_DISCOUNT_RATE,
     permanent_close: bool = False,
-    major_maintance_years: list[int] = [4, 8],
+    major_maintance_years: list[int] = [4,8],
     verbose: bool = True,
     save_details: bool = False,
     use_cache: bool = True,
@@ -498,25 +469,22 @@ def financial_analysis(
 ) -> tuple[dict,np.ndarray]:
 
     #retrieving data
+    old_heater = row["old_heater"]
     heater_type = row["heater_type"]
 
-    # running simulation or searching on cache
-    if use_cache:
-        (sim, out_all, out_overall) = cache_financial_tm(row, dir_cache, verbose=verbose)
-        ts = sim.create_ts()
-    else:
-        sim = get_simulation_instance(row, verbose=verbose)
-        ts = sim.create_ts()
-        (out_all, out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
-    energy_HWD_annual = out_overall["E_HWD_acum"]
+    sim = get_simulation_instance(row, verbose=verbose)
+    sim.run_simulation()
+    energy_HWD_annual = sim.out["overall_tm"]["E_HWD_acum"]
+    annual_energy_cost = sim.out["overall_econ"]["annual_hw_household_cost"]
+    annual_fit_opp_cost = sim.out["overall_econ"]["annual_fit_opp_cost"]
 
     #Calculating fixed and variable costs
     capital_cost = calculate_capital_cost(sim)
-    annual_bill = calculate_annual_bill(sim=sim, ts = ts, out_all = out_all)
-    oandm_cost = calculate_oandm_cost(sim, out_all)
+    daily_supply_cost = calculate_daily_supply_cost(sim)
+    oandm_cost = calculate_oandm_cost(sim)
     rebates = calculate_rebates(sim, capital_cost)
     disconnection_costs = calculate_disconnection_cost(
-        old_heater = heater_type,
+        old_heater = old_heater,
         permanent_close = permanent_close
     )
 
@@ -524,11 +492,11 @@ def financial_analysis(
     year_zero_cost = (capital_cost + disconnection_costs - rebates)
     cashflows = np.zeros(N_years+1)
     cashflows[0] = year_zero_cost
-    cashflows[1:-1] = annual_bill + oandm_cost    
-    if heater_type == 'resistive':
-        major_maintenance = DEFAULT_MAJOR_MAINTANCE
-        for i in major_maintance_years:
-            cashflows[i] = cashflows[i] + major_maintenance
+    cashflows[1:-1] = annual_energy_cost + daily_supply_cost + oandm_cost    
+    # if heater_type == 'resistive':
+    #     major_maintenance = DEFAULT_MAJOR_MAINTANCE
+    #     for i in major_maintance_years:
+    #         cashflows[i] = cashflows[i] + major_maintenance
     cashflows = np.array(cashflows)
 
     #Calculating financial parameters
@@ -542,13 +510,60 @@ def financial_analysis(
     output_finance["payback_period"] = payback_period
     output_finance["LCOHW"] = LCOHW
     output_finance["capital_cost"] = capital_cost
-    output_finance["annual_bill"] = annual_bill
+    output_finance["annual_energy_cost"] = annual_energy_cost
+    output_finance["daily_supply_cost"] = daily_supply_cost
+    output_finance["annual_fit_opp_cost"] = annual_fit_opp_cost
     output_finance["oandm_cost"] = oandm_cost
     output_finance["rebates"] = rebates
     output_finance["disconnection_costs"] = disconnection_costs
-    
 
     return (output_finance, cashflows)
+
+
+#----------------
+def calculate_rebates(
+    sim: Simulation,
+    capital_cost: float,
+) -> float: 
+
+    heater_type = sim.DEWH.label
+    old_heater = sim.household.old_heater
+    new_system = sim.household.new_system
+    location = sim.household.location
+
+    if location not in LIST_LOCATIONS:
+        raise ValueError(f"Location {location=} is invalid")
+        
+    state = LOCATIONS_STATE[location]
+    match state:
+        case "NSW":
+            rebate = NSW_rebate(old_heater, new_system)
+        case "VIC":
+            rebate = VIC_rebate(
+                old_heater=old_heater,
+                new_heater=heater_type,
+                new_system=new_system,
+                capital_cost=capital_cost,
+            )
+        case "SA":
+            rebate = SA_rebate()
+        case "ACT":
+            rebate = ACT_rebate(
+                old_heater=old_heater,
+                new_heater=heater_type,
+                capital_cost=capital_cost
+            )
+        case "QLD":
+            rebate = QLD_rebate()
+        case "TAS":
+            rebate = TAS_rebate()
+        case "WA":
+            rebate = WA_rebate()
+        case "NT":
+            rebate = NT_rebate()
+        case _:
+            raise ValueError("Location is invalid") 
+    return rebate 
 
 #--------------------
 def NSW_rebate(

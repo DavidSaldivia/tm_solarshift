@@ -134,7 +134,6 @@ class SIMULATIONS_IO():
         'heater_perf',
         'tank_flow_rate',
         'tank_temp_out',
-        # 'tank_tstat_1',          # ??? in trnsys. CHANGE!
         'C_all',
         'tank_temp_avg',         # T_avg in trnsys. CHANGE!
         'SOC',
@@ -165,7 +164,8 @@ class SIMULATIONS_IO():
         "payback_period",
         "LCOHW",
         "capital_cost",
-        "annual_bill",
+        "annual_energy_cost",
+        "daily_supply_cost",
         "oandm_cost",
         "others_cost",
         "rebates",
@@ -177,6 +177,7 @@ class SIMULATIONS_IO():
         "cost_savings_household",
         "cost_savings_retailer",
     ]
+
 
 # Definitions and mappings
 class DEFINITIONS():

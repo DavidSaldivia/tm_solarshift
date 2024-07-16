@@ -96,7 +96,7 @@ class Timer():
 class Diverter():
     type: str = "diverter"
     time_start: float = 0.
-    time_stop: float = 3.
+    time_stop: float = 4.
     heater_nom_power:float | None = None
 
 

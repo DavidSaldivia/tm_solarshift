@@ -10,7 +10,7 @@ from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
 from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
 from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 from tm_solarshift.models.pv_system import PVSystem
-from tm_solarshift.models.controller import (Controller, CLController)
+from tm_solarshift.models import control
 from tm_solarshift.timeseries.hwd import HWD
 
 TS_TYPES = SIMULATIONS_IO.TS_TYPES
@@ -29,10 +29,10 @@ class Simulation():
         
         self.DEWH = ResistiveSingle()
         self.pv_system = PVSystem()
-        self.controller: Controller = CLController()
+        self.controller: control.Controller | None = None
         
         self.time_params = TimeParams()
-        self.results = None
+        self.out: Output = {}
 
 
     def __eq__(self, other):
@@ -171,8 +171,7 @@ class Simulation():
         ts_types: list[str] | str | None = None,
     ) -> pd.DataFrame:
         
-        from tm_solarshift.timeseries import ( circuits, control, market )
-        from tm_solarshift.models.controller import CLController
+        from tm_solarshift.timeseries import ( circuits, market )
         
         if isinstance(ts_types, list):
             list_ts_types = ts_types.copy()
@@ -197,49 +196,24 @@ class Simulation():
                 HWD_method = self.HWDInfo.method
                 ts_hwd = self.HWDInfo.generator(ts_index, method = HWD_method)
                 ts_gens.append(ts_hwd)
-
-            # elif ts_type == "control":
-                
-            #     control_type = self.household.control_type
-            #     control_load = self.household.control_load
-            #     random_control = self.household.control_random_on
-            #     ts_control = pd.DataFrame(index=ts_index, columns=TS_TYPES[ts_type])
-                
-            #     if control_type == "diverter" and pv_system is not None:
-            #         #Diverter considers three hours at night plus everything diverted from solar
-            #         ts_wea = self.weather.load_data(ts_index)
-            #         df_pv = pv_system.sim_generation(ts_wea)
-
-            #         ts_control = control.load_schedule(
-            #             ts_control, control_load = control_load, random_ON=False
-            #         )
-            #         heater_nom_power = DEWH.nom_power.get_value("kW")
-            #         ts_control["CS"] = np.where(
-            #             ts_control["CS"]>=0.99, ts_control["CS"], np.where(
-            #                 (df_pv["pv_power"] > 0) & (df_pv["pv_power"] < heater_nom_power),
-            #                 df_pv["pv_power"] / heater_nom_power,
-            #                 np.where(df_pv["pv_power"] > heater_nom_power, 1., 0.)
-            #             )
-            #         )
-            #     else:
-            #         controller = CLController(control_type = control_load, random_on=random_control)
-            #         ts_control = controller.create_signal(ts_index)
-            #     ts_gens.append(ts_control)
             
             elif ts_type == "economic":
                 tariff_type = self.household.tariff_type
                 dnsp = self.household.DNSP
-                control_load = self.household.control_load
+                control_type = self.household.control_type
                 ts_econ = pd.DataFrame(index=ts_index, columns=TS_TYPES[ts_type])
                 ts_econ = market.load_wholesale_prices(ts_econ, location)
                 if tariff_type == "gas":
                     ts_econ = market.load_household_gas_rate(ts_econ, DEWH)
                 else:
-                    ts_econ = market.load_household_import_rate(
-                        ts_econ, tariff_type, dnsp,
-                        return_energy_plan=False,
-                        control_load=control_load
+                    ts_rate = market.load_household_import_rate(
+                        ts_econ.index,
+                        tariff_type = tariff_type,
+                        dnsp = dnsp,
+                        control_type = control_type
                     )
+                    ts_econ["tariff"] = ts_rate["tariff"]
+                    ts_econ["rate_type"] = ts_rate["rate_type"]
                 ts_gens.append(ts_econ)
             
             elif ts_type == "emissions":
@@ -279,7 +253,7 @@ class Simulation():
             None
         """
 
-        from tm_solarshift.models import (postprocessing, controller)
+        from tm_solarshift.models import postprocessing
 
         self.out: Output = {}
         ts_index = self.time_params.idx
@@ -291,28 +265,29 @@ class Simulation():
         if pv_system is not None:
             df_pv = pv_system.sim_generation(ts_wea, columns=SIMULATIONS_IO.OUTPUT_SIM_PV)
         else:
-            df_pv = pd.DataFrame(index=self.create_ts_index(),columns=SIMULATIONS_IO.OUTPUT_SIM_PV)
+            df_pv = pd.DataFrame(0, index=self.create_ts_index(), columns=SIMULATIONS_IO.OUTPUT_SIM_PV)
         self.out["df_pv"] = df_pv
 
         # control
         control_type = self.household.control_type
         if control_type in ["GS", "CL1", "CL2", "CL3"]:
-            ts_control = controller.CLController(
+            self.controller = control.CLController(
                 CL_type = control_type,
                 random_delay = self.household.control_random_on,
                 random_seed = self.id
-            ).create_signal(ts_index)
+            )
+            ts_control = self.controller.create_signal(ts_index)
         elif control_type in ["timer_SS", "timer_OP", "timer"]:
-            ts_control = controller.Timer(
-                timer_type = control_type,
-            ).create_signal(ts_index)
+            self.controller = control.Timer(timer_type = control_type)
+            ts_control = self.controller.create_signal(ts_index)
         elif control_type == "diverter":
-            ts_control = controller.Diverter(
+            controller = control.Diverter(
                 type = control_type,
                 time_start=0.,
-                time_stop=3.,
+                time_stop=4.,
                 heater_nom_power = self.DEWH.nom_power.get_value("kW")
-            ).create_signal(ts_index, df_pv["pv_power"])
+            )
+            ts_control = controller.create_signal(ts_index, df_pv["pv_power"])
 
 
         # thermal model
@@ -330,7 +305,7 @@ class Simulation():
 
     def run_thermal_simulation(
             self,
-            ts: Optional[pd.DataFrame] = None,
+            ts: pd.DataFrame | None = None,
             verbose: bool = False,
     ) -> tuple[pd.DataFrame, dict]:
         """Run a thermal simulation using the data provided in self.
@@ -347,7 +322,6 @@ class Simulation():
         """
 
         from tm_solarshift.models import postprocessing
-
         DEWH = self.DEWH
         if ts is None:
             ts_tm = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_TM+["emissions"])
@@ -364,27 +338,6 @@ class Simulation():
             ValueError("Not a valid type for DEWH")
         return (df_tm, overall_tm)
 
-
-        # DEWH = self.DEWH
-        # match DEWH.label:
-        #     case "resistive":
-        #         out_all = DEWH.run_thermal_model(ts, verbose=verbose)
-        #         out_overall = postprocessing.annual_postproc(self, ts, out_all)
-        #     case "heat_pump":
-        #         out_all = DEWH.run_thermal_model(ts, verbose=verbose)
-        #         out_overall = postprocessing.annual_postproc(self, ts, out_all)
-        #     case "gas_instant":
-        #         (out_all, out_overall) = DEWH.run_thermal_model(ts, verbose=verbose)
-        #     case "solar_thermal":
-        #         from tm_solarshift.models import solar_thermal
-        #         (out_all, out_overall) = solar_thermal.run_thermal_model(self, verbose=verbose)
-        #     case "gas_storage":
-        #         from tm_solarshift.models import gas_heater
-        #         (out_all, out_overall) = gas_heater.storage_fixed_eta(self,ts=ts, verbose=verbose)
-        #     case _:
-        #         raise ValueError("Not a valid type for DEWH.")
-
-
 #------------------------------------
 class Household():
     def __init__(
@@ -395,10 +348,10 @@ class Household():
         self.tariff_type = "flat"
         self.location = location.value
         self.control_type = "CL1"
-        self.control_load = 1
+        # self.control_load = 1
         self.control_random_on = True
 
-        self.heater_type = "resistive"
+        # self.heater_type = "resistive"
         self.size = 4
         self.has_solar = False
         self.old_heater = False
@@ -502,25 +455,27 @@ class Output(TypedDict, total=False):
     overall_tm: dict[str,float]
     overall_econ: dict[str,float]
 
-#-----------
+
 #-----------
 def main():
 
     sim = Simulation()
     # ts = sim.create_ts_empty()
     # ts = sim.create_ts()
+    # sim.pv_system = None
+    # sim.household.control_type = "diverter"
+    # sim.HWDInfo.profile_HWD = 3
     sim.run_simulation()
-
-    ts = sim.load_ts(ts_types= list(SIMULATIONS_IO.TS_TYPES.keys()) )
-
+    print(sim.out)
 
     pass
 
-    sim.DEWH = SolarThermalElecAuxiliary()
-    sim.DEWH = ResistiveSingle()
-    (out_all, out_overall) = sim.run_thermal_simulation( verbose=True )
-    print(out_all)
-    print(out_overall)
+    # sim.DEWH = ResistiveSingle()
+    # sim.DEWH = GasHeaterStorage()
+    # sim.DEWH = SolarThermalElecAuxiliary()
+    # (out_all, out_overall) = sim.run_thermal_simulation( verbose=True )
+    # print(out_all)
+    # print(out_overall)
     
     return
 
