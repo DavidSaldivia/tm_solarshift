@@ -151,7 +151,6 @@ def economics_analysis(
         df_econ["pv_power"],
         df_econ["heater_power"]
     )
-
     imported_power_acum = df_econ["imported_power"].sum() * STEP_h     #[kWh]
     exported_pv_acum = df_econ["exported_pv"].sum() * STEP_h           #[kWh]
     pv_to_hw_acum = df_econ["pv_to_hw"].sum() * STEP_h                 #[kWh]
@@ -218,7 +217,7 @@ def calculate_fit_opp_cost(
     tariff_type = sim.household.tariff_type
     control_type = sim.household.control_type
     if tariff_type == "CL":
-        tariff_type = control_type
+        tariff_type = control_type if (control_type != "diverter") else "CL1"
     file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{tariff_type}_plan.json")
     with open(file_path) as f:
         plan = json.load(f)
@@ -252,7 +251,7 @@ def calculate_fit_revenue(
     tariff_type = sim.household.tariff_type
     control_type = sim.household.control_type
     if tariff_type == "CL":
-        tariff_type = control_type
+        tariff_type = control_type if (control_type != "diverter") else "CL1"
     file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{tariff_type}_plan.json")
     with open(file_path) as f:
         plan = json.load(f)

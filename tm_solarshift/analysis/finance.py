@@ -270,7 +270,7 @@ def calculate_daily_supply_cost(sim: Simulation) -> float:
     }
     if suply_charge[tariff_type]:
         if tariff_type == "CL":
-            tariff_type = control_type
+            tariff_type = control_type if (control_type != "diverter") else "CL1"
         file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{tariff_type}_plan.json")
         with open(file_path) as f:
             plan = json.load(f)

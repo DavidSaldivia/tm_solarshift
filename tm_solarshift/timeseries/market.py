@@ -42,7 +42,8 @@ def load_household_import_rate(
             ts2["rate_type"] = "flat"
         
         case "CL":
-            file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{control_type}_plan.json")
+            control_type_ = "CL1" if control_type == "diverter" else control_type
+            file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{control_type_}_plan.json")
             with open(file_path) as f:
                 plan = json.load(f)
             tariff_rate = None

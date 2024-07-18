@@ -460,11 +460,20 @@ class Output(TypedDict, total=False):
 def main():
 
     sim = Simulation()
-    # ts = sim.create_ts_empty()
-    # ts = sim.create_ts()
     # sim.pv_system = None
-    # sim.household.control_type = "diverter"
-    # sim.HWDInfo.profile_HWD = 3
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "GS"
+    sim.household.tariff_type = "flat"
+    sim.DEWH = HeatPump.from_model_file(model = "iStore_270L")
+    sim.run_simulation()
+    print(sim.out)
+    
+    sim = Simulation()
+    # sim.pv_system = None
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "GS"
+    sim.household.tariff_type = "flat"
+    sim.DEWH = HeatPump.from_model_file(model = "REHP-CO2-315GL")
     sim.run_simulation()
     print(sim.out)
 
