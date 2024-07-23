@@ -153,13 +153,11 @@ class SolarThermalElecAuxiliary(HWTank):
 
 def run_thermal_model(
         sim: Simulation,
-        ts: Optional[pd.DataFrame] = None,
+        ts: pd.DataFrame,
         verbose: bool = False,
         tz: str = DEFAULT_TZ,
 ) -> tuple[pd.DataFrame, dict[str,float]]:
     
-    if ts is None:
-        ts = sim.create_ts()
     STEP_h = sim.time_params.STEP.get_value("hr")
 
     #Running a trnsys simulation assuming all energy from resistive

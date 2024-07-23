@@ -17,7 +17,7 @@ def sim_default():
 
 def test_pv_system_sim(sim_default: Simulation):
     sim = deepcopy(sim_default)
-    ts_wea = sim.create_ts(ts_columns=SIMULATIONS_IO.TS_TYPES["weather"])
+    ts_wea = sim.weather.load_data(sim.time_params.idx)
     expected_cols_sim = SIMULATIONS_IO.OUTPUT_SIM_PV
     expected_len_sim = sim.time_params.PERIODS.get_value()
 

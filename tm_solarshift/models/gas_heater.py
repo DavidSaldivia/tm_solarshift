@@ -55,7 +55,6 @@ class GasHeaterInstantaneous():
         flow_w = self.flow_water.get_value("m3/s")
         cp_w = self.fluid.cp.get_value("J/kg-K")
         rho_w = self.fluid.rho.get_value("kg/m3")
-        
         HW_energy = (flow_w * rho_w * cp_w) * deltaT_rise * CF("W", "MJ/hr")  #[MJ/hr]
         return Variable(HW_energy / nom_power, "-")
 
@@ -65,11 +64,9 @@ class GasHeaterInstantaneous():
         file_path: str = FILES_MODEL_SPECS["gas_instant"],
         model:str = "",
         ):
-        
         df = pd.read_csv(file_path, index_col=0)
         specs = pd.Series(df.loc[model])
         units = pd.Series(df.loc["units"])
-        
         output = cls()
         for (lbl,value) in specs.items():
             unit = units[str(lbl)]
@@ -97,8 +94,6 @@ class GasHeaterInstantaneous():
         temp_amb_avg = ts["temp_amb"].mean()
         temp_mains_avg = ts["temp_mains"].mean()
 
-        kgCO2_TO_kgCH4 = 44. / 16.
-
         nom_power = self.nom_power.get_value("MJ/hr")
         deltaT_rise = self.deltaT_rise.get_value("dgrC")
         flow_water = self.flow_water.get_value("L/min")
@@ -118,19 +113,78 @@ class GasHeaterInstantaneous():
                     )  #[MJ/hr]
 
         specific_energy = (nom_power / flow_water * CF("min", "hr") * CF("MJ", "kWh")) #[kWh/L]
-        out_all = pd.DataFrame(index = ts.index)
-        out_all["m_HWD"] = hw_flow
-        out_all["eta"] = eta
-        out_all["heater_power"] = specific_energy * hw_flow * CF("MJ", "kJ")    #[kJ/h]
+        df_tm = pd.DataFrame(index = ts.index)
+        df_tm["m_HWD"] = hw_flow
+        df_tm["eta"] = eta
+        df_tm["heater_power"] = specific_energy * hw_flow * CF("MJ", "kJ")    #[kJ/h]
+        df_tm["heater_heat"] = eta * df_tm["heater_power"]    #[kJ/h]
 
+        # specific_emissions = (kgCO2_TO_kgCH4 
+        #                 / (heat_value * CF("MJ", "kWh"))
+        #                 / eta
+        #                 ) #[kg_CO2/kWh_thermal]
+
+        # E_HWD = specific_energy * hw_flow * STEP_h                  #[kWh]
+        # E_HWD_acum = E_HWD.sum()                                    #[kWh]
+
+
+        # emissions = E_HWD * specific_emissions * CF("kg", "ton")    #[tonCO2]
+        # emissions_total = emissions.sum()                           #[tonCO2_annual]
+        # emissions_marginal = emissions.sum()                        #[tonCO2_annual]
+
+        # heater_heat_acum = E_HWD_acum / eta
+        # m_HWD_avg = (hw_flow * STEP_h).sum() / DAYS
+
+        # out_overall = {
+        #     "heater_heat_acum": heater_heat_acum,
+        #     "heater_perf_avg": eta,
+        #     "E_HWD_acum": E_HWD_acum,
+        #     "m_HWD_avg": m_HWD_avg,
+        #     "temp_amb_avg": temp_amb_avg,
+        #     "temp_mains_avg": temp_mains_avg,
+        #     "emissions_total": emissions_total,
+        #     "emissions_marginal": emissions_marginal,
+        #     "solar_ratio": 0.0,
+        #     "t_SOC0": 0.0,
+
+        #     "heater_power_acum": np.nan,
+        #     "E_losses": np.nan,
+        #     "eta_stg": np.nan,
+        #     "cycles_day": np.nan,
+        #     "SOC_avg": np.nan,
+        #     "SOC_min": np.nan,
+        #     "SOC_025": np.nan,
+        #     "SOC_050": np.nan,
+        # }
+        return df_tm
+    
+    def postproc(self, df_tm: pd.DataFrame) -> dict[str,float]:
+
+        kgCO2_TO_kgCH4 = 44. / 16.
+        nom_power = self.nom_power.get_value("MJ/hr")
+        deltaT_rise = self.deltaT_rise.get_value("dgrC")
+        flow_water = self.flow_water.get_value("L/min")
+        heat_value = self.heat_value.get_value("MJ/kg_gas")
+        cp_water = self.fluid.cp.get_value("J/kg-K")
+        rho_water = self.fluid.rho.get_value("kg/m3")
+        eta = self.eta.get_value("-")
+        
+        ts_index = pd.to_datetime(df_tm.index)
+        DAYS = len(np.unique(ts_index.date))
+        freq = ts_index.freq
+        if freq is None:
+            raise IndexError("timeseries ts has no proper Index")
+        STEP_h = freq.n * CF("min", "hr")
+        hw_flow = df_tm["m_HWD"]
+
+        specific_energy = (nom_power / flow_water * CF("min", "hr") * CF("MJ", "kWh")) #[kWh/L]
         specific_emissions = (kgCO2_TO_kgCH4 
-                        / (heat_value * CF("MJ", "kWh"))
-                        / eta
-                        ) #[kg_CO2/kWh_thermal]
+                / (heat_value * CF("MJ", "kWh"))
+                / eta
+                ) #[kg_CO2/kWh_thermal]
 
         E_HWD = specific_energy * hw_flow * STEP_h                  #[kWh]
         E_HWD_acum = E_HWD.sum()                                    #[kWh]
-
 
         emissions = E_HWD * specific_emissions * CF("kg", "ton")    #[tonCO2]
         emissions_total = emissions.sum()                           #[tonCO2_annual]
@@ -138,14 +192,13 @@ class GasHeaterInstantaneous():
 
         heater_heat_acum = E_HWD_acum / eta
         m_HWD_avg = (hw_flow * STEP_h).sum() / DAYS
-
-        out_overall = {
+        overall_th = {
             "heater_heat_acum": heater_heat_acum,
             "heater_perf_avg": eta,
             "E_HWD_acum": E_HWD_acum,
             "m_HWD_avg": m_HWD_avg,
-            "temp_amb_avg": temp_amb_avg,
-            "temp_mains_avg": temp_mains_avg,
+            # "temp_amb_avg": temp_amb_avg,
+            # "temp_mains_avg": temp_mains_avg,
             "emissions_total": emissions_total,
             "emissions_marginal": emissions_marginal,
             "solar_ratio": 0.0,
@@ -160,8 +213,9 @@ class GasHeaterInstantaneous():
             "SOC_025": np.nan,
             "SOC_050": np.nan,
         }
-        return (out_all, out_overall)
-    
+        return overall_th
+
+
 
 class GasHeaterStorage(HWTank):
     def __init__(self):
@@ -216,6 +270,7 @@ class GasHeaterStorage(HWTank):
             setattr(output, str(lbl), Variable(value, unit) )
         return output
     
+
     def run_thermal_model(
             self,
             ts: pd.DataFrame,
@@ -236,7 +291,7 @@ def storage_fixed_eta(
 
     from tm_solarshift.models import (trnsys, postprocessing)
     DEWH: GasHeaterStorage = sim.DEWH
-    kgCO2_TO_kgCH4 = 44. / 16. #Assuming pure methane for gas
+    kgCO2_TO_kgCH4 = (44./16.)          #Assuming pure methane for gas
     heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
     eta = sim.DEWH.eta.get_value("-")
 

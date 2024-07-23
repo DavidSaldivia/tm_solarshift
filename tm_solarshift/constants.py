@@ -65,6 +65,7 @@ class DIRECTORY():
     FILE_WHOLESALE_PRICES = os.path.join(DIR_DATA["energy_market"], 'SP_2017-2023.csv')
     FILE_POSTCODES = os.path.join(DIR_DATA["location"], "australian_postcodes.csv") # https://www.matthewproctor.com/australian_postcodes
     FILE_MERRA2_COORDS = os.path.join(DIR_DATA["location"], "merra2_coord_states.csv")
+    FILE_GAS_TARIFF_SAMPLE = os.path.join(DIR_DATA["gas"],"energyaustralia_basic.json")
     
 
 class DEFAULT():

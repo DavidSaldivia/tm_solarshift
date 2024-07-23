@@ -18,7 +18,7 @@ FILES = {
     "WHOLESALE_PRICES": os.path.join(DIR_SPOTPRICE, 'SP_2017-2023.csv'),
     "EMISSIONS_TEMPLATE": os.path.join( DIR_EMISSIONS, "emissions_year_{:}_{:}.csv"),
 }
-GAS_TARIFF_SAMPLE_FILE = os.path.join(DIRECTORY.DIR_DATA["gas"],"energyaustralia_basic.json")
+FILE_GAS_TARIFF_SAMPLE = DIRECTORY.FILE_GAS_TARIFF_SAMPLE
 
 #-----------
 def load_household_import_rate(
@@ -91,10 +91,10 @@ def load_household_import_rate(
 
 #-------------
 def load_household_gas_rate(
-        ts: pd.DataFrame,
+        ts_hwd: pd.Series,
         heater: GasHeaterInstantaneous,
+        file_path: str = FILE_GAS_TARIFF_SAMPLE,
         tariff_type: str = "gas",
-        file_path: str = GAS_TARIFF_SAMPLE_FILE,
 ) -> pd.DataFrame:
 
     #importing the energy plan
@@ -113,21 +113,22 @@ def load_household_gas_rate(
     specific_energy = (nom_power / flow_water * CF("min", "hr"))        #[MJ/L]
 
     #getting the tariff
-    ts2 = ts.copy()
-    ts2_index = pd.to_datetime(ts2.index)
-    hw_flow = ts2["m_HWD"]
-    STEP_h = ts2_index.freq.n * CF("min", "hr")
-    ts2["E_HWD"] = specific_energy * hw_flow * STEP_h         #[MJ]
-    ts2["E_HWD_cum_day"] = ts2.groupby(ts2_index.date)['E_HWD'].cumsum()
-    ts2["tariff"] = pd.cut(
-        ts2["E_HWD_cum_day"],
+    ts_index = pd.to_datetime(ts_hwd.index)
+
+    ts_tariff = pd.DataFrame(ts_hwd, index=ts_index)
+    freq = ts_index.freq
+    if freq is not None:
+        STEP_h = freq.n * CF("min", "hr")
+    ts_tariff["E_HWD"] = specific_energy * ts_hwd["m_HWD"] * STEP_h         #[MJ]
+    ts_tariff["E_HWD_cum_day"] = ts_tariff.groupby(ts_index.date)['E_HWD'].cumsum()
+    ts_tariff["tariff"] = pd.cut(
+        ts_tariff["E_HWD_cum_day"],
         bins = edges, labels = rates, right = False
     ).astype("float")
 
     #output
-    ts["tariff"] = ts2["tariff"]
-    ts["rate_type"] = tariff_type
-    return ts
+    ts_tariff["rate_type"] = "gas"
+    return ts_tariff
 
 #---------------------------------
 # emissions
@@ -166,9 +167,9 @@ def load_emission_index_year(
 #---------------------------------
 # wholesale prices
 def load_wholesale_prices(
-        timeseries: pd.DataFrame,
+        ts_index: pd.DatetimeIndex,
         location: Location = Location(),
-        ) -> pd.DataFrame:
+        ) -> pd.Series:
     
     df_SP = pd.read_csv( FILES["WHOLESALE_PRICES"], index_col=0 )
     df_SP.index = pd.to_datetime(df_SP.index).tz_localize(None)
@@ -182,14 +183,11 @@ def load_wholesale_prices(
     elif type(location) == Location:
         nem_region = DEFINITIONS.STATES_NEM_REGION[location.state]
 
-    STEP = pd.to_datetime(timeseries.index).freq.n
-    timeseries["wholesale_market"] = df_SP[
-        nem_region
-        ].resample(
-            f"{STEP}min"
-        ).interpolate('linear')
-
-    return timeseries
+    STEP = pd.to_datetime(ts_index).freq.n
+    ts = pd.Series(
+        df_SP[nem_region].resample(f"{STEP}min").interpolate('linear')
+    )
+    return ts
 
 #------------------------
 def test_get_gas_rate():

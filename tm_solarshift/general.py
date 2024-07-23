@@ -296,10 +296,8 @@ class Simulation():
         self.out["df_tm"] = df_tm
         self.out["overall_tm"] = overall_tm
 
-        ts_econ = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_ECO)
-        self.out["overall_econ"] = postprocessing.economics_analysis(
-            self, ts=ts_econ, df_tm=df_tm
-        )
+        # ts_econ = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_ECO)
+        self.out["overall_econ"] = postprocessing.economics_analysis(self)
         return None
 
 
@@ -333,7 +331,7 @@ class Simulation():
             overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
         elif isinstance(DEWH, SolarThermalElecAuxiliary):
             from tm_solarshift.models import solar_thermal
-            (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, verbose=verbose)
+            (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, ts_tm, verbose=verbose)
         else:
             ValueError("Not a valid type for DEWH")
         return (df_tm, overall_tm)

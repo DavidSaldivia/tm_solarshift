@@ -45,6 +45,7 @@ FILE_MODEL_HOUSEHOLDSIZES = os.path.join(
     "models_householdsize.csv"
 )
 DIR_TARIFFS = DIRECTORY.DIR_DATA["tariffs"]
+DIR_TARIFF_GAS = DIRECTORY.DIR_DATA["gas"]
 LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.OUTPUT_ANALYSIS_FIN
@@ -239,10 +240,23 @@ def calculate_household_energy_cost(
         sim: Simulation,
         imported_energy: pd.Series,
     ) -> float:
+
+    from tm_solarshift.timeseries import market
+    tariff_type = sim.household.tariff_type
+    ts_index = sim.time_params.idx
     STEP_h = sim.time_params.STEP.get_value("hr")
     if "df_tm" not in sim.out:
         raise AttributeError("No thermal simulation results found.")
-    ts_mkt = sim.load_ts(["economic"])
+    if tariff_type == "gas":
+        ts_hwd = sim.HWDInfo.generator(ts_index, method = sim.HWDInfo.method)
+        ts_mkt =  market.load_household_gas_rate(ts_hwd, sim.DEWH)
+    else:
+        ts_mkt = market.load_household_import_rate(
+            ts_index,
+            tariff_type = tariff_type,
+            dnsp = sim.household.DNSP,
+            control_type = sim.household.control_type,
+        )
     return ((ts_mkt["tariff"] * imported_energy).sum() * STEP_h)
 
 
@@ -250,11 +264,18 @@ def calculate_wholesale_energy_cost(
         sim: Simulation,
         imported_energy: pd.Series,
     ) -> float:
+    from tm_solarshift.timeseries import market
     STEP_h = sim.time_params.STEP.get_value("hr")
     if "df_tm" not in sim.out:
         raise AttributeError("No thermal simulation results found.")
-    wholesale_market = sim.load_ts(["economic"])["wholesale_market"]
-    return ((wholesale_market * imported_energy * CF("kW", "MW")).sum() * STEP_h)
+    tariff_type = sim.household.tariff_type
+    if tariff_type == "gas":
+        ts_mkt = pd.Series(0, index = sim.time_params.idx)
+    else:
+        ts_index = sim.time_params.idx
+        location = sim.household.location
+        ts_mkt = market.load_wholesale_prices(ts_index, location=location)
+    return ((ts_mkt * imported_energy * CF("kW", "MW")).sum() * STEP_h)
 
 
 def calculate_daily_supply_cost(sim: Simulation) -> float:
@@ -272,6 +293,8 @@ def calculate_daily_supply_cost(sim: Simulation) -> float:
         if tariff_type == "CL":
             tariff_type = control_type if (control_type != "diverter") else "CL1"
         file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{tariff_type}_plan.json")
+        if tariff_type == "gas":
+            file_path = DIRECTORY.FILE_GAS_TARIFF_SAMPLE
         with open(file_path) as f:
             plan = json.load(f)
         daily_supply_charge = plan["charges"]["service_charges"][0]["rate"]

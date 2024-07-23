@@ -54,6 +54,12 @@ def thermal_analysis(
         df_tm: pd.DataFrame
 ) -> dict[str, float]:
     
+    from tm_solarshift.models.gas_heater import GasHeaterInstantaneous
+    DEWH = sim.DEWH
+    if isinstance(DEWH, GasHeaterInstantaneous):
+        overall_th = DEWH.postproc(df_tm)
+        return overall_th
+
     STEP_h = sim.time_params.STEP.get_value("hr")
     DAYS = sim.time_params.DAYS.get_value("d")
     thermal_cap = sim.DEWH.thermal_cap.get_value("kWh")
@@ -109,18 +115,19 @@ def thermal_analysis(
     return overall_th
 
 
-def economics_analysis(
-        sim: Simulation,
-        ts: pd.DataFrame,
-        df_tm: pd.DataFrame | None = None
-) -> dict[str, float]:
+def economics_analysis(sim: Simulation) -> dict[str, float]:
     
     #retrieving data
-    STEP_h = sim.time_params.STEP.get_value("hr")
+    location = sim.household.location
     DEWH = sim.DEWH
     df_tm = sim.out["df_tm"]
+    ts_index = sim.time_params.idx
+    STEP_h = sim.time_params.STEP.get_value("hr")
+    YEAR = sim.time_params.YEAR.get_value("-")
+
+    # creating output df
     COLS_ECON = ["heater_power", "pv_power", "imported_power", "exported_pv", "pv_to_hw"]
-    df_econ = pd.DataFrame(index=sim.time_params.idx, columns=COLS_ECON)        # all cols in [kWh]
+    df_econ = pd.DataFrame(index=ts_index, columns=COLS_ECON)        # all cols in [kWh]
     df_econ["pv_power"] = sim.out["df_pv"]["pv_power"]
     if DEWH.label == "solar_thermal":
         df_econ["heater_power"] = df_tm["heater_power_no_solar"]
@@ -156,20 +163,27 @@ def economics_analysis(
     pv_to_hw_acum = df_econ["pv_to_hw"].sum() * STEP_h                 #[kWh]
     solar_ratio_real = pv_to_hw_acum / heater_power_acum
     
-    print(df_econ.groupby(df_econ.index.hour).sum() * STEP_h)
-    print(df_econ.groupby(df_econ.index.month).sum() * STEP_h)
+    print(df_econ.groupby(ts_index.hour).sum() * STEP_h)
+    print(df_econ.groupby(ts_index.month).sum() * STEP_h)
 
     # emissions
+    from tm_solarshift.timeseries import market
     from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
     from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
     from tm_solarshift.models.gas_heater import GasHeaterInstantaneous, GasHeaterStorage
-
+    ts_emi = pd.DataFrame(index=ts_index)
+    ts_emi = market.load_emission_index_year(
+        ts_emi, index_type= 'total', location = location, year = YEAR,
+    )
+    ts_emi = market.load_emission_index_year(
+        ts_emi, index_type= 'marginal', location = location, year = YEAR,
+    )
     if isinstance(DEWH, ResistiveSingle | HeatPump | SolarThermalElecAuxiliary):
         emissions_total = (
-            (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts["intensity_index"]
+            (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["intensity_index"]
             ).sum()
         emissions_marginal = (
-            (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts["marginal_index"]
+            (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["marginal_index"]
             ).sum()
     if isinstance(DEWH, GasHeaterInstantaneous | GasHeaterStorage):
         heater_heat_acum = ( df_tm["heater_heat"] * STEP_h  * CF("kJ/h", "kW") ).sum()
@@ -216,6 +230,10 @@ def calculate_fit_opp_cost(
     dnsp = sim.household.DNSP
     tariff_type = sim.household.tariff_type
     control_type = sim.household.control_type
+
+    if tariff_type == "gas":
+        return 0.
+
     if tariff_type == "CL":
         tariff_type = control_type if (control_type != "diverter") else "CL1"
     file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{tariff_type}_plan.json")
@@ -252,6 +270,8 @@ def calculate_fit_revenue(
     control_type = sim.household.control_type
     if tariff_type == "CL":
         tariff_type = control_type if (control_type != "diverter") else "CL1"
+    if tariff_type == "gas":
+        tariff_type = "flat"
     file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{tariff_type}_plan.json")
     with open(file_path) as f:
         plan = json.load(f)
