@@ -265,7 +265,7 @@ class Simulation():
         if pv_system is not None:
             df_pv = pv_system.sim_generation(ts_wea, columns=SIMULATIONS_IO.OUTPUT_SIM_PV)
         else:
-            df_pv = pd.DataFrame(0, index=self.create_ts_index(), columns=SIMULATIONS_IO.OUTPUT_SIM_PV)
+            df_pv = pd.DataFrame(0, index=self.time_params.idx, columns=SIMULATIONS_IO.OUTPUT_SIM_PV)
         self.out["df_pv"] = df_pv
 
         # control

@@ -251,9 +251,9 @@ def convert_periods_to_series(
 
 def add_random_delay(
     cs_no_random: np.ndarray,
-    random_delay_on: int = 0,
-    random_delay_off: int = 0,
-    STEP: int = 3,
+    random_delay_on: int = 0,   #[min]
+    random_delay_off: int = 0,  #[min]
+    STEP: int = 3,              #[min]
     random_seed: int = -1,
 ) -> np.ndarray:
 
@@ -295,65 +295,6 @@ def add_random_delay(
     cs_final = cs_no_random[0] + cs_final.cumsum()
 
     return cs_final
-
-
-    
-
-# def add_random_delay(
-#     cs_periods: pd.Series,
-#     random_delay_on: int = 0,
-#     random_delay_off: int = 0,
-#     STEP: int = 3,
-#     random_seed: int = -1,
-# ) -> pd.Series:
-
-#     # TODO replace this one
-#     if random_seed == -1:
-#         seed = np.random.SeedSequence().entropy
-#     else:
-#         seed = random_seed
-    
-#     rng = np.random.default_rng(seed)
-#     df_initial = pd.DataFrame(cs_periods, columns=["CS"])
-#     df_initial["switch_no_rand"] = df_initial["CS"].diff()  # Values 1=ON, -1=OFF
-
-#     # TODO can we use a for loop here? over 1 (starting_times) and -1 (stopping_times)
-#     # getting starting and stopping times without randomisation
-#     df_starting_times = df_initial[df_initial["switch_no_rand"] == 1].copy()
-#     df_starting_times["time_no_rand"] = df_starting_times.index
-#     df_stopping_times = df_initial[df_initial["switch_no_rand"] == -1].copy()
-#     df_stopping_times["time_no_rand"] = df_stopping_times.index
-
-#     if len(df_starting_times)==0 or len(df_stopping_times)==0:
-#         return cs_periods
-
-#     # creating randomization delays for on and off
-#     df_starting_times["delays_on"] = rng.choice(
-#         np.arange(0, random_delay_on + 1, STEP), size=len(df_starting_times),
-#     )
-#     df_stopping_times["delays_off"] = rng.choice(
-#         np.arange(0, random_delay_off + 1, STEP), size=len(df_stopping_times)
-#     )
-
-#     #last delays are = 0 to avoid get outside indexes
-#     # TODO Is this step needed?
-#     df_starting_times.iloc[-1, df_starting_times.columns.get_loc("delays_on")] = 0
-#     df_stopping_times.iloc[-1, df_stopping_times.columns.get_loc("delays_off")] = 0
-
-#     # Defining starting and stopping times once randomization is applied
-#     df_starting_times["time_with_rand"] = df_starting_times.apply(
-#         lambda aux: aux["time_no_rand"] + pd.offsets.Minute(aux["delays_on"]), axis=1
-#     )
-#     df_stopping_times["time_with_rand"] = df_stopping_times.apply(
-#         lambda aux: aux["time_no_rand"]  + pd.offsets.Minute(aux["delays_off"]), axis=1,
-#     )
-#     # Applying the randomization into the final dataframe
-#     df_final = df_initial.copy()
-#     df_final["time_rand"] = 0         # TODO is this needed?
-#     df_final.loc[df_starting_times["time_with_rand"], "time_rand"] = 1
-#     df_final.loc[df_stopping_times["time_with_rand"], "time_rand"] = -1
-#     output = (df_final.iloc[0]["CS"] + df_final["time_rand"].cumsum())  # TODO check this part
-#     return output
 
 
 # def load_control_signal(

@@ -215,8 +215,8 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
     overall_econ["annual_fit_opp_cost"] = annual_fit_opp_cost
     overall_econ["annual_fit_revenue"] = annual_fit_revenue
     
-    for (k,v) in overall_econ.items():
-        print(f"{k}: {v:.4f}")
+    # for (k,v) in overall_econ.items():
+    #     print(f"{k}: {v:.4f}")
     return overall_econ
 
 

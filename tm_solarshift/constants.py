@@ -70,16 +70,19 @@ class DIRECTORY():
 
 class DEFAULT():
 
+    #location
     LOCATION = "Sydney"
     HWDP = 1
     NEM_REGION = "NSW1"
     
+    #geography
     TZ = 'Australia/Brisbane'       # NEM timezone
     LAT = -33.86
     LON = 151.21
     TILT = abs(LAT)
     ORIENT = 180.
     
+    #pv
     G_STC = 1000.                   #[W/m2]
     PV_NOMPOW = 5000.               #[W]
     ADR_PARAMS = {
@@ -89,6 +92,21 @@ class DEFAULT():
         'k_rs': 0.06999,
         'k_rsh': 0.26144,
     }
+
+    #finance
+    CAPITAL_COST = 1000.        #[AUD]
+    DIVERTER_COST = 1100.       #[AUD]
+    TIMER_COST = 250.           #[AUD]
+    PERM_CLOSE_COST = 1250      #[AUD]
+    TEMP_CLOSE_COST = 200       #[AUD]
+    NEW_ELEC_SETUP = 500.       #[AUD]
+    REBATES = 0                 # [AUD]
+    DISCOUNT_RATE = 0.08        # 8%
+    LIFESPAN = 10               # [years]
+    MAJOR_MAINTANCE = 200.      # AUD
+    HOUSEHOLD_SIZE = 4          # [people]
+    DAILY_HWD = 200.            # [L/day]
+
 
 class SIMULATIONS_IO():
 
