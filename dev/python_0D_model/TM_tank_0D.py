@@ -1,11 +1,12 @@
 import os
 import matplotlib.pyplot as plt
 
+from dev.python_0D_model import tank_0D
 import tm_solarshift.general as general
 from tm_solarshift.constants import DIRECTORY
 from tm_solarshift.general import Simulation
 from tm_solarshift.models.dewh import (Variable, ResistiveSingle)
-from tm_solarshift.models import (tank_0D, trnsys)
+from tm_solarshift.models import (trnsys)
 
 
 #------------------------------

@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from typing import TYPE_CHECKING, Optional
 
+from tm_solarshift.models.dewh import HWTank
 from tm_solarshift.constants import (DIRECTORY, DEFAULT)
 from tm_solarshift.utils.units import (Variable, conversion_factor as CF, Water)
 from tm_solarshift.utils.solar import (get_plane_irradiance, get_plane_angles)
@@ -14,9 +15,10 @@ FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 DEFAULT_TZ = DEFAULT.TZ
 
 #-------------------
-class SolarThermalElecAuxiliary():
+class SolarThermalElecAuxiliary(HWTank):
     def __init__(self):
-
+        
+        super().__init__()
         # description
         self.name = "Solar thermal colector. Tank separated from collector, with electric heater."
         self.label = "solar_thermal"
@@ -39,25 +41,6 @@ class SolarThermalElecAuxiliary():
         self.nom_power = Variable(3600.0, "W")
         self.eta = Variable(1.0, "-")
 
-        # tank
-        self.vol = Variable(0.315,"m3")
-        self.height = Variable(1.45, "m")  # It says 1.640 in specs, but it is external height, not internal
-        self.height_inlet = Variable(0.113, "m")
-        self.height_outlet = Variable(1.317, "m")
-        self.height_heater = Variable(0.103, "m")
-        self.height_thermostat = Variable(0.103, "m")
-        self.U = Variable(0.9, "W/m2-K")
-        self.nodes = 10     # Tank nodes. DO NOT CHANGE, unless TRNSYS layout is changed too!
-        self.temps_ini = 3  # [-] Initial temperature of the tank. Check editing_dck_tank() below for the options
-        self.fluid = Water()
-
-        #control
-        self.temp_max = Variable(63.0, "degC")  #Maximum temperature in the tank
-        self.temp_min = Variable(45.0,"degC")  # Minimum temperature in the tank
-        self.temp_high_control = Variable(59.0, "degC")  #Temperature to for control
-        self.temp_consump = Variable(45.0, "degC") #Consumption temperature
-        self.temp_deadband = Variable(10, "degC")
-
     @property
     def initial_conditions(self) -> dict:
         initial_conditions = {
@@ -65,19 +48,6 @@ class SolarThermalElecAuxiliary():
             "temp_tank_top": self.temp_max,
         }
         return initial_conditions
-    
-    @property
-    def thermal_cap(self):
-        from tm_solarshift.models.dewh import tank_thermal_capacity
-        return tank_thermal_capacity(self)
-    @property
-    def diam(self):
-        from tm_solarshift.models.dewh import tank_diameter
-        return tank_diameter(self)
-    @property
-    def area_loss(self):
-        from tm_solarshift.models.dewh import tank_area_loss
-        return tank_area_loss(self)
 
     @classmethod
     def from_model_file(
@@ -92,12 +62,12 @@ class SolarThermalElecAuxiliary():
         
         output = cls()
         for (lbl,value) in specs.items():
-            unit = units[lbl]
+            unit = units[str(lbl)]
             try:
                 value = float(value)
             except:
                 pass
-            setattr(output, lbl, Variable(value, unit) )
+            setattr(output, str(lbl), Variable(value, unit) )
         return output
     
     def run_thermal_model(
@@ -124,14 +94,13 @@ class SolarThermalElecAuxiliary():
                       "heater_perf", "solar_energy_u",
                       "SOC",
                       ]
-        COLS_OUT = []
-        COLS = COLS_IN + COLS_MODEL + COLS_OUT
+        COLS = COLS_IN + COLS_MODEL
         df_tm = pd.DataFrame(index=ts.index, columns = COLS)
         df_tm[COLS_IN] = ts[COLS_IN]
 
         #initial conditions
-        df_tm.iloc[0,"temp_stc_inlet"] = self.initial_conditions["temp_tank_bottom"]
-        df_tm.iloc[0,"temp_hw_outlet"] = self.initial_conditions["temp_tank_bottom"]
+        df_tm.loc[df_tm.index[0],"temp_stc_inlet"] = self.initial_conditions["temp_tank_bottom"]
+        df_tm.loc[df_tm.index[0],"temp_hw_outlet"] = self.initial_conditions["temp_tank_bottom"]
         
         # retrieving DEWH data
         massflowrate = self.massflowrate.get_value("kg/s")
@@ -177,27 +146,25 @@ class SolarThermalElecAuxiliary():
 
         #Running a trnsys simulation assuming all energy from resistive
         trnsys_dewh = trnsys.TrnsysDEWH(DEWH=self, ts=ts)
-        df_tm = trnsys_dewh.run_simulation(ts, verbose=verbose)
+        df_tm = trnsys_dewh.run_simulation(verbose=verbose)
 
         return df_tm
 
 
 def run_thermal_model(
         sim: Simulation,
-        ts: Optional[pd.DataFrame] = None,
+        ts: pd.DataFrame,
         verbose: bool = False,
         tz: str = DEFAULT_TZ,
 ) -> tuple[pd.DataFrame, dict[str,float]]:
     
-    if ts is None:
-        ts = sim.create_ts()
-    STEP_h = sim.thermal_sim.STEP.get_value("hr")
+    STEP_h = sim.time_params.STEP.get_value("hr")
 
     #Running a trnsys simulation assuming all energy from resistive
     from tm_solarshift.models import trnsys
     from tm_solarshift.models import postprocessing
     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=sim.DEWH, ts=ts)
-    df_tm = trnsys_dewh.run_simulation(ts, verbose=verbose)
+    df_tm = trnsys_dewh.run_simulation(verbose=verbose)
     out_th = postprocessing.thermal_analysis(sim, ts, df_tm)
 
     # this is the actual solar thermal model
@@ -242,8 +209,8 @@ def run_thermal_model(
     temp_outlet = temp_inlet + df_tm["solar_energy_u"] / (massflowrate * cp)
 
     # updating out_th
-    out_th["solar_energy_u"] = (df_tm["solar_energy_u"] * STEP_h * CF("Wh", "kWh")).sum()
-    out_th["solar_energy_in"] = (df_tm["total_irrad"] * STEP_h * CF("Wh", "kWh")).sum()
+    out_th["solar_energy_u"] = df_tm["solar_energy_u"].sum() * STEP_h * CF("Wh", "kWh")
+    out_th["solar_energy_in"] = df_tm["total_irrad"].sum() * STEP_h * CF("Wh", "kWh")
 
     out_th["heater_perf_avg"] = out_th["solar_energy_u"] / out_th["solar_energy_in"]
     out_th["heater_power_acum"] = (out_th["heater_power_acum"] - out_th["solar_energy_u"])
@@ -261,6 +228,7 @@ def main():
     from tm_solarshift.general import Simulation
     sim = Simulation()
     sim.DEWH = SolarThermalElecAuxiliary()
+    df_tm = sim.DEWH.run_thermal_model(sim.create_ts())
 
     (df_tm, out_overall) = sim.run_thermal_simulation(verbose=True)
     pass

@@ -1,24 +1,30 @@
 import os
 
-class DIRECTORY():
-    
+import json
+
+
+class DIRECTORY():    
     #DIRS
     DIR_MAIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DIR_FILE = os.path.dirname(os.path.abspath(__file__))
+    
+    with open(os.path.join(DIR_MAIN, ".dirs"), "r") as f:
+        private_dirs = json.load(f)
+    DIR_DATA_EXTERNAL = private_dirs["data"]
     DIR_DATA = {
-        "energy_market": os.path.join(DIR_MAIN, "data", "energy_market"),
-        "emissions" : os.path.join(DIR_MAIN, "data", "emissions"),
-        "HWDP" : os.path.join(DIR_MAIN, "data", "HWD_profiles"),
-        "layouts" : os.path.join(DIR_MAIN, "data", "trnsys_layouts"),
-        "location" : os.path.join(DIR_MAIN, "data", "location"),
-        "SA_processed" : os.path.join(DIR_MAIN, "data", "SA_processed"),
-        "SA_raw" : os.path.join(DIR_MAIN, "data", "SA_raw"),
-        "samples" : os.path.join(DIR_MAIN, "data", "samples"),
-        "specs" : os.path.join(DIR_MAIN, "data", "device_specs"),
-        "tariffs" : os.path.join(DIR_MAIN, "data", "tariffs_json_2023-24"),
-        "gas" : os.path.join(DIR_MAIN, "data", "tariffs_gas"),
-        "control" : os.path.join(DIR_MAIN, "data", "control"),
-        "weather" : os.path.join(DIR_MAIN, "data", "weather"),
+        "energy_market": os.path.join(DIR_DATA_EXTERNAL, "energy_market"),
+        "emissions" : os.path.join(DIR_DATA_EXTERNAL, "emissions"),
+        "HWDP" : os.path.join(DIR_DATA_EXTERNAL, "HWD_profiles"),
+        "layouts" : os.path.join(DIR_DATA_EXTERNAL, "trnsys_layouts"),
+        "location" : os.path.join(DIR_DATA_EXTERNAL, "location"),
+        "SA_processed" : os.path.join(DIR_DATA_EXTERNAL, "SA_processed"),
+        "SA_raw" : os.path.join(DIR_DATA_EXTERNAL, "SA_raw"),
+        "samples" : os.path.join(DIR_DATA_EXTERNAL, "samples"),
+        "specs" : os.path.join(DIR_DATA_EXTERNAL, "device_specs"),
+        "tariffs" : os.path.join(DIR_DATA_EXTERNAL, "tariffs"),
+        "gas" : os.path.join(DIR_DATA_EXTERNAL, "tariffs_gas"),
+        "control" : os.path.join(DIR_DATA_EXTERNAL, "control"),
+        "weather" : os.path.join(DIR_DATA_EXTERNAL, "weather"),
         }
     DIR_RESULTS = os.path.join(DIR_MAIN, "results")
     DIR_PROJECTS = os.path.join(DIR_MAIN, "projects")
@@ -59,20 +65,24 @@ class DIRECTORY():
     FILE_WHOLESALE_PRICES = os.path.join(DIR_DATA["energy_market"], 'SP_2017-2023.csv')
     FILE_POSTCODES = os.path.join(DIR_DATA["location"], "australian_postcodes.csv") # https://www.matthewproctor.com/australian_postcodes
     FILE_MERRA2_COORDS = os.path.join(DIR_DATA["location"], "merra2_coord_states.csv")
+    FILE_GAS_TARIFF_SAMPLE = os.path.join(DIR_DATA["gas"],"energyaustralia_basic.json")
     
 
 class DEFAULT():
 
+    #location
     LOCATION = "Sydney"
     HWDP = 1
     NEM_REGION = "NSW1"
     
+    #geography
     TZ = 'Australia/Brisbane'       # NEM timezone
     LAT = -33.86
     LON = 151.21
     TILT = abs(LAT)
     ORIENT = 180.
     
+    #pv
     G_STC = 1000.                   #[W/m2]
     PV_NOMPOW = 5000.               #[W]
     ADR_PARAMS = {
@@ -82,6 +92,21 @@ class DEFAULT():
         'k_rs': 0.06999,
         'k_rsh': 0.26144,
     }
+
+    #finance
+    CAPITAL_COST = 1000.        #[AUD]
+    DIVERTER_COST = 1100.       #[AUD]
+    TIMER_COST = 250.           #[AUD]
+    PERM_CLOSE_COST = 1250      #[AUD]
+    TEMP_CLOSE_COST = 200       #[AUD]
+    NEW_ELEC_SETUP = 500.       #[AUD]
+    REBATES = 0                 # [AUD]
+    DISCOUNT_RATE = 0.08        # 8%
+    LIFESPAN = 10               # [years]
+    MAJOR_MAINTANCE = 200.      # AUD
+    HOUSEHOLD_SIZE = 4          # [people]
+    DAILY_HWD = 200.            # [L/day]
+
 
 class SIMULATIONS_IO():
 
@@ -100,27 +125,34 @@ class SIMULATIONS_IO():
     ]
 
     TS_TYPES_TM = ["weather", "control", "HWDP"]    # ts columns for thermal sims
-    TS_TYPES_PV = ["weather", "electric"]           # ts columns for PV sim
-    TS_TYPES_ECO = ["weather", "electric"]          # ts columns for ECO postproc
+    TS_TYPES_PV = ["weather", "electric"]                   # ts columns for PV sim
+    TS_TYPES_ECO = ["weather", "economic", "emissions"]     # ts columns for ECO postproc
 
-    PARAMS_OUT = [
-        'heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
-        'E_HWD_acum', 'eta_stg', 'cycles_day', 'SOC_avg',
-        'm_HWD_avg', 'temp_amb_avg', 'temp_mains_avg',
-        'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
-        'emissions_total', 'emissions_marginal', 'solar_ratio',
-    ]
+    # PARAMS_OUT = [
+    #     'heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
+    #     'E_HWD_acum', 'eta_stg', 'cycles_day', 'SOC_avg',
+    #     'm_HWD_avg', 'temp_amb_avg', 'temp_mains_avg',
+    #     'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
+    #     'emissions_total', 'emissions_marginal', 'solar_ratio',
+    # ]
     OUTPUT_SIM_PV = [
-        'PV_gen',                # PVPower in trnsys. CHANGE!
-        'PV_to_HW',              # PV4HW in trnsys.   CHANGE!
+        "poa_global",
+        "temp_pv",
+        "eta_rel",
+        "pv_power"
     ]
+    OUTPUT_CONTROL = [
+        "CS",
+        "pv_to_hw",
+        "CS_nopv",
+    ]
+
     OUTPUT_SIM_DEWH = [
         'heater_heat',
         'heater_power',
         'heater_perf',
         'tank_flow_rate',
         'tank_temp_out',
-        # 'tank_tstat_1',          # ??? in trnsys. CHANGE!
         'C_all',
         'tank_temp_avg',         # T_avg in trnsys. CHANGE!
         'SOC',
@@ -151,7 +183,8 @@ class SIMULATIONS_IO():
         "payback_period",
         "LCOHW",
         "capital_cost",
-        "annual_bill",
+        "annual_energy_cost",
+        "daily_supply_cost",
         "oandm_cost",
         "others_cost",
         "rebates",
@@ -163,6 +196,7 @@ class SIMULATIONS_IO():
         "cost_savings_household",
         "cost_savings_retailer",
     ]
+
 
 # Definitions and mappings
 class DEFINITIONS():

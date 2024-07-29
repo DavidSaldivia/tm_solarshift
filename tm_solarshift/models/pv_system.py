@@ -5,11 +5,8 @@ import pvlib
 from pvlib.pvarray import pvefficiency_adr
 
 import tm_solarshift.utils.solar as solar
-from tm_solarshift.constants import (DIRECTORY, DEFAULT)
-from tm_solarshift.utils.units import (
-    Variable,
-    conversion_factor as CF
-)
+from tm_solarshift.constants import (DIRECTORY, DEFAULT, SIMULATIONS_IO)
+from tm_solarshift.utils.units import ( Variable, conversion_factor as CF)
 
 # default values
 DIR_MAIN = DIRECTORY.DIR_MAIN
@@ -81,9 +78,9 @@ class PVSystem():
     
     def sim_generation(
             self,
-            ts: pd.DataFrame,
+            ts_wea: pd.DataFrame,
             unit: str = "kW",
-            COLS_PV_SIM: list = ["poa_global", "temp_pv", "eta_rel", "pv_power"]
+            columns: list = SIMULATIONS_IO.OUTPUT_SIM_PV
     ) -> pd.DataFrame:
         
         latitude = self.lat.get_value("deg")
@@ -95,15 +92,15 @@ class PVSystem():
         adr_params = self.adr_params
         G_STC = self.G_STC.get_value("W/m2")
 
-        temp_amb = ts["temp_amb"]
-        WS = ts["WS"]
+        temp_amb = ts_wea["temp_amb"]
+        WS = ts_wea["WS"]
 
         #result dataframe
-        df_pv = pd.DataFrame(index=ts.index, columns=COLS_PV_SIM)
+        df_pv = pd.DataFrame(index=ts_wea.index, columns=columns)
 
         # Estimating: radiation in pv plane, pv temp, relative efficiency, and module power
         df_pv["poa_global"] = solar.get_plane_irradiance(
-            ts=ts,
+            ts=ts_wea,
             latitude=latitude, longitude=longitude, tilt=tilt, orient=orient, tz=tz,
         )["poa_global"]
         df_pv["temp_pv"] = pvlib.temperature.faiman( df_pv["poa_global"], temp_amb, WS )
