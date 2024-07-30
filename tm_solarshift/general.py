@@ -21,6 +21,8 @@ class Simulation():
 
     def __init__(self):
         self.id = 1
+        self.output_dir = None
+
         self.location = Location("Sydney")
         self.household = Household()
 
@@ -464,7 +466,7 @@ def main():
     sim.household.tariff_type = "flat"
     sim.DEWH = HeatPump.from_model_file(model = "iStore_270L")
     sim.run_simulation()
-    print(sim.out)
+    print(sim.out["overall_tm"])
     
     sim = Simulation()
     # sim.pv_system = None
