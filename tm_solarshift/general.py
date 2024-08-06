@@ -260,7 +260,6 @@ class Simulation():
         self.out: Output = {}
         ts_index = self.time_params.idx
         ts_wea = self.weather.load_data(ts_index)
-
         ts_hwd = self.HWDInfo.generator(ts_index, method = self.HWDInfo.method)
 
         #pv system
@@ -291,7 +290,6 @@ class Simulation():
                 heater_nom_power = self.DEWH.nom_power.get_value("kW")
             )
             ts_control = controller.create_signal(ts_index, df_pv["pv_power"])
-
 
         # thermal model
         ts_tm = pd.concat([ts_wea, ts_hwd, ts_control], axis=1)
@@ -329,6 +327,7 @@ class Simulation():
         else:
             ts_tm = ts.copy()
 
+        
         if isinstance(DEWH, ResistiveSingle | HeatPump | GasHeaterInstantaneous | GasHeaterStorage):
             df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
             overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
