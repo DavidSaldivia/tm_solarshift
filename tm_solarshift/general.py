@@ -260,6 +260,7 @@ class Simulation():
         self.out: Output = {}
         ts_index = self.time_params.idx
         ts_wea = self.weather.load_data(ts_index)
+
         ts_hwd = self.HWDInfo.generator(ts_index, method = self.HWDInfo.method)
 
         #pv system
@@ -458,6 +459,16 @@ class Output(TypedDict, total=False):
 
 #-----------
 def main():
+
+    sim = Simulation()
+    # sim.pv_system = None
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "GS"
+    sim.household.tariff_type = "flat"
+    sim.DEWH = GasHeaterInstantaneous()
+    sim.run_simulation()
+    sim.DEWH.postproc(df_tm=sim.out["df_tm"])
+    print(sim.out["overall_tm"])
 
     sim = Simulation()
     # sim.pv_system = None
