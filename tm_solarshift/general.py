@@ -328,14 +328,16 @@ class Simulation():
             ts_tm = ts.copy()
 
         
-        if isinstance(DEWH, ResistiveSingle | HeatPump | GasHeaterInstantaneous | GasHeaterStorage):
-            df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-            overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-        elif isinstance(DEWH, SolarThermalElecAuxiliary):
-            from tm_solarshift.models import solar_thermal
-            (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, ts_tm, verbose=verbose)
-        else:
-            ValueError("Not a valid type for DEWH")
+        df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
+        overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
+        # if isinstance(DEWH, ResistiveSingle | HeatPump | GasHeaterInstantaneous | GasHeaterStorage):
+        #     df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
+        #     overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
+        # elif isinstance(DEWH, SolarThermalElecAuxiliary):
+        #     from tm_solarshift.models import solar_thermal
+        #     (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, ts_tm, verbose=verbose)
+        # else:
+        #     ValueError("Not a valid type for DEWH")
         return (df_tm, overall_tm)
 
 #------------------------------------
@@ -458,6 +460,16 @@ class Output(TypedDict, total=False):
 
 #-----------
 def main():
+
+    sim = Simulation()
+    # sim.pv_system = None
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "GS"
+    sim.household.tariff_type = "flat"
+    sim.DEWH = SolarThermalElecAuxiliary()
+    sim.run_simulation()
+    print(sim.out["overall_tm"])
+    print(sim.out["overall_econ"])
 
     sim = Simulation()
     # sim.pv_system = None

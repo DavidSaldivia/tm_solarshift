@@ -142,6 +142,7 @@ def calculate_household_energy_cost(
     if tariff_type == "gas":
         ts_hwd = sim.HWDInfo.generator(ts_index, method = sim.HWDInfo.method)
         ts_mkt =  market.load_household_gas_rate(ts_hwd, sim.DEWH)
+        ts_mkt["tariff"] = ts_mkt["tariff"] / CF("MJ","kWh")        #converting to 
     else:
         ts_mkt = market.load_household_import_rate(
             ts_index,

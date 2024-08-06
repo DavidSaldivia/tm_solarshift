@@ -282,28 +282,28 @@ class GasHeaterStorage(HWTank):
         return df_tm
 
 
-#--------------------------------
-def storage_fixed_eta(
-        sim: Simulation,
-        ts: pd.DataFrame,
-        verbose: bool = False,
-) -> tuple[pd.DataFrame,dict[str, float]]:
+# #--------------------------------
+# def storage_fixed_eta(
+#         sim: Simulation,
+#         ts: pd.DataFrame,
+#         verbose: bool = False,
+# ) -> tuple[pd.DataFrame,dict[str, float]]:
 
-    from tm_solarshift.models import (trnsys, postprocessing)
-    DEWH: GasHeaterStorage = sim.DEWH
-    kgCO2_TO_kgCH4 = (44./16.)          #Assuming pure methane for gas
-    heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
-    eta = sim.DEWH.eta.get_value("-")
+#     from tm_solarshift.models import (trnsys, postprocessing)
+#     DEWH: GasHeaterStorage = sim.DEWH
+#     kgCO2_TO_kgCH4 = (44./16.)          #Assuming pure methane for gas
+#     heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
+#     eta = sim.DEWH.eta.get_value("-")
 
-    trnsys_dewh = trnsys.TrnsysDEWH(DEWH=DEWH, ts=ts)
-    df_tm = trnsys_dewh.run_simulation(verbose=verbose)
-    out_overall = postprocessing.thermal_analysis(sim, ts, df_tm)
-    sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
+#     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=DEWH, ts=ts)
+#     df_tm = trnsys_dewh.run_simulation(verbose=verbose)
+#     out_overall = postprocessing.thermal_analysis(sim, ts, df_tm)
+#     sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
 
-    emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
-    emissions_marginal = emissions_total
+#     emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
+#     emissions_marginal = emissions_total
     
-    out_overall["emissions_total"] = emissions_total
-    out_overall["emissions_marginal"] = emissions_marginal
-    out_overall["solar_ratio"] = 0.0
-    return (df_tm, out_overall)
+#     out_overall["emissions_total"] = emissions_total
+#     out_overall["emissions_marginal"] = emissions_marginal
+#     out_overall["solar_ratio"] = 0.0
+#     return (df_tm, out_overall)

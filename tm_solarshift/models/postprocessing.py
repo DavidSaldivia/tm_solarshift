@@ -55,6 +55,7 @@ def thermal_analysis(
 ) -> dict[str, float]:
     
     from tm_solarshift.models.gas_heater import GasHeaterInstantaneous
+    
     DEWH = sim.DEWH
     if isinstance(DEWH, GasHeaterInstantaneous):
         overall_th = DEWH.postproc(df_tm)
@@ -129,10 +130,7 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
     COLS_ECON = ["heater_power", "pv_power", "imported_power", "exported_pv", "pv_to_hw"]
     df_econ = pd.DataFrame(index=ts_index, columns=COLS_ECON)        # all cols in [kWh]
     df_econ["pv_power"] = sim.out["df_pv"]["pv_power"]
-    if DEWH.label == "solar_thermal":
-        df_econ["heater_power"] = df_tm["heater_power_no_solar"]
-    else:
-        df_econ["heater_power"] = df_tm["heater_power"] * CF("kJ/h", "kW")
+    df_econ["heater_power"] = df_tm["heater_power"] * CF("kJ/h", "kW")
     overall_tm = sim.out["overall_tm"]
     heater_heat_acum = overall_tm["heater_heat_acum"]
     heater_power_acum = overall_tm["heater_power_acum"]
@@ -143,25 +141,38 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
         df_econ["heater_power"][ (hour >= 6.75) & (hour <= 17.01) ].sum() * STEP_h
         / heater_power_acum
     )
-    df_econ["imported_power"] = np.where(
-        df_econ["heater_power"] > df_econ["pv_power"],
-        df_econ["heater_power"] - df_econ["pv_power"],
-        0.0
-    )
-    df_econ["exported_pv"] = np.where(
-        df_econ["pv_power"] > df_econ["heater_power"],
-        df_econ["pv_power"] - df_econ["heater_power"],
-        0.0
-    )
-    df_econ["pv_to_hw"] = np.where(
-        df_econ["pv_power"] < df_econ["heater_power"],
-        df_econ["pv_power"],
-        df_econ["heater_power"]
-    )
-    imported_power_acum = df_econ["imported_power"].sum() * STEP_h     #[kWh]
-    exported_pv_acum = df_econ["exported_pv"].sum() * STEP_h           #[kWh]
-    pv_to_hw_acum = df_econ["pv_to_hw"].sum() * STEP_h                 #[kWh]
-    solar_ratio_real = pv_to_hw_acum / heater_power_acum
+
+    if DEWH.label == "solar_thermal":
+        df_econ["imported_power"] = df_econ["heater_power"]
+        df_econ["exported_pv"] = 0.
+        df_econ["pv_to_hw"] = 0.
+
+        df_econ["solar_power"] = df_tm["heater_power_stc"] * CF("kJ/hr", "kW")
+        solar_ratio_real = df_econ["imported_power"].sum() / df_econ["solar_power"].sum()
+        imported_power_acum = df_econ["imported_power"].sum() * STEP_h     #[kWh]
+        exported_pv_acum = 0.
+        pv_to_hw_acum = 0.
+        
+    else:
+        df_econ["imported_power"] = np.where(
+            df_econ["heater_power"] > df_econ["pv_power"],
+            df_econ["heater_power"] - df_econ["pv_power"],
+            0.0
+        )
+        df_econ["exported_pv"] = np.where(
+            df_econ["pv_power"] > df_econ["heater_power"],
+            df_econ["pv_power"] - df_econ["heater_power"],
+            0.0
+        )
+        df_econ["pv_to_hw"] = np.where(
+            df_econ["pv_power"] < df_econ["heater_power"],
+            df_econ["pv_power"],
+            df_econ["heater_power"]
+        )
+        imported_power_acum = df_econ["imported_power"].sum() * STEP_h     #[kWh]
+        exported_pv_acum = df_econ["exported_pv"].sum() * STEP_h           #[kWh]
+        pv_to_hw_acum = df_econ["pv_to_hw"].sum() * STEP_h                 #[kWh]
+        solar_ratio_real = pv_to_hw_acum / heater_power_acum
     
     print(df_econ.groupby(ts_index.hour).sum() * STEP_h)
     print(df_econ.groupby(ts_index.month).sum() * STEP_h)
@@ -170,7 +181,7 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
     from tm_solarshift.timeseries import market
     from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
     from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
-    from tm_solarshift.models.gas_heater import GasHeaterInstantaneous, GasHeaterStorage
+    from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
     ts_emi = pd.DataFrame(index=ts_index)
     ts_emi = market.load_emission_index_year(
         ts_emi, index_type= 'total', location = location, year = YEAR,

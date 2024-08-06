@@ -182,7 +182,7 @@ class SolarThermalElecAuxiliary(HWTank):
         
         ts_tm["total_irrad"] = plane_irrad["poa_global"] * area         #["W"]
         
-        # updating the control strategy to ensure charging only during radiation times
+        # getting the control strategy to ensure charging only during radiation times
         ts_tm["CS"] = np.where(ts_tm["total_irrad"]>IRRAD_MIN,1,0)
 
         trnsys_dewh = TrnsysDEWH(DEWH=self, ts=ts_tm)
@@ -218,8 +218,8 @@ class SolarThermalElecAuxiliary(HWTank):
             "heater_power_both", "heater_power_stc", "heater_power_grid",
             ]
         df_hourly = df_tm.groupby(df_tm.index.hour).mean()[COLS_SHOW]
-        # print(df_hourly)
-        # print(df_tm.sum()[COLS_SHOW] * CF("kJ/hr", "kW") * 0.05)
+        print(df_hourly)
+        print(df_tm.sum()[COLS_SHOW] * CF("kJ/hr", "kW") * 0.05)
         return df_tm
 
 
@@ -293,18 +293,17 @@ def run_thermal_model_func(
 
 def main():
     from tm_solarshift.general import Simulation
-    from tm_solarshift.models import control
     sim = Simulation()
     sim.DEWH = SolarThermalElecAuxiliary()
 
-    ts_index = sim.time_params.idx
-    ts_wea = sim.weather.load_data(ts_index)
-    ts_hwd = sim.HWDInfo.generator(ts_index, method = sim.HWDInfo.method)
-    sim.controller = control.Timer(timer_type = "timer_SS")
-    ts_control = sim.controller.create_signal(ts_index)
-    ts_tm = pd.concat([ts_wea, ts_hwd, ts_control], axis=1)
+    sim.run_simulation()
+    df_tm = sim.out["df_tm"]
+    # ts_index = sim.time_params.idx
+    # ts_wea = sim.weather.load_data(ts_index)
+    # ts_hwd = sim.HWDInfo.generator(ts_index, method = sim.HWDInfo.method)
+    # ts_tm = pd.concat([ts_wea, ts_hwd], axis=1)
 
-    df_tm = sim.DEWH.run_thermal_model(ts_tm, verbose=True)
+    # df_tm = sim.DEWH.run_thermal_model(ts_tm, verbose=True)
     # (df_tm, out_overall) = run_thermal_model_func(sim, ts_tm)
     pass
 
