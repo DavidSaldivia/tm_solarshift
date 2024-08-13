@@ -317,7 +317,7 @@ class Simulation():
         else:
             ts_tm = ts.copy()
         df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-        overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
+        overall_tm = postprocessing.thermal_analysis(self, df_tm)
         return (df_tm, overall_tm)
 
 #------------------------------------

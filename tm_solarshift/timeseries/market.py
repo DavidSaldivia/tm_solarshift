@@ -212,5 +212,5 @@ def load_wholesale_prices(
     STEP = pd.to_datetime(ts_index).freq.n
     ts = pd.Series(
         df_SP[nem_region].resample(f"{STEP}min").interpolate('linear')
-    )
+    ).loc[ts_index]
     return ts
