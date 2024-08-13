@@ -58,8 +58,10 @@ class TrnsysDEWH():
         self.layout_v = 1
         if DEWH.label in ["resistive", "gas_storage"]:
             self.layout_DEWH = "RS"
-        elif DEWH.label in ["heat_pump", "solar_thermal"]:
+        elif DEWH.label in ["heat_pump",]:
             self.layout_DEWH = "HPF"
+        elif DEWH.label in ["solar_thermal",]:
+            self.layout_DEWH = "STC"
         else:
             raise ValueError("DEWH object is not a valid one for TRNSYS simulation")
 
@@ -118,11 +120,17 @@ class TrnsysDEWH():
         ts["CS"].to_csv(control_path, index=False )
 
         #technical info for heater that needed it
-        if DEWH.label in ["heat_pump", "solar_thermal"]:
+        if DEWH.label in ["heat_pump",]:
             shutil.copyfile(
                 DEFAULT_HEATER_DATA[DEWH.label],
                 os.path.join(tempDir, self.file_names["heater"]),
             )
+        
+        if DEWH.label == "solar_thermal":
+            FILE_SCT_INPUT = "ts_stc.csv"
+            TS_STC_COLS = ["plane_irrad", "FR_ta", "FR_UL", "heat_capacity"]
+            ts_stc_path = os.path.join(tempDir, FILE_SCT_INPUT)
+            ts[TS_STC_COLS].to_csv(ts_stc_path, index=False)
 
         return None
     
@@ -147,11 +155,19 @@ class TrnsysDEWH():
             os.path.join( tempDir, FILES_OUTPUT["signal"] ), 
             sep=r"\s+", index_col=0,
         )
-        out_all = out_gen.join(out_tank, how="left")
-        out_all = out_all.join(
+        df_tm = out_gen.join(out_tank, how="left")
+        df_tm = df_tm.join(
             out_sig[["C_load", "C_temp_max", "C_temp_min", "C_all"]],
             how="left",
         )
+
+        if self.DEWH.label == "solar_thermal":
+            out_stc = pd.read_table(
+                os.path.join( tempDir, "TRNSYS_out_stc.dat"),
+                sep=r"\s+", index_col=0,
+            )
+            out_stc = out_stc.iloc[1:]
+            out_stc.index = idx
 
         # Calculating additional variables
         DEWH = self.DEWH
@@ -160,40 +176,40 @@ class TrnsysDEWH():
         temp_min = DEWH.temp_min.get_value("degC")
         tank_cp = DEWH.fluid.cp.get_value("J/kg-K")
         tank_nodes = DEWH.nodes
-        temp_mains = out_all["temp_mains"].mean()
+        temp_mains = df_tm["temp_mains"].mean()
 
-        node_cols = [col for col in out_all.columns if col.startswith("Node")]
-        out_all2 = out_all[node_cols]
-        out_all["tank_temp_avg"] = out_all2.mean(axis=1)
-        out_all["SOC"] = ((
-            (out_all2 - temp_consump)
-            * (out_all2 > temp_consump)).sum(axis=1) 
+        node_cols = [col for col in df_tm.columns if col.startswith("Node")]
+        df_tm2 = df_tm[node_cols]
+        df_tm["tank_temp_avg"] = df_tm2.mean(axis=1)
+        df_tm["SOC"] = ((
+            (df_tm2 - temp_consump)
+            * (df_tm2 > temp_consump)).sum(axis=1) 
             / (tank_nodes * (temp_max - temp_consump))
             )
-        out_all["SOC2"] = (
-            ((out_all2 - temp_mains) 
-            * (out_all2 > temp_consump)).sum(axis=1 ) 
+        df_tm["SOC2"] = (
+            ((df_tm2 - temp_mains) 
+            * (df_tm2 > temp_consump)).sum(axis=1 ) 
             / (tank_nodes * (temp_max - temp_mains))
             )
-        out_all["SOC3"] = (
-            (out_all2.sum(axis=1) - tank_nodes * temp_min)
+        df_tm["SOC3"] = (
+            (df_tm2.sum(axis=1) - tank_nodes * temp_min)
             / (temp_max - temp_min)
             / tank_nodes
             )
-        out_all["E_HWD"] = out_all["HW_flow"] * (
+        df_tm["E_HWD"] = df_tm["HW_flow"] * (
             tank_cp * (temp_consump - temp_mains) / 3600.
         )  # [W]
-        out_all["E_level"] = (
-            (out_all2 - temp_consump).sum(axis=1) 
+        df_tm["E_level"] = (
+            (df_tm2 - temp_consump).sum(axis=1) 
             / (tank_nodes * (temp_max - temp_consump))
             )
         
         # First row is removed. Initial conditions for inputs, dummy values for results
-        out_all = out_all.iloc[1:]
-        out_all["TIME"] = out_all.index
-        out_all.index = idx
+        df_tm = df_tm.iloc[1:]
+        df_tm["TIME"] = df_tm.index
+        df_tm.index = idx
         
-        return out_all
+        return df_tm
     
     #------------------------------
     def run_simulation(
@@ -275,6 +291,11 @@ def editing_dck_general(
         "tank_temp_high_ctrl": temp_high_control,
         "heater_F_eta": eta,
     }
+
+    from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
+    if isinstance(DEWH, SolarThermalElecAuxiliary):
+        gral_params["area"] = DEWH.area.get_value("m2")
+
     tag = "!PYTHON_INPUT"
     for idx, line in enumerate(dck_editing):
         if tag in line:
@@ -358,13 +379,21 @@ def editing_dck_tank(
             "18 Height fraction of auxiliary input": f_heater,
         }
 
-    elif DEWH.label in ["heat_pump", "solar_thermal"]:
+    elif DEWH.label in ["heat_pump",]:
         params_specific = {
             "10 Height fraction of inlet 1": 1.0, # HP inlet, not implemented yet
             "11 Height fraction of outlet 1": 0.0, #HP outlet, not implemented yet
             "12 Height fraction of inlet 2" : 0.0, #water inlet, not implemented yet
             "13 Height fraction of outlet 2" : 1.0, #water outlet, not implemented yet
             "16 Height fraction of thermostat-2" : 0.33, #thermostat HP, not implemented yet
+        }
+    elif DEWH.label in ["solar_thermal",]:
+        params_specific = {
+            "10 Height fraction of inlet 1": 1.0,
+            "11 Height fraction of outlet 1": 0.0,
+            "12 Height fraction of inlet 2" : 0.0,
+            "13 Height fraction of outlet 2" : 1.0,
+            "16 Height fraction of thermostat-2" : 0.75,
         }
     else:
         raise ValueError("DEWH type is not among accepted classes.")
@@ -439,8 +468,8 @@ def main():
         DEWH = sim.DEWH,
         ts = sim.create_ts()
     )
-    out_all = trnsys_dewh.run_simulation(verbose=True)
-    print(out_all)
+    df_tm = trnsys_dewh.run_simulation(verbose=True)
+    print(df_tm)
 
 if __name__=="__main__":
     main()

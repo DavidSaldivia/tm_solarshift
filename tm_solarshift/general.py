@@ -280,7 +280,7 @@ class Simulation():
             )
             ts_control = self.controller.create_signal(ts_index)
         elif control_type in ["timer_SS", "timer_OP", "timer"]:
-            self.controller = control.Timer(timer_type = control_type)
+            self.controller = control.Timer(timer_type=control_type)
             ts_control = self.controller.create_signal(ts_index)
         elif control_type == "diverter":
             controller = control.Diverter(
@@ -461,8 +461,37 @@ class Output(TypedDict, total=False):
 #-----------
 def main():
 
+    # default case
+    sim = Simulation()
+    sim.run_simulation()
+    print(sim.out)
+    
+    sim = Simulation()
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "timer_SS"
+    sim.DEWH = ResistiveSingle.from_model_file(model = "491315")
+    sim.run_simulation()
+    print(sim.out)
+
     sim = Simulation()
     # sim.pv_system = None
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "timer_SS"
+    sim.household.tariff_type = "flat"
+    sim.DEWH = HeatPump.from_model_file(model = "REHP-CO2-315GL")
+    sim.run_simulation()
+    print(sim.out)
+
+    sim = Simulation()
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "GS"
+    sim.household.tariff_type = "flat"
+    sim.DEWH = HeatPump.from_model_file(model = "iStore_270L")
+    sim.run_simulation()
+    print(sim.out["overall_tm"])
+    
+    
+    sim = Simulation()
     sim.HWDInfo.profile_HWD = 1
     sim.household.control_type = "GS"
     sim.household.tariff_type = "flat"
@@ -481,23 +510,7 @@ def main():
     sim.DEWH.postproc(df_tm=sim.out["df_tm"])
     print(sim.out["overall_tm"])
 
-    sim = Simulation()
-    # sim.pv_system = None
-    sim.HWDInfo.profile_HWD = 1
-    sim.household.control_type = "GS"
-    sim.household.tariff_type = "flat"
-    sim.DEWH = HeatPump.from_model_file(model = "iStore_270L")
-    sim.run_simulation()
-    print(sim.out["overall_tm"])
     
-    sim = Simulation()
-    # sim.pv_system = None
-    sim.HWDInfo.profile_HWD = 1
-    sim.household.control_type = "GS"
-    sim.household.tariff_type = "flat"
-    sim.DEWH = HeatPump.from_model_file(model = "REHP-CO2-315GL")
-    sim.run_simulation()
-    print(sim.out)
 
     pass
 

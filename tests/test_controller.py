@@ -25,7 +25,6 @@ def test_CL_no_random(controller_type: str, time_avg: float):
     ts_control = controller.create_signal(ts_index)
 
     time_per_day_avg = ts_control.groupby(ts_control.index.date)["CS"].sum().mean() * STEP_h
-    # time_per_day_std = ts_control.groupby(ts_control.index.date)["CS"].sum().std() * STEP_h
     expected_time_per_day_avg = time_avg
 
     expected_len_ts = sim.time_params.PERIODS.get_value()
@@ -50,8 +49,9 @@ def test_timer_SS_OP(controller_type: str, time_avg: float):
     controller = Timer(timer_type = controller_type, random_delay=random_delay)
     ts_control = controller.create_signal(ts_index)
 
-    time_per_day_avg = ts_control.groupby(ts_control.index.date)["CS"].sum().mean() * STEP_h
-    time_per_day_std = ts_control.groupby(ts_control.index.date)["CS"].sum().std() * STEP_h
+    ts_index = pd.to_datetime(ts_control.index)
+    time_per_day_avg = ts_control.groupby(ts_index.date)["CS"].sum().mean() * STEP_h
+    time_per_day_std = ts_control.groupby(ts_index.date)["CS"].sum().std() * STEP_h
 
     expected_time_per_day_avg = time_avg
     expected_time_per_day_std = 0.0
@@ -72,15 +72,16 @@ def test_timer_custom():
     STEP_h = sim.time_params.STEP.get_value("hr")
 
     controller = Timer(
-        timer_type = "timer_custom",
+        timer_type = "timer",
         random_delay = random_delay,
         time_start = 0.0,
         time_stop = 4.0,
         )
     ts_control = controller.create_signal(ts_index)
 
-    time_per_day_avg = ts_control.groupby(ts_control.index.date)["CS"].sum().mean() * STEP_h
-    time_per_day_std = ts_control.groupby(ts_control.index.date)["CS"].sum().std() * STEP_h
+    ts_index = pd.to_datetime(ts_control.index)
+    time_per_day_avg = ts_control.groupby(ts_index.date)["CS"].sum().mean() * STEP_h
+    time_per_day_std = ts_control.groupby(ts_index.date)["CS"].sum().std() * STEP_h
 
     expected_time_per_day_avg = 4.0
     expected_time_per_day_std = 0.0

@@ -14,6 +14,7 @@ from tm_solarshift.constants import (
 
 DIR_CONTROL = DIRECTORY.DIR_DATA["control"]
 CL_TYPES = ["GS", "CL1", "CL2", "CL3"]
+TIMER_TYPES = ["timer", "timer_SS", "timer_OP"]
 
 
 class Period(TypedDict):
@@ -56,7 +57,7 @@ class CLController():
         CL_type = self.CL_type
         random_delay = self.random_delay
         random_seed = self.random_seed
-        periods = periods_from_json(controller_type = CL_type)
+        periods = periods_from_json(controller_type=CL_type)
         cs_final = convert_periods_to_series(
             ts_index,
             periods = periods,
@@ -68,15 +69,31 @@ class CLController():
 
 @dataclass
 class Timer():
-    timer_type: str = "timer"
-    time_start: float = 0.0
-    time_stop: float = 3.0
-    random_delay : bool = False
-    random_start: float = 0.0
-    random_stop: float = 0.0
-    random_seed: int = -1
+    def __init__(
+            self,
+            timer_type: str = "timer",
+            *,
+            time_start: float = 0.0,
+            time_stop: float = 4.0,
+            random_delay: bool = False,
+            random_start: float = 0.0,
+            random_stop: float = 0.0,
+            random_seed: int = -1,
+            ):
+        
+        if timer_type not in TIMER_TYPES:
+            raise ValueError(f"not a valid timer_type. Allowed values: {TIMER_TYPES}.")
+        self.timer_type = timer_type
+        self.random_seed = random_seed
+        if timer_type == "timer":
+            self.time_start = time_start
+            self.time_stop = time_stop
+            self.random_delay = random_delay
+            self.random_start = random_start
+            self.random_stop = random_stop
 
-    def create_signal( self, ts_index: pd.DatetimeIndex, ) -> pd.DataFrame:
+
+    def create_signal(self, ts_index: pd.DatetimeIndex, ) -> pd.DataFrame:
         timer_type = self.timer_type
         if timer_type in ["timer_SS", "timer_OP"]:
             periods = periods_from_json(controller_type = timer_type)
@@ -128,7 +145,6 @@ class Diverter():
                 )
             )    
         return ts_control
-
 
 
 def period_custom(
@@ -296,38 +312,3 @@ def add_random_delay(
 
     return cs_final
 
-
-# def load_control_signal(
-#         idx: pd.DatetimeIndex,
-#         control_type: str = "GS",
-#         random_on: bool = True,
-#         random_seed: int = -1,
-#         timer_start: float = 0.,
-#         timer_length: float = 4.,
-#         cols: list[str] = SIMULATIONS_IO.TS_TYPES["control"],
-# ) -> pd.DataFrame:
-
-#     # retrieving
-#     STEP = idx.freq.n
-
-#     # getting data
-#     match control_type:
-#         case "GS" | "CL1" | "CL2" | "CL3" | "timer_SS" | "timer_OP":
-#             periods = periods_from_json(control_type=control_type)
-
-#         case "diverter" | "timer":
-#             periods = [ period_custom(
-#                             time_start=timer_start,
-#                             time_stop = timer_start + timer_length
-#                         ), ]
-#         case _:
-#             raise ValueError(f"{control_type=} not among the valid options: {DEFINITIONS.CONTROL_TYPES=}")
-
-#     cs_no_rand = convert_periods_to_series(idx, periods)
-#     if random_on:
-#         cs_final = add_random_delay(cs_no_rand, random_seed, STEP=STEP)
-#     else:
-#         cs_final = cs_no_rand.to_frame().copy()
-
-#     df_control = pd.DataFrame(cs_final, index=idx, columns=cols)
-#     return df_control

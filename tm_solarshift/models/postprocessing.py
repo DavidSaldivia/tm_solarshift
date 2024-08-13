@@ -128,7 +128,7 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
 
     # creating output df
     COLS_ECON = ["heater_power", "pv_power", "imported_power", "exported_pv", "pv_to_hw"]
-    df_econ = pd.DataFrame(index=ts_index, columns=COLS_ECON)        # all cols in [kWh]
+    df_econ = pd.DataFrame(index=ts_index, columns=COLS_ECON)        # all cols in [kW]
     df_econ["pv_power"] = sim.out["df_pv"]["pv_power"]
     df_econ["heater_power"] = df_tm["heater_power"] * CF("kJ/h", "kW")
     overall_tm = sim.out["overall_tm"]
@@ -147,7 +147,7 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
         df_econ["exported_pv"] = 0.
         df_econ["pv_to_hw"] = 0.
 
-        df_econ["solar_power"] = df_tm["heater_power_stc"] * CF("kJ/hr", "kW")
+        df_econ["solar_power"] = df_tm["heater_heat"] * CF("kJ/hr", "kW")
         solar_ratio_real = df_econ["imported_power"].sum() / df_econ["solar_power"].sum()
         imported_power_acum = df_econ["imported_power"].sum() * STEP_h     #[kWh]
         exported_pv_acum = 0.
@@ -226,6 +226,7 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
     overall_econ["annual_fit_opp_cost"] = annual_fit_opp_cost
     overall_econ["annual_fit_revenue"] = annual_fit_revenue
     
+    print(overall_econ)
     # for (k,v) in overall_econ.items():
     #     print(f"{k}: {v:.4f}")
     return overall_econ
@@ -360,7 +361,7 @@ def detailed_plots(
 
     for i in range(1, DEWH.nodes + 1):
         lbl = f"Node{i}"
-        ax.plot(out_all.TIME, out_all[lbl], lw=2, label=lbl)
+        ax.plot(out_all["TIME"], out_all[lbl], lw=2, label=lbl)
     ax.legend(loc=0, fontsize=fs - 2, bbox_to_anchor=(-0.1, 0.9))
     ax.grid()
     ax.set_xlim(0, xmax)
@@ -400,9 +401,9 @@ def detailed_plots(
     )
 
     # ax.plot( aux, out_all.PVPower/W_TO_kJh, label='E_PV', c='C0',ls='-',lw=2)
-    ax.plot(aux, out_all.E_HWD, label="E_HWD", c="C1", ls="-", lw=2)
-    ax2.plot(aux, out_all.C_Load, label="Control Sig", c="C2", ls="-", lw=2)
-    ax2.plot(aux, out_all.SOC, c="C3", ls="-", lw=2, label="SOC")
+    ax.plot(aux, out_all["E_HWD"], label="E_HWD", c="C1", ls="-", lw=2)
+    ax2.plot(aux, out_all["C_load"], label="Control Sig", c="C2", ls="-", lw=2)
+    ax2.plot(aux, out_all["SOC"], c="C3", ls="-", lw=2, label="SOC")
     ax.grid()
     ax.legend(loc=2)
     ax.set_xlim(0, xmax)
