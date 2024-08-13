@@ -45,3 +45,15 @@ def test_run_simulation_heaters(DEWH: DEWH, sim_default: Simulation):
     assert (set(expected_cols_sim).issubset(set(df_tm.columns.to_list())))
     assert (set(expected_cols_tm).issubset(set(overall_tm.keys())))
     assert (len(df_tm) == expected_len)
+
+
+
+def test_solar_thermal_model(sim_default: Simulation):
+    sim = deepcopy(sim_default)
+    sim.time_params.STOP = Variable(120, "hr")
+    sim.HWDInfo.profile_HWD = 5
+    sim.DEWH = SolarThermalElecAuxiliary()
+    sim.run_simulation()
+    df_tm = sim.out["df_tm"]
+
+    assert df_tm["iam"].max() <= 1.0

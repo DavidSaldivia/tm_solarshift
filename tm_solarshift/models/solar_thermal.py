@@ -4,6 +4,8 @@ import pandas as pd
 from typing import TYPE_CHECKING, Optional
 
 from tm_solarshift.models.dewh import HWTank
+from tm_solarshift.models.trnsys import TrnsysDEWH
+from tm_solarshift.models.control import Timer
 from tm_solarshift.constants import (DIRECTORY, DEFAULT)
 from tm_solarshift.utils.units import (Variable, conversion_factor as CF, Water)
 from tm_solarshift.utils.solar import (get_plane_irradiance, get_plane_angles)
@@ -28,24 +30,26 @@ class SolarThermalElecAuxiliary(HWTank):
         #Nominal values
         self.massflowrate = Variable(0.05, "kg/s")
         self.fluid = Water()
-        self.area = Variable(2.0, "m2")
+        self.area = Variable(4.27, "m2")
         self.FRta = Variable(0.6, "-")
-        self.FRUL = Variable(3.0, "W/m2-K")
-        self.IAM = Variable(0.05, "-")
+        self.FRUL = Variable(1.17, "W/m2-K")
+        self.IAM = Variable(0.14, "-")
         self.lat = Variable(-33.86,"-")
         self.lon = Variable(151.22,"-")
         self.tilt = Variable(abs(self.lat.get_value("-")),"-")
         self.orient = Variable(180.0,"-")
-    
+
         # Auxiliary resistive heater
+        self.temp_max = Variable(65., "degC")
         self.nom_power = Variable(3600.0, "W")
         self.eta = Variable(1.0, "-")
+        self.temps_ini = 1
 
     @property
     def initial_conditions(self) -> dict:
         initial_conditions = {
-            "temp_tank_bottom" : self.temp_max,
-            "temp_tank_top": self.temp_max,
+            "temp_tank_bottom" : 45.,
+            "temp_tank_top": 45.,
         }
         return initial_conditions
 
@@ -70,7 +74,8 @@ class SolarThermalElecAuxiliary(HWTank):
             setattr(output, str(lbl), Variable(value, unit) )
         return output
     
-    def run_thermal_model(
+
+    def run_thermal_model_old(
             self,
             ts: pd.DataFrame,
             verbose: bool = False,
@@ -151,7 +156,85 @@ class SolarThermalElecAuxiliary(HWTank):
         return df_tm
 
 
-def run_thermal_model(
+    def run_thermal_model(self, ts: pd.DataFrame, verbose: bool) -> pd.DataFrame:
+
+        tz = DEFAULT_TZ
+        ts_tm = ts.copy()
+
+        # retrieving variables
+        massflowrate = self.massflowrate.get_value("kg/s")
+        area = self.area.get_value("m2")
+        FRta = self.FRta.get_value("-")
+        FRUL = self.FRUL.get_value("W/m2-K")
+        latitude = self.lat.get_value("-")
+        longitude = self.lon.get_value("-")
+        tilt = self.tilt.get_value("-")
+        orient = self.orient.get_value("-")
+        cp = self.fluid.cp.get_value("J/kg-K")
+        IAM = self.IAM.get_value("-")
+
+        # calculating angles
+        ts_index = pd.to_datetime(ts_tm.index)
+        plane_irrad = get_plane_irradiance(ts_tm, latitude, longitude, tilt, orient, tz)
+        plane_irrad.index = ts_index.tz_localize(None)
+        plane_angles = get_plane_angles(ts_tm, latitude, longitude, tilt, orient, tz)
+        plane_angles.index = ts_index.tz_localize(None)
+        cosine_aoi = plane_angles["cosine_aoi"]
+        
+        ts_tm["plane_irrad"] = plane_irrad["poa_global"] * CF("W", "kJ/hr")
+        
+        # getting the control strategy to ensure charging only during radiation times
+        # ts_tm["CS"] = np.where( ts_tm["plane_irrad"]*CF("kJ/hr","W") > IRRAD_MIN, 1, 0)
+        ts_tm["CS"] = 1
+
+        #getting timeseries specific for SCT
+        ts_tm["cosine_aoi"] = np.where( cosine_aoi>0.0 , cosine_aoi, 0.)
+        ts_tm["iam"] = np.where( cosine_aoi>0.0 , 1. - IAM * (1./cosine_aoi - 1.), 0.)
+        ts_tm["FR_ta"] = FRta # * ts_tm["iam"]
+        ts_tm["FR_UL"] = FRUL
+        ts_tm["heat_capacity"] = massflowrate*CF("kg/s","kg/hr") * cp*CF("J","kJ") #[kJ/kg-hr]
+
+        trnsys_dewh = TrnsysDEWH(DEWH=self, ts=ts_tm)
+        df_tm = trnsys_dewh.run_simulation(verbose=verbose)
+
+        # this is the actual solar thermal model
+        for col in ["plane_irrad", "cosine_aoi", "iam", "FR_ta", "FR_UL"]:
+            df_tm[col] = ts_tm[col]
+
+        df_tm["temp_inlet"] = df_tm["Node10"]
+        df_tm["heater_perf"] = np.where(
+            df_tm["plane_irrad"] > 0.,
+            (
+                df_tm["FR_ta"] - df_tm["FR_UL"] *
+                (df_tm["temp_inlet"] - df_tm["temp_amb"]) / df_tm["plane_irrad"]
+            ),
+            0.
+        )
+        df_tm["heater_perf"] = np.where(
+            (df_tm["heater_perf"] > 0.) & (df_tm["heater_perf"]<=1.0),
+            df_tm["heater_perf"],
+            0.
+        )
+        df_tm["heater_heat"] = df_tm["heater_perf"] * df_tm["plane_irrad"]
+        df_tm["temp_outlet"] = df_tm["temp_inlet"] + df_tm["heater_heat"] / (massflowrate * cp)
+
+        # updating the results with the heater
+        df_tm["heater_both"] = df_tm["heater_power"] + df_tm["heater_heat"]
+
+        COLS_SHOW = [
+            "temp_outlet", "temp_inlet",
+            "heater_power", "heater_heat", "heater_both",
+            ]
+        df_hourly = df_tm.groupby(df_tm.index.hour).mean()[COLS_SHOW]
+        print(df_hourly)
+        print(df_tm.sum()[COLS_SHOW] * CF("kJ/hr", "kW") * 0.05)
+        solar_ratio = df_tm["heater_heat"].sum() / df_tm["heater_both"].sum()
+        print(solar_ratio)
+
+        return df_tm
+
+
+def run_thermal_model_func(
         sim: Simulation,
         ts: pd.DataFrame,
         verbose: bool = False,
@@ -208,29 +291,25 @@ def run_thermal_model(
     df_tm["solar_energy_u"] = df_tm["heater_perf"] * df_tm["total_irrad"]  #["W"]
     temp_outlet = temp_inlet + df_tm["solar_energy_u"] / (massflowrate * cp)
 
+
     # updating out_th
     out_th["solar_energy_u"] = df_tm["solar_energy_u"].sum() * STEP_h * CF("Wh", "kWh")
     out_th["solar_energy_in"] = df_tm["total_irrad"].sum() * STEP_h * CF("Wh", "kWh")
 
     out_th["heater_perf_avg"] = out_th["solar_energy_u"] / out_th["solar_energy_in"]
     out_th["heater_power_acum"] = (out_th["heater_power_acum"] - out_th["solar_energy_u"])
-
-    # performing economic analysis
-    
     df_tm["heater_power_no_solar"] = ( df_tm["heater_power"] - df_tm["solar_energy_u"] * CF("W","kJ/h") )
 
-    out_econ = postprocessing.economics_analysis(sim, ts, df_tm)
-    out_overall = out_th | out_econ
-
-    return (df_tm, out_overall)
+    return (df_tm, out_th)
 
 def main():
     from tm_solarshift.general import Simulation
     sim = Simulation()
     sim.DEWH = SolarThermalElecAuxiliary()
-    df_tm = sim.DEWH.run_thermal_model(sim.create_ts())
 
-    (df_tm, out_overall) = sim.run_thermal_simulation(verbose=True)
+    sim.run_simulation()
+    df_tm = sim.out["df_tm"]
+
     pass
 
 if __name__ == "__main__":

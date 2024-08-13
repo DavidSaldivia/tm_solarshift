@@ -130,7 +130,7 @@ def calculate_npv(cashflows: np.ndarray, discount_rate: float) -> float:
 
 def calculate_household_energy_cost(
         sim: Simulation,
-        imported_energy: pd.Series,
+        imported_energy: pd.Series,         # in [kW]
     ) -> float:
 
     from tm_solarshift.timeseries import market
@@ -139,9 +139,14 @@ def calculate_household_energy_cost(
     STEP_h = sim.time_params.STEP.get_value("hr")
     if "df_tm" not in sim.out:
         raise AttributeError("No thermal simulation results found.")
+    df_tm = sim.out["df_tm"]
     if tariff_type == "gas":
-        ts_hwd = sim.HWDInfo.generator(ts_index, method = sim.HWDInfo.method)
-        ts_mkt =  market.load_household_gas_rate(ts_hwd, sim.DEWH)
+        # ts_hwd = sim.HWDInfo.generator(ts_index, method = sim.HWDInfo.method)
+        # ts_mkt =  market.load_household_gas_rate(ts_hwd, sim.DEWH)
+        # ts_mkt["tariff"] = ts_mkt["tariff"] / CF("MJ","kWh")        #converting to 
+        
+        # heater_heat = df_tm["heater_heat"]
+        ts_mkt =  market.load_household_gas_rate(imported_energy, sim.DEWH)
     else:
         ts_mkt = market.load_household_import_rate(
             ts_index,

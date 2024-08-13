@@ -280,7 +280,7 @@ class Simulation():
             )
             ts_control = self.controller.create_signal(ts_index)
         elif control_type in ["timer_SS", "timer_OP", "timer"]:
-            self.controller = control.Timer(timer_type = control_type)
+            self.controller = control.Timer(timer_type=control_type)
             ts_control = self.controller.create_signal(ts_index)
         elif control_type == "diverter":
             controller = control.Diverter(
@@ -290,7 +290,6 @@ class Simulation():
                 heater_nom_power = self.DEWH.nom_power.get_value("kW")
             )
             ts_control = controller.create_signal(ts_index, df_pv["pv_power"])
-
 
         # thermal model
         ts_tm = pd.concat([ts_wea, ts_hwd, ts_control], axis=1)
@@ -328,14 +327,17 @@ class Simulation():
         else:
             ts_tm = ts.copy()
 
-        if isinstance(DEWH, ResistiveSingle | HeatPump | GasHeaterInstantaneous | GasHeaterStorage):
-            df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-            overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-        elif isinstance(DEWH, SolarThermalElecAuxiliary):
-            from tm_solarshift.models import solar_thermal
-            (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, ts_tm, verbose=verbose)
-        else:
-            ValueError("Not a valid type for DEWH")
+        
+        df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
+        overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
+        # if isinstance(DEWH, ResistiveSingle | HeatPump | GasHeaterInstantaneous | GasHeaterStorage):
+        #     df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
+        #     overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
+        # elif isinstance(DEWH, SolarThermalElecAuxiliary):
+        #     from tm_solarshift.models import solar_thermal
+        #     (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, ts_tm, verbose=verbose)
+        # else:
+        #     ValueError("Not a valid type for DEWH")
         return (df_tm, overall_tm)
 
 #------------------------------------
@@ -459,8 +461,28 @@ class Output(TypedDict, total=False):
 #-----------
 def main():
 
+    # default case
+    sim = Simulation()
+    sim.run_simulation()
+    print(sim.out)
+    
+    sim = Simulation()
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "timer_SS"
+    sim.DEWH = ResistiveSingle.from_model_file(model = "491315")
+    sim.run_simulation()
+    print(sim.out)
+
     sim = Simulation()
     # sim.pv_system = None
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "timer_SS"
+    sim.household.tariff_type = "flat"
+    sim.DEWH = HeatPump.from_model_file(model = "REHP-CO2-315GL")
+    sim.run_simulation()
+    print(sim.out)
+
+    sim = Simulation()
     sim.HWDInfo.profile_HWD = 1
     sim.household.control_type = "GS"
     sim.household.tariff_type = "flat"
@@ -468,14 +490,27 @@ def main():
     sim.run_simulation()
     print(sim.out["overall_tm"])
     
+    
+    sim = Simulation()
+    sim.HWDInfo.profile_HWD = 1
+    sim.household.control_type = "GS"
+    sim.household.tariff_type = "flat"
+    sim.DEWH = SolarThermalElecAuxiliary()
+    sim.run_simulation()
+    print(sim.out["overall_tm"])
+    print(sim.out["overall_econ"])
+
     sim = Simulation()
     # sim.pv_system = None
     sim.HWDInfo.profile_HWD = 1
     sim.household.control_type = "GS"
     sim.household.tariff_type = "flat"
-    sim.DEWH = HeatPump.from_model_file(model = "REHP-CO2-315GL")
+    sim.DEWH = GasHeaterInstantaneous()
     sim.run_simulation()
-    print(sim.out)
+    sim.DEWH.postproc(df_tm=sim.out["df_tm"])
+    print(sim.out["overall_tm"])
+
+    
 
     pass
 

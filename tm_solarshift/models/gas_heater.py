@@ -112,54 +112,16 @@ class GasHeaterInstantaneous():
                     * CF("W", "MJ/hr")
                     )  #[MJ/hr]
 
-        specific_energy = (nom_power / flow_water * CF("min", "hr") * CF("MJ", "kWh")) #[kWh/L]
+        specific_energy = ( eta*nom_power / flow_water * CF("min", "hr") * CF("MJ", "kWh")) #[kWh/L]
         df_tm = pd.DataFrame(index = ts.index)
         df_tm["m_HWD"] = hw_flow
         df_tm["eta"] = eta
-        df_tm["heater_power"] = specific_energy * hw_flow * CF("MJ", "kJ")    #[kJ/h]
-        df_tm["heater_heat"] = eta * df_tm["heater_power"]    #[kJ/h]
-
-        # specific_emissions = (kgCO2_TO_kgCH4 
-        #                 / (heat_value * CF("MJ", "kWh"))
-        #                 / eta
-        #                 ) #[kg_CO2/kWh_thermal]
-
-        # E_HWD = specific_energy * hw_flow * STEP_h                  #[kWh]
-        # E_HWD_acum = E_HWD.sum()                                    #[kWh]
-
-
-        # emissions = E_HWD * specific_emissions * CF("kg", "ton")    #[tonCO2]
-        # emissions_total = emissions.sum()                           #[tonCO2_annual]
-        # emissions_marginal = emissions.sum()                        #[tonCO2_annual]
-
-        # heater_heat_acum = E_HWD_acum / eta
-        # m_HWD_avg = (hw_flow * STEP_h).sum() / DAYS
-
-        # out_overall = {
-        #     "heater_heat_acum": heater_heat_acum,
-        #     "heater_perf_avg": eta,
-        #     "E_HWD_acum": E_HWD_acum,
-        #     "m_HWD_avg": m_HWD_avg,
-        #     "temp_amb_avg": temp_amb_avg,
-        #     "temp_mains_avg": temp_mains_avg,
-        #     "emissions_total": emissions_total,
-        #     "emissions_marginal": emissions_marginal,
-        #     "solar_ratio": 0.0,
-        #     "t_SOC0": 0.0,
-
-        #     "heater_power_acum": np.nan,
-        #     "E_losses": np.nan,
-        #     "eta_stg": np.nan,
-        #     "cycles_day": np.nan,
-        #     "SOC_avg": np.nan,
-        #     "SOC_min": np.nan,
-        #     "SOC_025": np.nan,
-        #     "SOC_050": np.nan,
-        # }
+        df_tm["heater_heat"] = specific_energy * hw_flow * CF("kW", "kJ/hr")    #[kJ/h]
+        df_tm["heater_power"] = df_tm["heater_heat"] / eta                      #[kJ/h]
         return df_tm
     
-    def postproc(self, df_tm: pd.DataFrame) -> dict[str,float]:
 
+    def postproc(self, df_tm: pd.DataFrame) -> dict[str,float]:
         kgCO2_TO_kgCH4 = 44. / 16.
         nom_power = self.nom_power.get_value("MJ/hr")
         deltaT_rise = self.deltaT_rise.get_value("dgrC")
@@ -282,28 +244,28 @@ class GasHeaterStorage(HWTank):
         return df_tm
 
 
-#--------------------------------
-def storage_fixed_eta(
-        sim: Simulation,
-        ts: pd.DataFrame,
-        verbose: bool = False,
-) -> tuple[pd.DataFrame,dict[str, float]]:
+# #--------------------------------
+# def storage_fixed_eta(
+#         sim: Simulation,
+#         ts: pd.DataFrame,
+#         verbose: bool = False,
+# ) -> tuple[pd.DataFrame,dict[str, float]]:
 
-    from tm_solarshift.models import (trnsys, postprocessing)
-    DEWH: GasHeaterStorage = sim.DEWH
-    kgCO2_TO_kgCH4 = (44./16.)          #Assuming pure methane for gas
-    heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
-    eta = sim.DEWH.eta.get_value("-")
+#     from tm_solarshift.models import (trnsys, postprocessing)
+#     DEWH: GasHeaterStorage = sim.DEWH
+#     kgCO2_TO_kgCH4 = (44./16.)          #Assuming pure methane for gas
+#     heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
+#     eta = sim.DEWH.eta.get_value("-")
 
-    trnsys_dewh = trnsys.TrnsysDEWH(DEWH=DEWH, ts=ts)
-    df_tm = trnsys_dewh.run_simulation(verbose=verbose)
-    out_overall = postprocessing.thermal_analysis(sim, ts, df_tm)
-    sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
+#     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=DEWH, ts=ts)
+#     df_tm = trnsys_dewh.run_simulation(verbose=verbose)
+#     out_overall = postprocessing.thermal_analysis(sim, ts, df_tm)
+#     sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
 
-    emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
-    emissions_marginal = emissions_total
+#     emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
+#     emissions_marginal = emissions_total
     
-    out_overall["emissions_total"] = emissions_total
-    out_overall["emissions_marginal"] = emissions_marginal
-    out_overall["solar_ratio"] = 0.0
-    return (df_tm, out_overall)
+#     out_overall["emissions_total"] = emissions_total
+#     out_overall["emissions_marginal"] = emissions_marginal
+#     out_overall["solar_ratio"] = 0.0
+#     return (df_tm, out_overall)

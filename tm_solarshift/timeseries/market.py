@@ -91,7 +91,8 @@ def load_household_import_rate(
 
 #-------------
 def load_household_gas_rate(
-        ts_hwd: pd.Series,
+        # ts_hwd: pd.Series,
+        ts_power: pd.Series,
         heater: GasHeaterInstantaneous,
         file_path: str = FILE_GAS_TARIFF_SAMPLE,
         tariff_type: str = "gas",
@@ -107,27 +108,44 @@ def load_household_gas_rate(
         rates.append(bin["rate"])
         edges.append(bin["ceil"])
 
-    #importing data from heater
-    nom_power = heater.nom_power.get_value("MJ/hr")
-    flow_water = heater.flow_water.get_value("L/min")
-    specific_energy = (nom_power / flow_water * CF("min", "hr"))        #[MJ/L]
 
-    #getting the tariff
-    ts_index = pd.to_datetime(ts_hwd.index)
-
-    ts_tariff = pd.DataFrame(ts_hwd, index=ts_index)
+    ts_index = pd.to_datetime(ts_power.index)
+    ts_tariff = pd.DataFrame(index=ts_index)
     freq = ts_index.freq
     if freq is not None:
         STEP_h = freq.n * CF("min", "hr")
-    ts_tariff["E_HWD"] = specific_energy * ts_hwd["m_HWD"] * STEP_h         #[MJ]
-    ts_tariff["E_HWD_cum_day"] = ts_tariff.groupby(ts_index.date)['E_HWD'].cumsum()
+
+    ts_tariff["heater_power"] = ts_power * CF("kW", "MJ/hr") * STEP_h
+    ts_tariff["power_cum_sum"] = ts_tariff.groupby(ts_index.date)['heater_power'].cumsum()
     ts_tariff["tariff"] = pd.cut(
-        ts_tariff["E_HWD_cum_day"],
+        ts_tariff["power_cum_sum"],
         bins = edges, labels = rates, right = False
     ).astype("float")
+    ts_tariff["tariff"] = ts_tariff["tariff"] / CF("MJ","kWh")
 
+
+    #importing data from heater
+    # nom_power = heater.nom_power.get_value("MJ/hr")
+    # flow_water = heater.flow_water.get_value("L/min")
+    # eta = heater.eta.get_value("-")
+    # specific_energy = (eta * nom_power / flow_water * CF("min", "hr"))        #[MJ/L]
+    # specific_energy = ( eta*nom_power / flow_water * CF("min", "hr") * CF("MJ", "kWh")) #[kWh/L]
+
+    # # getting the tariff
+    # ts_index = pd.to_datetime(ts_hwd.index)
+    # ts_tariff = pd.DataFrame(ts_hwd, index=ts_index)
+    # freq = ts_index.freq
+    # if freq is not None:
+    #     STEP_h = freq.n * CF("min", "hr")
+    # ts_tariff["E_HWD"] = specific_energy * ts_hwd["m_HWD"] * STEP_h         #[MJ]
+    # ts_tariff["E_HWD_cum_day"] = ts_tariff.groupby(ts_index.date)['E_HWD'].cumsum()
+    # ts_tariff["tariff"] = pd.cut(
+    #     ts_tariff["E_HWD_cum_day"],
+    #     bins = edges, labels = rates, right = False
+    # ).astype("float")
     #output
     ts_tariff["rate_type"] = "gas"
+
     return ts_tariff
 
 #---------------------------------
