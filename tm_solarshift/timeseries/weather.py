@@ -422,7 +422,6 @@ def load_weather_data(
         ts_ = ts.copy()
 
     if type_sim == "tmy":
-        pass #Check if minimum params are in kwargs.
         df_weather = load_tmy(ts_, params, columns)
     elif type_sim == "mc":
         df_weather = load_montecarlo(ts_, params, columns)

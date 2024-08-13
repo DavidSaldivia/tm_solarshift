@@ -20,13 +20,24 @@ FILES = {
 }
 FILE_GAS_TARIFF_SAMPLE = DIRECTORY.FILE_GAS_TARIFF_SAMPLE
 
-#-----------
+
 def load_household_import_rate(
         ts_index: pd.DatetimeIndex,
         tariff_type: str = "flat",
         control_type: str = "CL1",
         dnsp: str = "ausgrid",
 ) -> pd.DataFrame:
+    """It receives a ts_index (from a simulation for example) and returns a dataframe with "tariff" (the tariff rate in AUD/kWh) and "rate_type" (str as label of rate applied) columns.
+
+    Args:
+        ts_index (pd.DatetimeIndex): ts_index from a simulation.
+        tariff_type (str, optional): the tariff type. see DEFAULT.TARIFF_TYPES. Defaults to "flat".
+        control_type (str, optional): the control type used. see DEFAULT.CONTROL_TYPES. Defaults to "CL1".
+        dnsp (str, optional): The DNSP defined from the location. Defaults to "ausgrid".
+
+    Returns:
+        pd.DataFrame: Dataframe with "tariff" in (AUD/kWh) and "rate_type" (str)
+    """
 
     ts2 = pd.DataFrame(index=ts_index, columns = [ "tariff", "rate_type"])
     match tariff_type:
@@ -89,14 +100,20 @@ def load_household_import_rate(
     
     return ts2
 
-#-------------
+
 def load_household_gas_rate(
-        # ts_hwd: pd.Series,
         ts_power: pd.Series,
-        heater: GasHeaterInstantaneous,
         file_path: str = FILE_GAS_TARIFF_SAMPLE,
-        tariff_type: str = "gas",
 ) -> pd.DataFrame:
+    """It receives a ts_power and applies a tariff defined by file_path. It receives a ts_power series containing the heater_power (as defined in df_econ), which is in kW. It converts it into energy consumption and generates a tariff timeseries defined by gas tariffs (acummulated energy during a day has different rate). It assumes hot water is all energy consumption in the gas bill. This is a conservative approach, as tariff is lower by consumption.
+
+    Args:
+        ts_power (pd.Series): heater_power series from a simulation (in kW).
+        file_path (str, optional): file_path to the gas_tariff. Defaults to FILE_GAS_TARIFF_SAMPLE.
+
+    Returns:
+        pd.DataFrame: A dataframe with the columns "tariff" (in AUD/kWh) and "rate_type" = "gas"
+    """
 
     #importing the energy plan
     with open(file_path) as f:
@@ -108,7 +125,7 @@ def load_household_gas_rate(
         rates.append(bin["rate"])
         edges.append(bin["ceil"])
 
-
+    #getting the tariff rate
     ts_index = pd.to_datetime(ts_power.index)
     ts_tariff = pd.DataFrame(index=ts_index)
     freq = ts_index.freq
@@ -122,40 +139,28 @@ def load_household_gas_rate(
         bins = edges, labels = rates, right = False
     ).astype("float")
     ts_tariff["tariff"] = ts_tariff["tariff"] / CF("MJ","kWh")
-
-
-    #importing data from heater
-    # nom_power = heater.nom_power.get_value("MJ/hr")
-    # flow_water = heater.flow_water.get_value("L/min")
-    # eta = heater.eta.get_value("-")
-    # specific_energy = (eta * nom_power / flow_water * CF("min", "hr"))        #[MJ/L]
-    # specific_energy = ( eta*nom_power / flow_water * CF("min", "hr") * CF("MJ", "kWh")) #[kWh/L]
-
-    # # getting the tariff
-    # ts_index = pd.to_datetime(ts_hwd.index)
-    # ts_tariff = pd.DataFrame(ts_hwd, index=ts_index)
-    # freq = ts_index.freq
-    # if freq is not None:
-    #     STEP_h = freq.n * CF("min", "hr")
-    # ts_tariff["E_HWD"] = specific_energy * ts_hwd["m_HWD"] * STEP_h         #[MJ]
-    # ts_tariff["E_HWD_cum_day"] = ts_tariff.groupby(ts_index.date)['E_HWD'].cumsum()
-    # ts_tariff["tariff"] = pd.cut(
-    #     ts_tariff["E_HWD_cum_day"],
-    #     bins = edges, labels = rates, right = False
-    # ).astype("float")
-    #output
     ts_tariff["rate_type"] = "gas"
 
     return ts_tariff
 
-#---------------------------------
-# emissions
+
 def load_emission_index_year(
         timeseries: pd.DataFrame,
         location: str|Location = "Sydney",
         index_type: str = "total",
         year: int = 2022,
         ) -> pd.DataFrame:
+    """It returns the emissions for a given year and location (based on state). The emissions are obtained by nemed. It returns either the marginal or total emission index (in ton_eq_CO2/MWh)
+
+    Args:
+        timeseries (pd.DataFrame): The dataframe containing the index.
+        location (str | Location, optional): Defaults to "Sydney".
+        index_type (str, optional): "marginal" or "total" as defined by NEMED. Defaults to "total".
+        year (int, optional): Year to check the emissions. Defaults to 2022.
+
+    Returns:
+        pd.DataFrame: A dataframe with the emissions in the same timestep than the initial timeseries
+    """
     
     if (type(location) == Location):
         state = location.state
@@ -165,7 +170,6 @@ def load_emission_index_year(
     columns = {
         "total": "intensity_index",
         "marginal": "marginal_index",
-        # "both": PROFILES.TYPES["emissions"]   #Not working well yet
         }[index_type]
     
     emissions = pd.read_csv(
@@ -182,22 +186,26 @@ def load_emission_index_year(
         ).interpolate('linear')
     return timeseries
 
-#---------------------------------
-# wholesale prices
+
 def load_wholesale_prices(
         ts_index: pd.DatetimeIndex,
-        location: Location = Location(),
+        location: Location|str = Location(),
         ) -> pd.Series:
+    """It returns the wholesale prices (in AUD/MWh) for a ts_index (from a simulation) based on NEMOSIS data.
+
+    Args:
+        ts_index (pd.DatetimeIndex): index from a simulation dataframe (for example Simulation.time_params.idx).
+        location (Location, optional): The location where the wholesale prices are calculated. It corresponds to the state wholesale price.
+
+    Returns:
+        pd.Series: timeseries with the wholesale price (in AUD/MWh)
+    """
     
     df_SP = pd.read_csv( FILES["WHOLESALE_PRICES"], index_col=0 )
     df_SP.index = pd.to_datetime(df_SP.index).tz_localize(None)
 
     if type(location) == str:   #city
         nem_region = DEFINITIONS.LOCATIONS_NEM_REGION[location]
-    elif type(location) == tuple:     #coordinate
-        pass #Check which state the location is
-    elif type(location) == int:     #postcode
-        pass #Check the NEM region of postcode
     elif type(location) == Location:
         nem_region = DEFINITIONS.STATES_NEM_REGION[location.state]
 
@@ -206,55 +214,3 @@ def load_wholesale_prices(
         df_SP[nem_region].resample(f"{STEP}min").interpolate('linear')
     )
     return ts
-
-#------------------------
-def test_get_gas_rate():
-
-    COLS = DEFINITIONS.TS_TYPES["economic"]
-    sim = Simulation()
-    sim.DEWH = GasHeaterInstantaneous()
-    sim.household.tariff_type = "gas"
-
-    ts = sim.create_ts()
-
-    output = load_household_gas_rate( ts, heater = sim.DEWH )
-    energy_bill = (output["E_HWD"] * output["tariff"]).sum()
-    print(output)
-    print(energy_bill)
-
-    return
-
-#-------------
-if __name__ == "__main__":
-
-    # test_get_gas_rate()
-
-    # test_load_household_import_rate()
-
-    # test_calculate_energy_cost()
-
-    pass
-#---------------------------
-# def main():
-
-#     from tm_solarshift.general import Simulation
-#     sim = Simulation()
-#     ts = sim.create_ts()
-    
-#     location = Location("Sydney")
-#     ts = load_emission_index_year( ts, location, index_type='total', year=2022 )
-#     ts = load_emission_index_year( ts, location, index_type='marginal', year=2022 )
-
-#     ts = load_wholesale_prices(ts, location)
-    
-#     ts = load_household_import_rate(
-#         ts,
-#         tariff_type="tou",
-#         return_energy_plan=False
-#     )
-
-#     print(ts.head(20))
-#     pass
-
-# if __name__ == "__main__":
-#     main()

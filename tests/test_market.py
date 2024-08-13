@@ -23,3 +23,14 @@ def test_load_household_import_rate(location: str, tariff_type: str):
         control_type= sim.household.control_type,
     )
     assert len(ts_mkt[ts_mkt["tariff"].isnull()]) == 0
+
+#------------------------
+def test_get_gas_rate():
+    from tm_solarshift.models.gas_heater import GasHeaterInstantaneous
+    import numpy as np
+    import pandas as pd
+    sim = Simulation()
+    ts_index = sim.time_params.idx
+    ts_power_mock = pd.Series(0.01,index=ts_index)
+    ts_mkt = market.load_household_gas_rate(ts_power_mock)
+    assert len(ts_mkt[ts_mkt["tariff"].isnull()]) == 0

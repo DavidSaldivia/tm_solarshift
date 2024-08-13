@@ -4,9 +4,8 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Any, TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 
-from tm_solarshift.general import Simulation
 from tm_solarshift.constants import (DIRECTORY, SIMULATIONS_IO)
 from tm_solarshift.utils.units import (conversion_factor as CF)
 from tm_solarshift.analysis.finance import (
@@ -16,11 +15,6 @@ from tm_solarshift.analysis.finance import (
 
 if TYPE_CHECKING:
     from tm_solarshift.general import Simulation
-    # from tm_solarshift.models.dewh import ResistiveSingle, HeatPump
-    # from tm_solarshift.models.gas_heater import GasHeaterStorage
-    # from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
-    # Heater: TypeAlias = ResistiveSingle | HeatPump | GasHeaterStorage | SolarThermalElecAuxiliary
-
 
 OUTPUT_ANALYSIS_TM = SIMULATIONS_IO.OUTPUT_ANALYSIS_TM
 OUTPUT_ANALYSIS_ECON = SIMULATIONS_IO.OUTPUT_ANALYSIS_ECON
@@ -35,7 +29,8 @@ def annual_postproc(
         out_all: pd.DataFrame,
         include: list[str] = POSTPROC_TYPES
         ) -> dict:
-
+    """DEPRECATED. Used previously to run simulations. Prefer thermal_analysis and economic_analysis separatedly
+    """
     out_overall_th = {}
     out_overall_econ = {}
 
@@ -50,13 +45,21 @@ def annual_postproc(
 #-------------------
 def thermal_analysis(
         sim: Simulation,
-        ts: pd.DataFrame,
         df_tm: pd.DataFrame
 ) -> dict[str, float]:
-    
+    """Performs calculations to the results of a thermal simulation. It calculates aggregated data on heat flows, storage efficiency, and risk parameters (SOC, etc.)
+
+    Args:
+        sim (Simulation): The simulation instance.
+        df_tm (pd.DataFrame): The results from the thermal model
+
+    Returns:
+        dict[str, float]: Dictionary with the overall thermal parameters.
+    """
+
     from tm_solarshift.models.gas_heater import GasHeaterInstantaneous
-    
     DEWH = sim.DEWH
+
     if isinstance(DEWH, GasHeaterInstantaneous):
         overall_th = DEWH.postproc(df_tm)
         return overall_th
@@ -117,21 +120,32 @@ def thermal_analysis(
 
 
 def economics_analysis(sim: Simulation) -> dict[str, float]:
+    """Performs an enconomic analysis, including solar ratio, emissions, and costs. It requires a thermal and a pv simulation, as well as thermal analysis.
+
+    Args:
+        sim (Simulation): The simulation instance. It requires a thermal and pv simulation already run.
+
+    Returns:
+        dict[str, float]: Dictionary with the overall economic parameters.
+    """
     
-    #retrieving data
+    #retrieving input
     location = sim.household.location
     DEWH = sim.DEWH
-    df_tm = sim.out["df_tm"]
     ts_index = sim.time_params.idx
     STEP_h = sim.time_params.STEP.get_value("hr")
     YEAR = sim.time_params.YEAR.get_value("-")
 
+    #retrieving output
+    df_tm = sim.out["df_tm"]
+    df_pv = sim.out["df_pv"]
+    overall_tm = sim.out["overall_tm"]
+
     # creating output df
     COLS_ECON = ["heater_power", "pv_power", "imported_power", "exported_pv", "pv_to_hw"]
-    df_econ = pd.DataFrame(index=ts_index, columns=COLS_ECON)        # all cols in [kW]
-    df_econ["pv_power"] = sim.out["df_pv"]["pv_power"]
+    df_econ = pd.DataFrame(index=ts_index, columns=COLS_ECON)        # all columns in [kW]
+    df_econ["pv_power"] = df_pv["pv_power"]
     df_econ["heater_power"] = df_tm["heater_power"] * CF("kJ/h", "kW")
-    overall_tm = sim.out["overall_tm"]
     heater_heat_acum = overall_tm["heater_heat_acum"]
     heater_power_acum = overall_tm["heater_power_acum"]
 
@@ -226,9 +240,7 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
     overall_econ["annual_fit_opp_cost"] = annual_fit_opp_cost
     overall_econ["annual_fit_revenue"] = annual_fit_revenue
     
-    print(overall_econ)
-    # for (k,v) in overall_econ.items():
-    #     print(f"{k}: {v:.4f}")
+    # print(overall_econ)
     return overall_econ
 
 
@@ -307,6 +319,7 @@ def calculate_fit_revenue(
     return fit_opp_cost
 
 #------------------------------
+#------------------------------
 def events_simulation(
         sim: Simulation, 
         ts: pd.DataFrame,
@@ -338,7 +351,7 @@ def events_simulation(
     df.loc[df.index == idx, "SOC_ini"] = df_aux.head(1)["SOC"].values
     return df
 
-#------------------------------
+
 def detailed_plots(
     sim: Simulation, 
     out_all: pd.DataFrame,
@@ -426,7 +439,7 @@ def detailed_plots(
 
 #-------------
 def main():
-    
+    from tm_solarshift.general import Simulation
     sim = Simulation()
     sim.pv_system = None
     ts = sim.create_ts()
