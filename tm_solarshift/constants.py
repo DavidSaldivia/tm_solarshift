@@ -62,6 +62,10 @@ class DIRECTORY():
         "HW_STATS": os.path.join(DIR_DATA["SA_processed"], "site_hot_water_stats.csv"),
         "POSTCODES_INFO": os.path.join(DIR_DATA["location"], "site_controlled_load_lat_lng.csv"),
     }
+    FILES_GAS_TARIFF = {
+        "Sydney": os.path.join(DIR_DATA["gas"],"energyaustralia_basic.json"),
+        "Melbourne": os.path.join(DIR_DATA["gas"],"vic_basic.json"),
+    }
     FILE_WHOLESALE_PRICES = os.path.join(DIR_DATA["energy_market"], 'SP_2017-2023.csv')
     FILE_POSTCODES = os.path.join(DIR_DATA["location"], "australian_postcodes.csv") # https://www.matthewproctor.com/australian_postcodes
     FILE_MERRA2_COORDS = os.path.join(DIR_DATA["location"], "merra2_coord_states.csv")

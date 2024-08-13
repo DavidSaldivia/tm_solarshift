@@ -12,17 +12,21 @@ from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 from tm_solarshift.models.pv_system import PVSystem
 from tm_solarshift.models import control
 from tm_solarshift.timeseries.hwd import HWD
-
 TS_TYPES = SIMULATIONS_IO.TS_TYPES
 TS_COLUMNS_ALL = SIMULATIONS_IO.TS_COLUMNS_ALL
 
 #---------------------
 class Simulation():
+    """
+    This is the base class of the repository.
+    It has four types of attributes. i) Parameters (such as Location and Household), Timeseries Generators, (such as Weather and HWDInfo, that allows to generate timeseries for the simulations), Devices (what is actually simulated, such as DEWH, PV System and Controllers), and Output (results of simulation.)
+    """
 
     def __init__(self):
         self.id = 1
         self.output_dir = None
 
+        self.time_params = TimeParams()
         self.location = Location("Sydney")
         self.household = Household()
 
@@ -33,7 +37,6 @@ class Simulation():
         self.pv_system = PVSystem()
         self.controller: control.Controller | None = None
         
-        self.time_params = TimeParams()
         self.out: Output = {}
 
 
@@ -45,7 +48,9 @@ class Simulation():
         self,
         ts_columns: list[str] = TS_COLUMNS_ALL,
     ) -> pd.DataFrame:
-        """Create an empty timeseries dataframe (ts).
+        """
+        DEPRECATED. Will be removed soon.
+        Create an empty timeseries dataframe (ts).
         Useful to populate ts manually
 
         Args:
@@ -69,6 +74,7 @@ class Simulation():
         ts_columns: list[str] = TS_COLUMNS_ALL,
     ) -> pd.DataFrame:
         """
+        DEPRECATED, will be removed soon.
         Create a timeseries dataframe (ts) using the information in self.
         Check the specific functions to get more information about definition process.
 
@@ -153,7 +159,9 @@ class Simulation():
     
 
     def create_ts_index(self) -> pd.DatetimeIndex:
-        """Create an empty the timeseries index (ts_index) for all ts generators.
+        """
+        DEPRECATED. Will be removed soon. Use instead Simulation().time_params.idx.
+        Create an empty the timeseries index (ts_index) for all ts generators.
 
         Returns:
             pd.DatetimeIndex: ts_index
@@ -172,8 +180,14 @@ class Simulation():
         self,
         ts_types: list[str] | str | None = None,
     ) -> pd.DataFrame:
-        
-        from tm_solarshift.timeseries import ( circuits, market )
+        """It creates a timeseries dataframe with the input of possible simulations. It is useful for timeseries that does not depend on simulation results, such as weather, HWDP, market prices and emissions.
+
+        Args:
+            ts_types (list[str] | str | None, optional): timeseries types as defined by DEFINITIONS.TS_TYPES. Defaults to None. If str, it returns only that timeseries. If None, returns all.
+
+        Returns:
+            pd.DataFrame: timeseries dataframe.
+        """
         
         if isinstance(ts_types, list):
             list_ts_types = ts_types.copy()
@@ -183,9 +197,6 @@ class Simulation():
             list_ts_types = list(SIMULATIONS_IO.TS_TYPES.keys())
         
         location = self.household.location
-        DEWH = self.DEWH
-        pv_system = self.pv_system
-
         ts_index = self.create_ts_index()
         ts_gens: list[pd.DataFrame] = []
         for ts_type in list_ts_types:
@@ -200,23 +211,10 @@ class Simulation():
                 ts_gens.append(ts_hwd)
             
             elif ts_type == "economic":
-                tariff_type = self.household.tariff_type
-                dnsp = self.household.DNSP
-                control_type = self.household.control_type
-                ts_econ = pd.DataFrame(index=ts_index, columns=TS_TYPES[ts_type])
-                ts_econ = market.load_wholesale_prices(ts_econ, location)
-                if tariff_type == "gas":
-                    ts_econ = market.load_household_gas_rate(ts_econ, DEWH)
-                else:
-                    ts_rate = market.load_household_import_rate(
-                        ts_econ.index,
-                        tariff_type = tariff_type,
-                        dnsp = dnsp,
-                        control_type = control_type
-                    )
-                    ts_econ["tariff"] = ts_rate["tariff"]
-                    ts_econ["rate_type"] = ts_rate["rate_type"]
-                ts_gens.append(ts_econ)
+                from tm_solarshift.timeseries import market
+                ts_mkt = pd.DataFrame(index=ts_index, columns=TS_TYPES[ts_type])
+                ts_mkt = market.load_wholesale_prices(ts_index, location)
+                ts_gens.append(ts_mkt)
             
             elif ts_type == "emissions":
                 YEAR = self.time_params.YEAR.get_value("-")
@@ -228,13 +226,6 @@ class Simulation():
                     ts_emi, index_type= 'marginal', location = location, year = YEAR,
                 )
                 ts_gens.append(ts_emi)
-
-            elif ts_type == "electric":
-                ts_elec = pd.DataFrame(index=ts_index, columns=TS_TYPES[ts_type])
-                ts_elec = circuits.load_PV_generation(ts_elec, pv_system = pv_system)
-                ts_elec = circuits.load_elec_consumption(ts_elec, profile_elec = 0)
-                ts_gens.append(ts_elec)
-
         ts = pd.concat(ts_gens, axis=1)
         return ts
 
@@ -297,7 +288,6 @@ class Simulation():
         self.out["df_tm"] = df_tm
         self.out["overall_tm"] = overall_tm
 
-        # ts_econ = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_ECO)
         self.out["overall_econ"] = postprocessing.economics_analysis(self)
         return None
 
@@ -326,22 +316,15 @@ class Simulation():
             ts_tm = self.load_ts(ts_types=SIMULATIONS_IO.TS_TYPES_TM+["emissions"])
         else:
             ts_tm = ts.copy()
-
-        
         df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-        overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-        # if isinstance(DEWH, ResistiveSingle | HeatPump | GasHeaterInstantaneous | GasHeaterStorage):
-        #     df_tm = DEWH.run_thermal_model(ts_tm, verbose=verbose)
-        #     overall_tm = postprocessing.thermal_analysis(self, ts_tm, df_tm)
-        # elif isinstance(DEWH, SolarThermalElecAuxiliary):
-        #     from tm_solarshift.models import solar_thermal
-        #     (df_tm, overall_tm) = solar_thermal.run_thermal_model(self, ts_tm, verbose=verbose)
-        # else:
-        #     ValueError("Not a valid type for DEWH")
+        overall_tm = postprocessing.thermal_analysis(self, df_tm)
         return (df_tm, overall_tm)
 
 #------------------------------------
 class Household():
+    """
+    It contains information about the household, such as tariff_type, size (occupancy) and type of control.
+    """
     def __init__(
             self,
             location: Location = Location("Sydney"),
@@ -365,6 +348,10 @@ class Household():
 
 
 class Weather():
+    """
+    Weather generator. It generates weather data for thermal and PV simulations using one of four options depending on the type of simulation. Depending on this options it requires one or more params.
+    Check the module timeseries.weather for details.
+    """
     def __init__(
             self,
             location: Location = Location("Sydney")
@@ -510,18 +497,9 @@ def main():
     sim.DEWH.postproc(df_tm=sim.out["df_tm"])
     print(sim.out["overall_tm"])
 
-    
-
     pass
 
-    # sim.DEWH = ResistiveSingle()
-    # sim.DEWH = GasHeaterStorage()
-    # sim.DEWH = SolarThermalElecAuxiliary()
-    # (out_all, out_overall) = sim.run_thermal_simulation( verbose=True )
-    # print(out_all)
-    # print(out_overall)
-    
-    return
+
 
 if __name__ == "__main__":
     main()

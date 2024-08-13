@@ -273,17 +273,15 @@ def load_tmy(
     else:
         location = params["location"]
     dataset = params["dataset"]
-
     if dataset == "meteonorm":
         df_dataset = load_dataset_meteonorm(location, YEAR)
     elif dataset == "merra2":
         df_dataset = load_dataset_merra2(ts, location, YEAR)
     else:
         raise ValueError(f"dataset: {dataset} is not available.")
-    
     return from_tmy( ts, df_dataset, columns=columns )
 
-# -------------
+
 def load_dataset_meteonorm(
         location: str,
         YEAR: int = 2022,
@@ -302,6 +300,10 @@ def load_dataset_meteonorm(
         index_col=0
     )
     PERIODS = len(df_dataset)
+
+    temp_mains = df_dataset["temp_mains"].to_numpy()
+    df_dataset["temp_mains"] = np.concatenate((temp_mains[PERIODS//2:], temp_mains[:PERIODS//2]))
+
     start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
     df_dataset.index = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
     df_dataset["date"] = df_dataset.index
@@ -309,7 +311,7 @@ def load_dataset_meteonorm(
     df_dataset.index = pd.to_datetime(df_dataset["date"])
     return df_dataset
 
-#-----------------
+
 def load_dataset_merra2(
         ts: pd.DataFrame,
         location: Location | str | tuple | int,
@@ -422,7 +424,6 @@ def load_weather_data(
         ts_ = ts.copy()
 
     if type_sim == "tmy":
-        pass #Check if minimum params are in kwargs.
         df_weather = load_tmy(ts_, params, columns)
     elif type_sim == "mc":
         df_weather = load_montecarlo(ts_, params, columns)

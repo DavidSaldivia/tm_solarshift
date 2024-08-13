@@ -95,24 +95,6 @@ def calculate_disconnection_cost(
 ) -> float:
 
     disconnection = 0.
-    # # no old heater to disconnect
-    # if (old_heater == "none"): 
-    #     disconnection = 0 
-    # elif old_heater not in LIST_HEATERS_TYPES:
-    #     raise ValueError("Water heater is invalid")
-
-    # if (old_heater in ['gas_instant', 'gas_storage']):
-    #     if permanent_close:
-    #         # in this gas the daily gas supply charge will not be considerred either 
-    #         disconnection = DEFAULT.PERM_CLOSE_COST
-    #     else:
-    #         # in this case the gas daily supply charge is still charged to the housheold 
-    #         disconnection = DEFAULT.TEMP_CLOSE_COST
-
-    # elif old_heater == 'resistive':
-    #     #read disconecction costs from file?
-    #     disconnection = 250
-
     return disconnection
 
 
@@ -137,16 +119,11 @@ def calculate_household_energy_cost(
     tariff_type = sim.household.tariff_type
     ts_index = sim.time_params.idx
     STEP_h = sim.time_params.STEP.get_value("hr")
-    if "df_tm" not in sim.out:
-        raise AttributeError("No thermal simulation results found.")
-    df_tm = sim.out["df_tm"]
+    location = sim.household.location
+
     if tariff_type == "gas":
-        # ts_hwd = sim.HWDInfo.generator(ts_index, method = sim.HWDInfo.method)
-        # ts_mkt =  market.load_household_gas_rate(ts_hwd, sim.DEWH)
-        # ts_mkt["tariff"] = ts_mkt["tariff"] / CF("MJ","kWh")        #converting to 
-        
-        # heater_heat = df_tm["heater_heat"]
-        ts_mkt =  market.load_household_gas_rate(imported_energy, sim.DEWH)
+        file_path = DIRECTORY.FILES_GAS_TARIFF[location]
+        ts_mkt =  market.load_household_gas_rate(ts_power=imported_energy, file_path=file_path)
     else:
         ts_mkt = market.load_household_import_rate(
             ts_index,
@@ -198,55 +175,6 @@ def calculate_daily_supply_cost(sim: Simulation) -> float:
     else:
         daily_supply_charge = 0.
     return (daily_supply_charge * DAYS)
-
-
-# def cache_financial_tm(
-#         row: pd.Series|dict,
-#         dir_cache: str,
-#         verbose: bool = False,
-# ) -> tuple[Simulation,pd.DataFrame,dict[str,float]]:
-
-#     COLS_FIN_CACHE_TM = [
-#         "location", "profile_HWD", "household_size", "heater_type", "has_solar", "control_type",
-#     ]
-#     row_to_check = row[COLS_FIN_CACHE_TM]
-
-#     file_cache = os.path.join(dir_cache,"index.csv")
-    
-#     cache_index = pd.read_csv(file_cache, index_col=0)
-#     idx_cached = cache_index[(cache_index == row_to_check).all(axis=1)].index
-
-#     if len(idx_cached) == 0:
-#         # call simulation and save into cache
-#         sim = get_simulation_instance(row, verbose=verbose)
-#         ts = sim.create_ts()
-#         (out_all, out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
-#         df_tm = out_all[OUTPUT_SIM_DEWH]
-#         # getting a new id and saving into .plk file
-#         new_id = 1 if (len(cache_index) == 0) else (cache_index.index.max() + 1)
-#         file_path = os.path.join(dir_cache,f"sim_{new_id}.plk")
-#         try:
-#             #saving results
-#             with open(file_path, "wb") as file:
-#                 sim_output = [sim,df_tm,out_overall]
-#                 pickle.dump(sim_output, file, protocol=pickle.HIGHEST_PROTOCOL)
-#             #updating index
-#             cache_index.loc[new_id,:] = row_to_check
-#             cache_index.to_csv(file_cache)
-#         except Exception as ex:
-#             print("Error during pickling object (Possibly unsupported):", ex)
-
-#     else:
-#         # retrieve the saved data
-#         file_path = os.path.join( dir_cache, f"sim_{idx_cached.values[0]}.plk" )
-#         try:
-#             with open(file_path, "rb") as f:
-#                 (sim, df_tm, out_overall) = pickle.load(f)
-#             df_tm = df_tm[OUTPUT_SIM_DEWH]
-#         except Exception as ex:
-#             print("Error during unpickling object (Possibly unsupported):", ex)
-
-#     return (sim, df_tm, out_overall)
 
 
 def analysis(
@@ -501,3 +429,51 @@ def WA_rebate():
 def NT_rebate():
     pass
     return 0
+
+# def cache_financial_tm(
+#         row: pd.Series|dict,
+#         dir_cache: str,
+#         verbose: bool = False,
+# ) -> tuple[Simulation,pd.DataFrame,dict[str,float]]:
+
+#     COLS_FIN_CACHE_TM = [
+#         "location", "profile_HWD", "household_size", "heater_type", "has_solar", "control_type",
+#     ]
+#     row_to_check = row[COLS_FIN_CACHE_TM]
+
+#     file_cache = os.path.join(dir_cache,"index.csv")
+    
+#     cache_index = pd.read_csv(file_cache, index_col=0)
+#     idx_cached = cache_index[(cache_index == row_to_check).all(axis=1)].index
+
+#     if len(idx_cached) == 0:
+#         # call simulation and save into cache
+#         sim = get_simulation_instance(row, verbose=verbose)
+#         ts = sim.create_ts()
+#         (out_all, out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
+#         df_tm = out_all[OUTPUT_SIM_DEWH]
+#         # getting a new id and saving into .plk file
+#         new_id = 1 if (len(cache_index) == 0) else (cache_index.index.max() + 1)
+#         file_path = os.path.join(dir_cache,f"sim_{new_id}.plk")
+#         try:
+#             #saving results
+#             with open(file_path, "wb") as file:
+#                 sim_output = [sim,df_tm,out_overall]
+#                 pickle.dump(sim_output, file, protocol=pickle.HIGHEST_PROTOCOL)
+#             #updating index
+#             cache_index.loc[new_id,:] = row_to_check
+#             cache_index.to_csv(file_cache)
+#         except Exception as ex:
+#             print("Error during pickling object (Possibly unsupported):", ex)
+
+#     else:
+#         # retrieve the saved data
+#         file_path = os.path.join( dir_cache, f"sim_{idx_cached.values[0]}.plk" )
+#         try:
+#             with open(file_path, "rb") as f:
+#                 (sim, df_tm, out_overall) = pickle.load(f)
+#             df_tm = df_tm[OUTPUT_SIM_DEWH]
+#         except Exception as ex:
+#             print("Error during unpickling object (Possibly unsupported):", ex)
+
+#     return (sim, df_tm, out_overall)

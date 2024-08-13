@@ -235,6 +235,8 @@ class TrnsysDEWH():
             if verbose:
                 print("TRNSYS simulation postprocessing.")
             df_tm = self.postprocessing()
+
+            pass
                 
         elapsed_time = time.time()-stime
         if verbose:
