@@ -132,13 +132,6 @@ class SIMULATIONS_IO():
     TS_TYPES_PV = ["weather", "electric"]                   # ts columns for PV sim
     TS_TYPES_ECO = ["weather", "economic", "emissions"]     # ts columns for ECO postproc
 
-    # PARAMS_OUT = [
-    #     'heater_heat_acum', 'heater_power_acum', 'heater_perf_avg',
-    #     'E_HWD_acum', 'eta_stg', 'cycles_day', 'SOC_avg',
-    #     'm_HWD_avg', 'temp_amb_avg', 'temp_mains_avg',
-    #     'SOC_min', 'SOC_025', 'SOC_050', 't_SOC0',
-    #     'emissions_total', 'emissions_marginal', 'solar_ratio',
-    # ]
     OUTPUT_SIM_PV = [
         "poa_global",
         "temp_pv",
@@ -180,7 +173,7 @@ class SIMULATIONS_IO():
         'solar_ratio_potential',
         'solar_ratio_real',
         'annual_hw_household_cost',
-        'annual_hw_retailer_cost'
+        'annual_hw_wholesale_cost'
     ]
     OUTPUT_ANALYSIS_FIN = [
         "net_present_cost",
@@ -220,7 +213,7 @@ class DEFINITIONS():
     LOCATIONS_DNSP = {
         "Adelaide": "SAPN",
         "Brisbane": "Energex",
-        "Canberra": "Evoenergy",
+        "Canberra": "Essential",
         "Darwin": "Powerwater",
         "Melbourne": "CitiPower",
         "Perth": "Western",
@@ -346,6 +339,6 @@ class DEFINITIONS():
         3:'Evenly',
         4:'Morning',
         5:'Evening',
-        6:'late Night',
+        6:'Late Night',
     }
     

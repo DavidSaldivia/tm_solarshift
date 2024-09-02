@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from tm_solarshift.constants import (DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import Variable
@@ -250,6 +250,7 @@ class Simulation():
 
         self.out: Output = {}
         ts_index = self.time_params.idx
+        self.weather.location = self.household.location         #TODO: define what to do with location
         ts_wea = self.weather.load_data(ts_index)
         ts_hwd = self.HWDInfo.generator(ts_index, method = self.HWDInfo.method)
 

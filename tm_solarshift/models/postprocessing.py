@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import TYPE_CHECKING
 
-from tm_solarshift.constants import (DIRECTORY, SIMULATIONS_IO)
+from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import (conversion_factor as CF)
 from tm_solarshift.analysis.finance import (
     calculate_household_energy_cost,
@@ -197,27 +197,31 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
     from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
     from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
     ts_emi = pd.DataFrame(index=ts_index)
-    ts_emi = market.load_emission_index_year(
-        ts_emi, index_type= 'total', location = location, year = YEAR,
-    )
-    ts_emi = market.load_emission_index_year(
-        ts_emi, index_type= 'marginal', location = location, year = YEAR,
-    )
-    if isinstance(DEWH, ResistiveSingle | HeatPump | SolarThermalElecAuxiliary):
-        emissions_total = (
-            (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["intensity_index"]
-            ).sum()
-        emissions_marginal = (
-            (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["marginal_index"]
-            ).sum()
-    if isinstance(DEWH, GasHeaterInstantaneous | GasHeaterStorage):
-        heater_heat_acum = ( df_tm["heater_heat"] * STEP_h  * CF("kJ/h", "kW") ).sum()
-        kgCO2_TO_kgCH4 = 44. / 16.                          #assuming pure methane for gas
-        heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
-        eta = sim.DEWH.eta.get_value("-")
-        sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
-        emissions_total = heater_heat_acum * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
-        emissions_marginal = emissions_total
+    if location not in DEFINITIONS.LOCATIONS_NEM_REGION.keys():
+        emissions_total = np.nan
+        emissions_marginal = np.nan
+    else:    
+        ts_emi = market.load_emission_index_year(
+            ts_emi, index_type= 'total', location = location, year = YEAR,
+        )
+        ts_emi = market.load_emission_index_year(
+            ts_emi, index_type= 'marginal', location = location, year = YEAR,
+        )
+        if isinstance(DEWH, ResistiveSingle | HeatPump | SolarThermalElecAuxiliary):
+            emissions_total = (
+                (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["intensity_index"]
+                ).sum()
+            emissions_marginal = (
+                (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["marginal_index"]
+                ).sum()
+        if isinstance(DEWH, GasHeaterInstantaneous | GasHeaterStorage):
+            heater_heat_acum = ( df_tm["heater_heat"] * STEP_h  * CF("kJ/h", "kW") ).sum()
+            kgCO2_TO_kgCH4 = 44. / 16.                          #assuming pure methane for gas
+            heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
+            eta = sim.DEWH.eta.get_value("-")
+            sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
+            emissions_total = heater_heat_acum * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
+            emissions_marginal = emissions_total
     
     # energy costs
     annual_hw_household_cost = calculate_household_energy_cost(sim, df_econ["imported_power"])
@@ -275,7 +279,7 @@ def calculate_fit_opp_cost(
             plan = json.load(f)
         tariff_rate = None
         for charge in plan["charges"]["energy_charges"]:
-            if charge["tariff_type"] == "solar_feed_in":
+            if charge["tariff_type"] in ["solar_feed_in", "stepped_solar_feed_in"]:
                 tariff_rate = charge["rate_details"][0]["rate"]
     #TODO check if this is right
 
@@ -311,7 +315,7 @@ def calculate_fit_revenue(
             plan = json.load(f)
         tariff_rate = None
         for charge in plan["charges"]["energy_charges"]:
-            if charge["tariff_type"] == "solar_feed_in":
+            if charge["tariff_type"] in ["solar_feed_in", "stepped_solar_feed_in"]:
                 tariff_rate = charge["rate_details"][0]["rate"]
     #TODO check if this is right
 
