@@ -95,14 +95,27 @@ class PVSystem():
         temp_amb = ts_wea["temp_amb"]
         WS = ts_wea["WS"]
 
-        #result dataframe
-        df_pv = pd.DataFrame(index=ts_wea.index, columns=columns)
 
         # Estimating: radiation in pv plane, pv temp, relative efficiency, and module power
-        df_pv["poa_global"] = solar.get_plane_irradiance(
-            ts=ts_wea,
+
+        ts_wea2 = ts_wea.copy()
+        ts_wea2.index = ts_wea2.index.tz_localize(tz)
+        temp_amb = ts_wea2["temp_amb"]
+        WS = ts_wea2["WS"]
+        df_rad = solar.get_plane_irradiance(
+            ts=ts_wea2,
             latitude=latitude, longitude=longitude, tilt=tilt, orient=orient, tz=tz,
-        )["poa_global"]
+        )
+
+        #result dataframe
+        df_pv = pd.DataFrame(index=ts_wea2.index, columns=columns)
+        df_pv["poa_global"] = df_rad["poa_global"]
+
+        # df_pv["poa_global"] = solar.get_plane_irradiance(
+        #     ts=ts_wea,
+        #     latitude=latitude, longitude=longitude, tilt=tilt, orient=orient, tz=tz,
+        # )["poa_global"]
+
         df_pv["temp_pv"] = pvlib.temperature.faiman( df_pv["poa_global"], temp_amb, WS )
         df_pv["eta_rel"] = pvefficiency_adr(
             df_pv['poa_global'], df_pv['temp_pv'], **adr_params
@@ -110,6 +123,8 @@ class PVSystem():
         df_pv["pv_power"] = (
             nom_power * df_pv['eta_rel'] * (df_pv['poa_global'] / G_STC) * CF("W", unit)
         )
+
+        df_pv = df_pv.tz_localize(None)
         return df_pv
 
 

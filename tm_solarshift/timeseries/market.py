@@ -1,13 +1,10 @@
 import json
 import os
-import numpy as np
 import pandas as pd
 
 from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, SIMULATIONS_IO)
-from tm_solarshift.general import Simulation
 from tm_solarshift.utils.units import conversion_factor as CF
 from tm_solarshift.utils.location import Location
-from tm_solarshift.models.gas_heater import GasHeaterInstantaneous
 
 
 DIR_SPOTPRICE = DIRECTORY.DIR_DATA["energy_market"]

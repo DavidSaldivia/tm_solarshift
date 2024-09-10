@@ -401,8 +401,9 @@ class Weather():
 
     def load_data(self, ts_index: pd.DatetimeIndex) -> pd.DataFrame:
         from tm_solarshift.timeseries import weather
+        params = self.params()
         ts_wea = weather.load_weather_data(
-                    ts_index, type_sim = self.type_sim, params = self.params()
+                    ts_index, type_sim = self.type_sim, params = params
                 )
         return ts_wea
 

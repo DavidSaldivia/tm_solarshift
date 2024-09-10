@@ -151,7 +151,7 @@ class SIMULATIONS_IO():
         'tank_flow_rate',
         'tank_temp_out',
         'C_all',
-        'tank_temp_avg',         # T_avg in trnsys. CHANGE!
+        'tank_temp_avg',
         'SOC',
         'SOC2',
         'SOC3',
@@ -283,6 +283,20 @@ class DEFINITIONS():
         11: "November",
         12: "December"
     }
+    DAYS_PER_MONTHS = {
+        1: 31,
+        2: 28,
+        3: 31,
+        4: 30,
+        5: 31,
+        6: 30,
+        7: 31,
+        8: 31,
+        9: 30,
+        10: 31,
+        11: 30,
+        12: 31
+    }
     DAYOFWEEK = {
         "weekday": [0, 1, 2, 3, 4],
         "weekend": [5, 6]
@@ -302,7 +316,6 @@ class DEFINITIONS():
         "hw_only" : "constant_day",
         "forecast": "mc",
     }
-    
     TARIFF_TYPES = {
         "flat": "Flat Tariff",
         "tou": "Time of Use",

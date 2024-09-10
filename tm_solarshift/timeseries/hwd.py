@@ -159,9 +159,9 @@ class HWD():
             m_HWD_day = rng.choice(sample, size=DAYS)
             
     
-        return pd.DataFrame(m_HWD_day, 
-                            index=list_dates_unique, 
-                            columns=["HWD_day"],)
+        return pd.DataFrame(
+            m_HWD_day, index=list_dates_unique, columns=["HWD_day"],
+        )
 
 
     #----------------------
