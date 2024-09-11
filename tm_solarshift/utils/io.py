@@ -4,7 +4,7 @@ import pickle
 import pandas as pd
 from typing import Optional, Any
 
-from tm_solarshift.general import   Simulation
+from tm_solarshift.general import Simulation
 from tm_solarshift.models.trnsys import TrnsysDEWH
 from tm_solarshift.constants import (
     DIRECTORY,
@@ -50,11 +50,13 @@ def save_simulation_input(
         print("Error during pickling object (Possibly unsupported):", ex)
     return None
 
+
 def save_simulation_output(
         out_tm: pd.DataFrame,
         ts: Optional[pd.DataFrame] = None,
 ) -> None:
     return None
+
 
 def load_simulation_input(
         file_path: str,
@@ -66,15 +68,15 @@ def load_simulation_input(
         print("Error during unpickling object (Possibly unsupported):", ex)
     return sim
 
+
 def load_simulation_output(
         file_path: str,
 ) -> Simulation:
     df_tm = pickle.load(file_path)
     return df_tm
 
-def main():
 
-    
+def main():    
     sim = Simulation()
     file_path = "testing.pkl"
     save_simulation_input(sim, file_path)

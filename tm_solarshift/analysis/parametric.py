@@ -3,22 +3,19 @@
 import os
 import copy
 import itertools
+import pickle
 import numpy as np
 import pandas as pd
 
 import tm_solarshift.general as general
 from tm_solarshift.models import postprocessing
-from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, SIMULATIONS_IO)
+from tm_solarshift.constants import (DIRECTORY, SIMULATIONS_IO)
 from tm_solarshift.utils.units import (Variable, VariableList)
 from tm_solarshift.models.dewh import ResistiveSingle
 from tm_solarshift.models.gas_heater import GasHeaterInstantaneous
 
-PARAMS_OUT = SIMULATIONS_IO.PARAMS_OUT
-DIR_DATA = DIRECTORY.DIR_DATA
-DIR_RESULTS = DIRECTORY.DIR_RESULTS
+PARAMS_OUT = SIMULATIONS_IO.OUTPUT_ANALYSIS_TM
 showfig = False
-
-pd.set_option('display.max_columns', None)
 
 #-------------
 def settings(
@@ -60,15 +57,12 @@ def analysis(
     cases_in: pd.DataFrame,
     units_in: dict[str,str],
     params_out: list = PARAMS_OUT,
-    GS_base = general.Simulation(),
+    sim_base = general.Simulation(),
     save_results_detailed: bool = False,
-    fldr_results_detailed: str = "",
     gen_plots_detailed: bool = False,
     save_plots_detailed: bool = False,
-    save_results_general: bool = False,
-    file_results_general: str = "",
-    fldr_results_general: str = "",
-    append_results_general: bool = False,
+    dir_output: str | None = None,
+    path_results: str | None = None,
     verbose: bool = True,
     ) -> pd.DataFrame:
     """parametric_analysis performs a set of simulations changing a set of parameters (params_in).
@@ -76,9 +70,9 @@ def analysis(
 
     Args:
         cases_in (pd.DataFrame): a dataframe with all the inputss.
-        units_in (dict): list of units with params_units[lbl] = unit
+        units_in (dict): list of units with params_units[key] = unit
         params_out (List): list of labels of expected output. Defaults to PARAMS_OUT.
-        GS_base (_type_, optional): GS object used as base case. Defaults to general.Simulation().
+        sim_base (_type_, optional): Simulation instance used as base case. Defaults to general.Simulation().
         save_results_detailed (bool, optional): Defaults to False.
         fldr_results_detailed (bool, optional): Defaults to None.
         gen_plots_detailed (bool, optional): Defaults to False.
@@ -97,77 +91,50 @@ def analysis(
     runs_out = cases_in.copy()
     for col in params_out:
         runs_out[col] = np.nan
-    
-    if append_results_general:
-        runs_old = pd.read_csv(
-            os.path.join(
-                fldr_results_general, file_results_general
-                )
-            ,index_col=0
-            )
       
     for (index, row) in runs_out.iterrows():
         
         if verbose:
             print(f'RUNNING SIMULATION {index+1}/{len(runs_out)}')
-        sim = copy.copy(GS_base)
+        sim = copy.copy(sim_base)
+        updating_parameters( simulation=sim, row_in = row[params_in], units_in = units_in )
+        sim.run_simulation(verbose=verbose)
+        df_tm = sim.out['df_tm']
+        overall_tm = sim.out["overall_tm"]
+        overall_econ = sim.out["overall_econ"]
+        overall_all = overall_tm | overall_econ
 
-        updating_parameters( sim, row[params_in], units_in )
-        
-        if verbose:
-            print("Creating Timeseries for simulation")
-        ts = sim.create_ts()
-
-        if verbose:
-            print("Executing thermal simulation")
-        (out_data,out_overall) = sim.run_thermal_simulation(ts, verbose=verbose)
-        # out_data = trnsys.run_simulation(sim, ts)
-        # out_overall = postprocessing.annual_simulation(sim, ts, out_data)
-        values_out = [out_overall[lbl] for lbl in params_out]
+        values_out = [overall_all[lbl] for lbl in params_out]
         runs_out.loc[index, params_out] = values_out
         
         #----------------
         #General results?
-        if save_results_general:
-            fldr = os.path.join(DIR_RESULTS,fldr_results_general)
-            if not os.path.exists(fldr):
-                os.mkdir(fldr)
-                
-            if append_results_general:
-                runs_save = pd.concat( [runs_old, runs_out], ignore_index=True )
-                runs_save.to_csv(
-                    os.path.join(fldr, file_results_general)
-                )
-            else:
-                runs_out.to_csv(
-                    os.path.join(fldr, file_results_general)
-                )
+        if dir_output is not None:
+            if not os.path.exists(dir_output):
+                os.mkdir(dir_output)
+            runs_out.to_csv(path_results)
                 
         #-----------------
         #Detailed results?
-        if out_data is None:
+        if df_tm is None:
             continue
         
-        case = f'case_{index}'
         if save_results_detailed:
-            fldr = os.path.join(DIR_RESULTS,fldr_results_detailed)
-            if not os.path.exists(fldr):
-                os.mkdir(fldr)
-            out_data.to_csv(os.path.join(fldr,case+'_results.csv'))
+            pickle_path = os.path.join(dir_output, f'sim_{index}.plk')
+            with open(pickle_path, "wb") as file:
+                pickle.dump(sim, file, protocol=pickle.HIGHEST_PROTOCOL)
     
-        #-----------------
-        #Detailed plots?
-        if gen_plots_detailed:
-            postprocessing.detailed_plots(
-                sim, out_data,
-                fldr_results_detailed = os.path.join(
-                    DIR_RESULTS,
-                    fldr_results_detailed
-                ),
-                save_plots_detailed = save_plots_detailed,
-                case = case,
-                showfig = showfig
-                )
+        # if gen_plots_detailed:
+        #     postprocessing.detailed_plots(
+        #         sim, df_tm,
+        #         fldr_results_detailed = os.path.join(
+        #             DIR_RESULTS,
+        #             fldr_results_detailed
+        #         ),
+        #         save_plots_detailed = save_plots_detailed,
+        #         case = case,
+        #         showfig = showfig
+        #         )
             
         print(runs_out.loc[index])
         
@@ -219,10 +186,13 @@ def test_parametric_run():
         'household.location' : ["Sydney",],
         'household.control_load'  : [0,1,2],
         }
+    params_out = SIMULATIONS_IO.OUTPUT_ANALYSIS_TM
     (runs, params_units) = settings(params_in)
 
     runs = analysis(
-        runs, params_units, PARAMS_OUT,
+        cases_in = runs,
+        params_in = params_units,
+        params_out = params_out,
         GS_base = GS_base,
         save_results_detailed = True,
         gen_plots_detailed    = True,

@@ -159,9 +159,9 @@ class HWD():
             m_HWD_day = rng.choice(sample, size=DAYS)
             
     
-        return pd.DataFrame(m_HWD_day, 
-                            index=list_dates_unique, 
-                            columns=["HWD_day"],)
+        return pd.DataFrame(
+            m_HWD_day, index=list_dates_unique, columns=["HWD_day"],
+        )
 
 
     #----------------------
@@ -215,7 +215,7 @@ class HWD():
         if interday_dist is None:
             interday_dist = self.interday_distribution(timeseries)
         if intraday_dist is None:
-            intraday_dist = self.profile_HWD
+            intraday_dist = int(self.profile_HWD)
 
         idx = pd.to_datetime(timeseries.index)
         if idx.freq is None:
@@ -259,7 +259,7 @@ class HWD():
         return timeseries
 
 
-    #!!! CORRECT TYPING
+    #!!! TODO CORRECT TYPING
     @typing.no_type_check
     def generator_events(
         self,

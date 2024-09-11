@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 pandas = "^2.1.4"
 numpy = "^1.26.3"
 matplotlib = "^3.8.2"
@@ -24,6 +24,7 @@ mypy = "^1.9.0"
 jupyter = "^1.0.0"
 pandas-stubs = "^2.2.1.240316"
 pytest = "^8.2.2"
+salib = "^1.5.1"
 
 
 [build-system]

@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import TYPE_CHECKING
 
-from tm_solarshift.constants import (DIRECTORY, SIMULATIONS_IO)
+from tm_solarshift.constants import (DIRECTORY, DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import (conversion_factor as CF)
 from tm_solarshift.analysis.finance import (
     calculate_household_energy_cost,
@@ -197,27 +197,31 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
     from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
     from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
     ts_emi = pd.DataFrame(index=ts_index)
-    ts_emi = market.load_emission_index_year(
-        ts_emi, index_type= 'total', location = location, year = YEAR,
-    )
-    ts_emi = market.load_emission_index_year(
-        ts_emi, index_type= 'marginal', location = location, year = YEAR,
-    )
-    if isinstance(DEWH, ResistiveSingle | HeatPump | SolarThermalElecAuxiliary):
-        emissions_total = (
-            (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["intensity_index"]
-            ).sum()
-        emissions_marginal = (
-            (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["marginal_index"]
-            ).sum()
-    if isinstance(DEWH, GasHeaterInstantaneous | GasHeaterStorage):
-        heater_heat_acum = ( df_tm["heater_heat"] * STEP_h  * CF("kJ/h", "kW") ).sum()
-        kgCO2_TO_kgCH4 = 44. / 16.                          #assuming pure methane for gas
-        heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
-        eta = sim.DEWH.eta.get_value("-")
-        sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
-        emissions_total = heater_heat_acum * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
-        emissions_marginal = emissions_total
+    if location not in DEFINITIONS.LOCATIONS_NEM_REGION.keys():
+        emissions_total = np.nan
+        emissions_marginal = np.nan
+    else:    
+        ts_emi = market.load_emission_index_year(
+            ts_emi, index_type= 'total', location = location, year = YEAR,
+        )
+        ts_emi = market.load_emission_index_year(
+            ts_emi, index_type= 'marginal', location = location, year = YEAR,
+        )
+        if isinstance(DEWH, ResistiveSingle | HeatPump | SolarThermalElecAuxiliary):
+            emissions_total = (
+                (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["intensity_index"]
+                ).sum()
+            emissions_marginal = (
+                (df_econ["heater_power"] * CF("kW", "MW")) * STEP_h * ts_emi["marginal_index"]
+                ).sum()
+        if isinstance(DEWH, GasHeaterInstantaneous | GasHeaterStorage):
+            heater_heat_acum = ( df_tm["heater_heat"] * STEP_h  * CF("kJ/h", "kW") ).sum()
+            kgCO2_TO_kgCH4 = 44. / 16.                          #assuming pure methane for gas
+            heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
+            eta = sim.DEWH.eta.get_value("-")
+            sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
+            emissions_total = heater_heat_acum * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
+            emissions_marginal = emissions_total
     
     # energy costs
     annual_hw_household_cost = calculate_household_energy_cost(sim, df_econ["imported_power"])
@@ -244,6 +248,78 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
     return overall_econ
 
 
+def economics_analysis_df(sim: Simulation) -> pd.DataFrame:
+    """Performs an enconomic analysis, including solar ratio, emissions, and costs. It requires a thermal and a pv simulation, as well as thermal analysis.
+
+    Args:
+        sim (Simulation): The simulation instance. It requires a thermal and pv simulation already run.
+
+    Returns:
+        dict[str, float]: Dictionary with the overall economic parameters.
+    """
+    
+    #retrieving input
+    location = sim.household.location
+    DEWH = sim.DEWH
+    ts_index = sim.time_params.idx
+    STEP_h = sim.time_params.STEP.get_value("hr")
+    YEAR = sim.time_params.YEAR.get_value("-")
+
+    #retrieving output
+    df_tm = sim.out["df_tm"]
+    df_pv = sim.out["df_pv"]
+    overall_tm = sim.out["overall_tm"]
+
+    # creating output df
+    COLS_ECON = ["heater_power", "pv_power", "imported_power", "exported_pv", "pv_to_hw"]
+    df_econ = pd.DataFrame(index=ts_index, columns=COLS_ECON)        # all columns in [kW]
+    df_econ["pv_power"] = df_pv["pv_power"]
+    df_econ["heater_power"] = df_tm["heater_power"] * CF("kJ/h", "kW")
+    heater_heat_acum = overall_tm["heater_heat_acum"]
+    heater_power_acum = overall_tm["heater_power_acum"]
+
+    # solar ratio and imported energy
+    hour = pd.to_datetime(df_tm.index).hour.astype(float)
+    solar_ratio_potential = (
+        df_econ["heater_power"][ (hour >= 6.75) & (hour <= 17.01) ].sum() * STEP_h
+        / heater_power_acum
+    )
+
+    if DEWH.label == "solar_thermal":
+        df_econ["imported_power"] = df_econ["heater_power"]
+        df_econ["exported_pv"] = 0.
+        df_econ["pv_to_hw"] = 0.
+
+        df_econ["solar_power"] = df_tm["heater_heat"] * CF("kJ/hr", "kW")
+        solar_ratio_real = df_econ["imported_power"].sum() / df_econ["solar_power"].sum()
+        imported_power_acum = df_econ["imported_power"].sum() * STEP_h     #[kWh]
+        exported_pv_acum = 0.
+        pv_to_hw_acum = 0.
+        
+    else:
+        df_econ["imported_power"] = np.where(
+            df_econ["heater_power"] > df_econ["pv_power"],
+            df_econ["heater_power"] - df_econ["pv_power"],
+            0.0
+        )
+        df_econ["exported_pv"] = np.where(
+            df_econ["pv_power"] > df_econ["heater_power"],
+            df_econ["pv_power"] - df_econ["heater_power"],
+            0.0
+        )
+        df_econ["pv_to_hw"] = np.where(
+            df_econ["pv_power"] < df_econ["heater_power"],
+            df_econ["pv_power"],
+            df_econ["heater_power"]
+        )
+        imported_power_acum = df_econ["imported_power"].sum() * STEP_h     #[kWh]
+        exported_pv_acum = df_econ["exported_pv"].sum() * STEP_h           #[kWh]
+        pv_to_hw_acum = df_econ["pv_to_hw"].sum() * STEP_h                 #[kWh]
+        solar_ratio_real = pv_to_hw_acum / heater_power_acum
+
+    print(df_econ.groupby(ts_index.hour).sum() * STEP_h)
+    print(df_econ.groupby(ts_index.month).sum() * STEP_h)
+    return df_econ      # all columns in kW
 
 def calculate_fit_opp_cost(
         sim: Simulation,
@@ -275,7 +351,7 @@ def calculate_fit_opp_cost(
             plan = json.load(f)
         tariff_rate = None
         for charge in plan["charges"]["energy_charges"]:
-            if charge["tariff_type"] == "solar_feed_in":
+            if charge["tariff_type"] in ["solar_feed_in", "stepped_solar_feed_in"]:
                 tariff_rate = charge["rate_details"][0]["rate"]
     #TODO check if this is right
 
@@ -311,7 +387,7 @@ def calculate_fit_revenue(
             plan = json.load(f)
         tariff_rate = None
         for charge in plan["charges"]["energy_charges"]:
-            if charge["tariff_type"] == "solar_feed_in":
+            if charge["tariff_type"] in ["solar_feed_in", "stepped_solar_feed_in"]:
                 tariff_rate = charge["rate_details"][0]["rate"]
     #TODO check if this is right
 

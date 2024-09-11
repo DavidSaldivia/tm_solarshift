@@ -148,12 +148,16 @@ def calculate_wholesale_energy_cost(
     else:
         ts_index = sim.time_params.idx
         location = sim.household.location
-        ts_mkt = market.load_wholesale_prices(ts_index, location=location)
+        if location not in DEFINITIONS.LOCATIONS_NEM_REGION.keys():
+            ts_mkt = pd.Series(0, index = sim.time_params.idx)
+        else:
+            ts_mkt = market.load_wholesale_prices(ts_index, location=location)
     return ((ts_mkt * imported_energy * CF("kW", "MW")).sum() * STEP_h)
 
 
 def calculate_daily_supply_cost(sim: Simulation) -> float:
     DAYS = sim.time_params.DAYS.get_value("d")
+    location = sim.household.location
     dnsp = sim.household.DNSP
     tariff_type = sim.household.tariff_type
     control_type = sim.household.control_type
@@ -168,7 +172,7 @@ def calculate_daily_supply_cost(sim: Simulation) -> float:
             tariff_type = control_type if (control_type != "diverter") else "CL1"
         file_path = os.path.join(DIR_TARIFFS, f"{dnsp.lower()}_{tariff_type}_plan.json")
         if tariff_type == "gas":
-            file_path = DIRECTORY.FILE_GAS_TARIFF_SAMPLE
+            file_path = DIRECTORY.FILES_GAS_TARIFF[location]
         with open(file_path) as f:
             plan = json.load(f)
         daily_supply_charge = plan["charges"]["service_charges"][0]["rate"]

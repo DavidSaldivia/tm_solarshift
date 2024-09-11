@@ -32,6 +32,7 @@ def get_solar_position(
         tz: str = DEFAULT_TZ,
 ) -> pd.DataFrame:
     
+    # idx_2 = idx.tz_localize(tz)
     loc = location.Location(latitude, longitude, tz)
     solpos = loc.get_solarposition(idx)
     return solpos
