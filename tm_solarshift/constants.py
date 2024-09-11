@@ -11,6 +11,7 @@ class DIRECTORY():
     with open(os.path.join(DIR_MAIN, ".dirs"), "r") as f:
         private_dirs = json.load(f)
     DIR_DATA_EXTERNAL = private_dirs["data"]
+    FILE_TRNSYS_EXEC = private_dirs["trnsys"]
     DIR_DATA = {
         "energy_market": os.path.join(DIR_DATA_EXTERNAL, "energy_market"),
         "emissions" : os.path.join(DIR_DATA_EXTERNAL, "emissions"),
