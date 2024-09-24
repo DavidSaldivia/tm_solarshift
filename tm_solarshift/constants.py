@@ -12,6 +12,7 @@ class DIRECTORY():
         private_dirs = json.load(f)
     DIR_DATA_EXTERNAL = private_dirs["data"]
     FILE_TRNSYS_EXEC = private_dirs["trnsys"]
+    DIR_TRNSYS_TEMP = private_dirs["trnsys_temp"]
     DIR_DATA = {
         "energy_market": os.path.join(DIR_DATA_EXTERNAL, "energy_market"),
         "emissions" : os.path.join(DIR_DATA_EXTERNAL, "emissions"),
@@ -64,8 +65,12 @@ class DIRECTORY():
         "POSTCODES_INFO": os.path.join(DIR_DATA["location"], "site_controlled_load_lat_lng.csv"),
     }
     FILES_GAS_TARIFF = {
+        "Adelaide": os.path.join(DIR_DATA["gas"],"sa_origin_standing.json"),
         "Sydney": os.path.join(DIR_DATA["gas"],"energyaustralia_basic.json"),
         "Melbourne": os.path.join(DIR_DATA["gas"],"vic_basic.json"),
+        "Canberra": os.path.join(DIR_DATA["gas"],"act_origin_standing.json"),
+        "Brisbane": os.path.join(DIR_DATA["gas"],"qld_origin_standing.json"),
+
     }
     FILE_WHOLESALE_PRICES = os.path.join(DIR_DATA["energy_market"], 'SP_2017-2023.csv')
     FILE_POSTCODES = os.path.join(DIR_DATA["location"], "australian_postcodes.csv") # https://www.matthewproctor.com/australian_postcodes

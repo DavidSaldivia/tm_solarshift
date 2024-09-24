@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 DIR_DATA = DIRECTORY.DIR_DATA
 TS_TYPES = SIMULATIONS_IO.TS_TYPES
 TRNSYS_EXECUTABLE = DIRECTORY.FILE_TRNSYS_EXEC
-TEMPDIR_SIMULATION = "C:/SolarShift_TempDir"
+TEMPDIR_SIMULATION = DIRECTORY.DIR_TRNSYS_TEMP
 DEFAULT_HEATER_DATA = {
     "heat_pump": os.path.join(DIR_DATA["specs"],"HP_data_reclaim.dat"),
     "solar_thermal": os.path.join(DIR_DATA["specs"],"STC_data_ones.dat"),
