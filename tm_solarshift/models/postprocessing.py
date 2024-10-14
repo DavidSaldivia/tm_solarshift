@@ -162,7 +162,7 @@ def economics_analysis(sim: Simulation) -> dict[str, float]:
         df_econ["pv_to_hw"] = 0.
 
         df_econ["solar_power"] = df_tm["heater_heat"] * CF("kJ/hr", "kW")
-        solar_ratio_real = df_econ["imported_power"].sum() / df_econ["solar_power"].sum()
+        solar_ratio_real = df_tm["heater_heat"].sum() / df_tm["heater_both"].sum()
         imported_power_acum = df_econ["imported_power"].sum() * STEP_h     #[kWh]
         exported_pv_acum = 0.
         pv_to_hw_acum = 0.
