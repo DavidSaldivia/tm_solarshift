@@ -33,14 +33,13 @@ LOCATIONS_STATE = DEFINITIONS.LOCATIONS_STATE
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 FIN_POSTPROC_OUTPUT = SIMULATIONS_IO.OUTPUT_ANALYSIS_FIN
 OUTPUT_SIM_DEWH = SIMULATIONS_IO.OUTPUT_SIM_DEWH
+LIST_LOCATIONS = DEFINITIONS.LOCATIONS_METEONORM
 
 #--------------------
 # List of accepted values
 LIST_PARAMS_INPUT = [ "location", "profile_HWD", "household_size",
                      "heater_type", "has_solar", "control_type",
                      "tariff_type", "name", "new_system", "old_heater"]
-LIST_LOCATIONS = ["Sydney", "Melbourne", "Adelaide",
-                  "Brisbane", "Hobart", "Perth", "Darwin"]
 LIST_HEATERS_TYPES = ["resistive", "heat_pump", "gas_instant",
                       "gas_storage", "solar_thermal"]
 LIST_CONTROL_TYPES = ["GS", "CL1", "CL2", "CL3",
@@ -201,6 +200,7 @@ def analysis(
     energy_HWD_annual = sim.out["overall_tm"]["E_HWD_acum"]
     annual_energy_cost = sim.out["overall_econ"]["annual_hw_household_cost"]
     annual_fit_opp_cost = sim.out["overall_econ"]["annual_fit_opp_cost"]
+    solar_ratio_real = sim.out["overall_econ"]["solar_ratio_real"]
 
     #Calculating fixed and variable costs
     capital_cost = calculate_capital_cost(sim)
@@ -236,6 +236,7 @@ def analysis(
     output_finance["oandm_cost"] = oandm_cost
     output_finance["rebates"] = rebates
     output_finance["disconnection_costs"] = disconnection_costs
+    output_finance["solar_ratio_real"] = solar_ratio_real
 
     return (output_finance, cashflows)
 

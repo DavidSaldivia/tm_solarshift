@@ -321,6 +321,7 @@ def economics_analysis_df(sim: Simulation) -> pd.DataFrame:
     print(df_econ.groupby(ts_index.month).sum() * STEP_h)
     return df_econ      # all columns in kW
 
+
 def calculate_fit_opp_cost(
         sim: Simulation,
         pv_to_hw: pd.Series,
