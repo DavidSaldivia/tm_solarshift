@@ -1,3 +1,5 @@
+"""General module with base Simulation class
+"""
 from dataclasses import dataclass
 from typing import TypedDict
 
@@ -8,7 +10,7 @@ from tm_solarshift.constants import (DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import Variable
 
 from tm_solarshift.utils.location import Location
-from tm_solarshift.models.dewh import (ResistiveSingle, HeatPump)
+from tm_solarshift.models.dewh import (DEWH, ResistiveSingle, HeatPump)
 from tm_solarshift.models.gas_heater import (GasHeaterInstantaneous, GasHeaterStorage)
 from tm_solarshift.models.solar_thermal import SolarThermalElecAuxiliary
 from tm_solarshift.models.pv_system import PVSystem
@@ -17,30 +19,42 @@ from tm_solarshift.timeseries.hwd import HWD
 TS_TYPES = SIMULATIONS_IO.TS_TYPES
 TS_COLUMNS_ALL = SIMULATIONS_IO.TS_COLUMNS_ALL
 
-#---------------------
+
 class Simulation():
     """
     This is the base class of the repository.
-    It has four types of attributes.
-        i) Parameters (time_params, location and household),
-        ii) Timeseries Generators: Weather and HWDInfo,
-        iii) Devices (what is actually simulated, such as DEWH, PV System and Controllers), and
-        i) Output (results of simulation.)
+    It has four types of attributes:
+
+    i) Parameters (time_params, location and household),
+    ii) Timeseries Generators: Weather and HWDInfo,
+    iii) Devices (what is actually simulated, such as DEWH, PV System and Controllers), and
+    iv) Output (results of simulation.)
+    
+    Attributes:
+
+        id (int): Simulation ID. Useful when running multiple simulations.
+        time_params (TimeParams): An object containing the temporal variables (START, STOP, STEP, YEAR). It provides some properties such as ``TimeParams.idx`` with the dataframe's DateTimeIndex.
+        household (Household): Household() object with information regarding the household.
+    
+    
+
     """
 
     def __init__(self):
         self.id: int = 1
+
         self.output_dir: str | None = None
 
-        self.time_params = TimeParams()
-        self.location = Location("Sydney")
-        self.household = Household()
+        self.time_params: TimeParams = TimeParams()
 
-        self.weather = Weather()
-        self.HWDInfo = HWD.standard_case( id=self.id )
+        self.location: Location = Location("Sydney")
+        self.household: Household = Household()
+
+        self.weather: Weather = Weather()
+        self.HWDInfo: HWD = HWD.standard_case( _id=self.id )
         
-        self.DEWH = ResistiveSingle()
-        self.pv_system = PVSystem()
+        self.DEWH: DEWH = ResistiveSingle()
+        self.pv_system: PVSystem | None = PVSystem()
         self.controller: control.Controller | None = None
         
         self.out: Output = {}
@@ -108,7 +122,9 @@ class Simulation():
         self,
         verbose: bool = False,
     ) -> None:
-        """Run a simulation using the data provided in self.
+        """Run a simulation using the self containing data.
+        
+        It update the results into the self.out dictionary (A Output class). The simulation returns *df_pv* (pv simulation results), *df_tm* (DEWH simulation results), *overall_tm* (overall results of thermal parameters), and *overall_econ* (overall results of economic parameters).
 
         Args:
             verbose (bool, optional): Print stage of sim. Defaults to False.
@@ -202,9 +218,19 @@ class Simulation():
 #------------------------------------
 @dataclass
 class Household():
-    
     """ Household
     dataclass with information of the household, such as location, tariff_type, size (occupancy) and type of control.
+
+    Parameters:
+
+        tariff_type (str): Tariff type defined by 
+        location: City where the simulation is performed.
+        control:type: Type of control, the options are: *'CL1'*, *'CL2'*, *'CL1'*, *'GS'*, *'timer'*, and *'diverter'*. If timer or diverter are selected, then the Controller specs need to be defined.
+        control_random_on: 
+
+    Property:
+        DNSP (str): DNSP associated with the location
+
     """
     tariff_type: str = "flat"
     location: str = "Sydney"
@@ -268,6 +294,14 @@ class Weather():
     
 
     def load_data(self, ts_index: pd.DatetimeIndex) -> pd.DataFrame:
+        """Load data defined by self.params
+
+        Args:
+            ts_index (pd.DatetimeIndex): The dataframe's index defined by the simulation.
+
+        Returns:
+            pd.DataFrame: A dataframe with the weather timeseries.
+        """
         from tm_solarshift.timeseries import weather
         params = self.params()
         ts_wea = weather.load_weather_data(
