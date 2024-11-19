@@ -1,6 +1,8 @@
+from dataclasses import dataclass
+from typing import TypedDict
+
 import numpy as np
 import pandas as pd
-from typing import TypedDict
 
 from tm_solarshift.constants import (DEFINITIONS, SIMULATIONS_IO)
 from tm_solarshift.utils.units import Variable
@@ -27,8 +29,8 @@ class Simulation():
     """
 
     def __init__(self):
-        self.id = 1
-        self.output_dir = None
+        self.id: int = 1
+        self.output_dir: str | None = None
 
         self.time_params = TimeParams()
         self.location = Location("Sydney")
@@ -46,138 +48,6 @@ class Simulation():
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
-    
-    #---------------
-    def create_ts_empty(
-        self,
-        ts_columns: list[str] = TS_COLUMNS_ALL,
-    ) -> pd.DataFrame:
-        """
-        DEPRECATED. Will be removed soon.
-        Create an empty timeseries dataframe (ts).
-        Useful to populate ts manually
-
-        Args:
-            ts_columns (list[str], optional): columns to include. Defaults to TS_COLUMNS_ALL.
-
-        Returns:
-            pd.DataFrame: ts (timeseries dataframe)
-        """
-        START = self.time_params.START.get_value("hr")
-        STEP = self.time_params.STEP.get_value("min")
-        YEAR = self.time_params.YEAR.get_value("-")
-        PERIODS = self.time_params.PERIODS.get_value("-")
-
-        start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
-        idx = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
-        return pd.DataFrame(index=idx, columns=ts_columns)
-
-
-    def create_ts(
-        self,
-        ts_columns: list[str] = TS_COLUMNS_ALL,
-    ) -> pd.DataFrame:
-        """
-        DEPRECATED, will be removed soon.
-        Create a timeseries dataframe (ts) using the information in self.
-        Check the specific functions to get more information about definition process.
-
-        Args:
-            ts_columns (list[str], optional): columns to show in ts. Defaults to TS_COLUMNS_ALL.
-
-        Returns:
-            pd.DataFrame: ts, the timeseries dataframe.
-        """
-
-        from tm_solarshift.timeseries import ( circuits, control, market, weather )
-        
-        location = self.household.location
-        control_type = self.household.control_type
-        control_load = self.household.control_load
-        random_control = self.household.control_random_on
-        tariff_type = self.household.tariff_type
-        dnsp = self.household.DNSP
-        
-        HWD_method = self.HWDInfo.method
-        DEWH = self.DEWH
-        pv_system = self.pv_system
-        YEAR = self.time_params.YEAR.get_value("-")
-        ts = self.create_ts_empty(ts_columns = ts_columns)
-
-        # hwd
-        ts = self.HWDInfo.generator(ts, method = HWD_method)
-        
-        # weather
-        type_sim = self.weather.type_sim
-        params_weather = {
-                "dataset": self.weather.dataset,
-                "location": self.weather.location,
-                "subset": self.weather.subset,
-                "random": self.weather.random,
-                "value": self.weather.value,
-        }
-        ts = weather.load_weather_data(ts, type_sim = type_sim, params = params_weather)
-        
-        #control
-        if control_type == "diverter" and pv_system is not None:
-            #Diverter considers three hours at night plus everything diverted from solar
-            tz = 'Australia/Brisbane'
-            # pv_power = pv_system.load_PV_generation( ts=ts, tz=tz, unit="kW")
-            pv_power = pv_system.sim_generation(ts)["pv_power"]
-            ts = control.load_schedule(ts, control_load = control_load, random_ON=False)
-            heater_nom_power = DEWH.nom_power.get_value("kW")
-            ts["CS"] = np.where(
-                ts["CS"]>=0.99,
-                ts["CS"],
-                np.where(
-                    (pv_power > 0) & (pv_power < heater_nom_power),
-                    pv_power / heater_nom_power,
-                    np.where(pv_power > heater_nom_power, 1., 0.)
-                )
-            )
-        else:
-            ts = control.load_schedule(ts, control_load = control_load, random_ON = random_control)
-        
-        # market
-        ts = market.load_wholesale_prices(ts, location)
-        ts = market.load_emission_index_year(
-            ts, index_type= 'total', location = location, year = YEAR,
-        )
-        ts = market.load_emission_index_year(
-            ts, index_type= 'marginal', location = location, year = YEAR,
-        )
-        if tariff_type == "gas":
-            ts = market.load_household_gas_rate(ts, DEWH)
-        else:
-            ts = market.load_household_import_rate(
-                ts, tariff_type, dnsp,
-                return_energy_plan=False,
-                control_load=control_load
-            )
-        
-        # circuits
-        ts = circuits.load_PV_generation(ts, pv_system = pv_system)
-        ts = circuits.load_elec_consumption(ts, profile_elec = 0)
-
-        return ts[ts_columns]
-    
-
-    def create_ts_index(self) -> pd.DatetimeIndex:
-        """
-        DEPRECATED. Will be removed soon. Use instead Simulation().time_params.idx.
-        Create an empty the timeseries index (ts_index) for all ts generators.
-
-        Returns:
-            pd.DatetimeIndex: ts_index
-        """
-        START = self.time_params.START.get_value("hr")
-        STEP = self.time_params.STEP.get_value("min")
-        YEAR = self.time_params.YEAR.get_value("-")
-        PERIODS = self.time_params.PERIODS.get_value("-")
-
-        start_time = pd.to_datetime(f"{YEAR}-01-01 00:00:00") + pd.DateOffset(hours=START)
-        ts_index = pd.date_range( start=start_time, periods=PERIODS, freq=f"{STEP}min")
-        return ts_index
     
     
     def load_ts(
@@ -201,7 +71,7 @@ class Simulation():
             list_ts_types = list(SIMULATIONS_IO.TS_TYPES.keys())
         
         location = self.household.location
-        ts_index = self.create_ts_index()
+        ts_index = self.time_params.idx
         ts_gens: list[pd.DataFrame] = []
         for ts_type in list_ts_types:
 
@@ -330,49 +200,41 @@ class Simulation():
         return (df_tm, overall_tm)
 
 #------------------------------------
+@dataclass
 class Household():
+    
+    """ Household
+    dataclass with information of the household, such as location, tariff_type, size (occupancy) and type of control.
     """
-    It contains information about the household, such as tariff_type, size (occupancy) and type of control.
-    """
-    def __init__(
-            self,
-            location: Location = Location("Sydney"),
-        ):
-
-        self.tariff_type = "flat"
-        self.location = location.value
-        self.control_type = "CL1"
-        self.control_random_on = True
-
-        self.size = 4
-        self.has_solar = False
-        self.old_heater = False
-        self.new_system = False
+    tariff_type: str = "flat"
+    location: str = "Sydney"
+    control_type: str = "CL1"
+    control_random_on: bool = True
+    size: int = 4
+    old_heater: str | None = None
+    new_system: str | None = None
 
     @property
     def DNSP(self) -> str:
         return DEFINITIONS.LOCATIONS_DNSP[self.location]
+    
 
-
+@dataclass
 class Weather():
     """
     Weather generator. It generates weather data for thermal and PV simulations using one of four options depending on the type of simulation. Depending on this options it requires one or more params.
     Check the module timeseries.weather for details.
     """
-    def __init__(
-            self,
-            location: Location = Location("Sydney")
-    ):
-        self.type_sim = "tmy"
-        self.dataset = "meteonorm"
-        self.location = location.value
-        self.subset = None
-        self.random = False
-        self.value = None
-        
-        self.file_path: str | None = None
-        self.list_dates: pd.DatetimeIndex | pd.Timestamp | None = None
-    
+    type_sim: str = "tmy"
+    dataset: str = "meteonorm"
+    location: str = "Sydney"
+    subset: str | None = None
+    random: bool = False
+    value: str | int | None = None
+
+    file_path: str | None = None
+    list_dates: pd.DatetimeIndex | pd.Timestamp | None = None
+
 
     def params(self) -> dict:
         if self.type_sim == "tmy":
@@ -415,12 +277,12 @@ class Weather():
 
 
 #------------------------------------
+@dataclass
 class TimeParams():
-    def __init__(self):
-        self.START = Variable(0, "hr")
-        self.STOP = Variable(8760, "hr")
-        self.STEP = Variable(3, "min")
-        self.YEAR = Variable(2022, "-")
+    START = Variable(0, "hr")
+    STOP = Variable(8760, "hr")
+    STEP = Variable(3, "min")
+    YEAR = Variable(2022, "-")
 
     @property
     def DAYS(self) -> Variable:
