@@ -19,7 +19,11 @@ TS_COLUMNS_ALL = SIMULATIONS_IO.TS_COLUMNS_ALL
 class Simulation():
     """
     This is the base class of the repository.
-    It has four types of attributes. i) Parameters (such as Location and Household), Timeseries Generators, (such as Weather and HWDInfo, that allows to generate timeseries for the simulations), Devices (what is actually simulated, such as DEWH, PV System and Controllers), and Output (results of simulation.)
+    It has four types of attributes.
+        i) Parameters (time_params, location and household),
+        ii) Timeseries Generators: Weather and HWDInfo,
+        iii) Devices (what is actually simulated, such as DEWH, PV System and Controllers), and
+        i) Output (results of simulation.)
     """
 
     def __init__(self):
@@ -498,7 +502,6 @@ def main():
     sim.household.tariff_type = "flat"
     sim.DEWH = GasHeaterInstantaneous()
     sim.run_simulation()
-    sim.DEWH.postproc(df_tm=sim.out["df_tm"])
     print(sim.out["overall_tm"])
 
     pass
