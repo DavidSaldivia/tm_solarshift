@@ -19,7 +19,11 @@ TS_COLUMNS_ALL = SIMULATIONS_IO.TS_COLUMNS_ALL
 class Simulation():
     """
     This is the base class of the repository.
-    It has four types of attributes. i) Parameters (such as Location and Household), Timeseries Generators, (such as Weather and HWDInfo, that allows to generate timeseries for the simulations), Devices (what is actually simulated, such as DEWH, PV System and Controllers), and Output (results of simulation.)
+    It has four types of attributes.
+        i) Parameters (time_params, location and household),
+        ii) Timeseries Generators: Weather and HWDInfo,
+        iii) Devices (what is actually simulated, such as DEWH, PV System and Controllers), and
+        i) Output (results of simulation.)
     """
 
     def __init__(self):
@@ -282,6 +286,8 @@ class Simulation():
                 heater_nom_power = self.DEWH.nom_power.get_value("kW")
             )
             ts_control = controller.create_signal(ts_index, df_pv["pv_power"])
+        else:
+            raise ValueError(f"{control_type=} is not a valid value.")
 
         # thermal model
         ts_tm = pd.concat([ts_wea, ts_hwd, ts_control], axis=1)
@@ -289,7 +295,9 @@ class Simulation():
         self.out["df_tm"] = df_tm
         self.out["overall_tm"] = overall_tm
 
+        #economic postprocessing
         self.out["overall_econ"] = postprocessing.economics_analysis(self)
+        
         return None
 
 
@@ -334,10 +342,8 @@ class Household():
         self.tariff_type = "flat"
         self.location = location.value
         self.control_type = "CL1"
-        # self.control_load = 1
         self.control_random_on = True
 
-        # self.heater_type = "resistive"
         self.size = 4
         self.has_solar = False
         self.old_heater = False
@@ -496,7 +502,6 @@ def main():
     sim.household.tariff_type = "flat"
     sim.DEWH = GasHeaterInstantaneous()
     sim.run_simulation()
-    sim.DEWH.postproc(df_tm=sim.out["df_tm"])
     print(sim.out["overall_tm"])
 
     pass

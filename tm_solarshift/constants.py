@@ -192,6 +192,7 @@ class SIMULATIONS_IO():
         "others_cost",
         "rebates",
         "disconnection_costs",
+        "solar_ratio_real"
     ]
 
     FIN_COMP_OUTPUT = [
@@ -219,7 +220,7 @@ class DEFINITIONS():
     LOCATIONS_DNSP = {
         "Adelaide": "SAPN",
         "Brisbane": "Energex",
-        "Canberra": "Essential",
+        "Canberra": "Evoenergy",
         "Darwin": "Powerwater",
         "Melbourne": "CitiPower",
         "Perth": "Western",
