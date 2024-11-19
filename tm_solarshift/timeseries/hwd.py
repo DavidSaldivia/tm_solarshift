@@ -184,12 +184,14 @@ class HWD():
 
         if (method == 'standard'):
             ts_hwd = self.generator_standard(
-                ts_, interday_dist, intraday_dist, columns)
+                ts_, interday_dist, intraday_dist, columns
+            )
         elif (method == 'events'):
             ts_hwd = self.generator_events(
                 ts_,
                 interday_dist,  intraday_dist, event_probs,
-                file_name, sheet_name, columns,)
+                file_name, sheet_name, columns,
+            )
         else:
             print(f"{method} is not a valid method for HWDP generator")
         

@@ -18,7 +18,7 @@ def test_CL_no_random(controller_type: str, time_avg: float):
     
     random_delay = False
     sim = Simulation()
-    ts_index = sim.create_ts_index()
+    ts_index = sim.time_params.idx
     STEP_h = sim.time_params.STEP.get_value("hr")
 
     controller = CLController( CL_type=controller_type, random_delay=random_delay )
@@ -43,7 +43,7 @@ def test_CL_no_random(controller_type: str, time_avg: float):
 def test_timer_SS_OP(controller_type: str, time_avg: float):
     random_delay = False
     sim = Simulation()
-    ts_index = sim.create_ts_index()
+    ts_index = sim.time_params.idx
     STEP_h = sim.time_params.STEP.get_value("hr")
 
     controller = Timer(timer_type = controller_type, random_delay=random_delay)
@@ -68,7 +68,7 @@ def test_timer_SS_OP(controller_type: str, time_avg: float):
 def test_timer_custom():
     random_delay = False
     sim = Simulation()
-    ts_index = sim.create_ts_index()
+    ts_index = sim.time_params.idx
     STEP_h = sim.time_params.STEP.get_value("hr")
 
     controller = Timer(
@@ -99,7 +99,7 @@ def test_randomization_delay():
     #creating a series without delay
     random_delay = False
     sim = Simulation()
-    ts_index = sim.create_ts_index()
+    ts_index = sim.time_params.idx
     STEP_h = sim.time_params.STEP.get_value("hr")
     controller = CLController( CL_type="CL1", random_delay=random_delay )
     cs_no_random = np.array(controller.create_signal(ts_index)["CS"])
@@ -123,7 +123,7 @@ def test_CL_random(controller_type: str, time_avg: float):
     
     random_delay = True
     sim = Simulation()
-    ts_index = sim.create_ts_index()
+    ts_index = sim.time_params.idx
     STEP_h = sim.time_params.STEP.get_value("hr")
 
     controller = CLController( CL_type=controller_type, random_delay=random_delay )
