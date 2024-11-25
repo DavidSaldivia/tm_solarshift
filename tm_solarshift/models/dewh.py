@@ -18,6 +18,12 @@ class DEWH(Protocol):
 FILES_MODEL_SPECS = DIRECTORY.FILES_MODEL_SPECS
 
 class HWTank():
+    """The base class for all heaters with tank.
+
+    Parameters:
+
+    """
+
     def __init__(self):
         self.label = "hwtank"
         self.nom_power = Variable(None, "W")
@@ -77,6 +83,11 @@ class HWTank():
 
 
 class ResistiveSingle(HWTank):
+    """The model for a hot water tank with a single immersive resistive heater.
+
+    Args:
+        HWTank (HWTank): Hot water tank
+    """
     def __init__(self):
         super().__init__()
         # description

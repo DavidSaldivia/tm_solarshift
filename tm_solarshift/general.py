@@ -24,19 +24,14 @@ class Simulation():
     """
     This is the base class of the repository.
     It has four types of attributes:
-
-    i) Parameters (time_params, location and household),
-    ii) Timeseries Generators: Weather and HWDInfo,
-    iii) Devices (what is actually simulated, such as DEWH, PV System and Controllers), and
-    iv) Output (results of simulation.)
     
-    Attributes:
+    Parameters:
 
         id (int): Simulation ID. Useful when running multiple simulations.
-        time_params (TimeParams): An object containing the temporal variables (START, STOP, STEP, YEAR). It provides some properties such as ``TimeParams.idx`` with the dataframe's DateTimeIndex.
-        household (Household): Household() object with information regarding the household.
-    
-    
+        time_params (TimeParams): An object containing the temporal variables (START, STOP, STEP, YEAR). It also provides some useful properties. Check the ``TimeParams`` class.
+        household (Household): Object with information regarding the household.
+        weather (Weather): TimeSeries Generator for weather data.
+        HWDInfo (HWD): TimeSeries Generator of hot water draw, based on the specified settings.
 
     """
 
@@ -192,7 +187,9 @@ class Simulation():
             ts: pd.DataFrame | None = None,
             verbose: bool = False,
     ) -> tuple[pd.DataFrame, dict]:
-        """Run a thermal simulation using the data provided in self.
+        """Run a thermal simulation 
+        
+        It uses the data provided in the settings.
 
         Args:
             ts (pd.DataFrame, optional): timeseries dataframe. If not given is generated. Defaults to None.
@@ -219,17 +216,15 @@ class Simulation():
 @dataclass
 class Household():
     """ Household
+
     dataclass with information of the household, such as location, tariff_type, size (occupancy) and type of control.
 
     Parameters:
 
         tariff_type (str): Tariff type defined by 
         location: City where the simulation is performed.
-        control:type: Type of control, the options are: *'CL1'*, *'CL2'*, *'CL1'*, *'GS'*, *'timer'*, and *'diverter'*. If timer or diverter are selected, then the Controller specs need to be defined.
-        control_random_on: 
-
-    Property:
-        DNSP (str): DNSP associated with the location
+        control_type: Type of control, the options are: *'CL1'*, *'CL2'*, *'CL1'*, *'GS'*, *'timer'*, and *'diverter'*. If timer or diverter are selected, then the Controller specs need to be defined.
+        control_random_on: If `True` then a randomization delay is applied to the starting times. Usually used for controlled loads (CL)
 
     """
     tariff_type: str = "flat"
@@ -242,6 +237,13 @@ class Household():
 
     @property
     def DNSP(self) -> str:
+        """The DNSP associated to the location
+        
+        It maps locations to a given DNSP. See ``DEFINITIONS.LOCATIONS_DNSP`` for details.
+
+        Returns:
+            str: The DNSP associated to the location
+        """
         return DEFINITIONS.LOCATIONS_DNSP[self.location]
     
 
@@ -250,7 +252,12 @@ class Weather():
     """
     Weather generator. It generates weather data for thermal and PV simulations using one of four options depending on the type of simulation. Depending on this options it requires one or more params.
     Check the module timeseries.weather for details.
+
+    Parameters: 
+        type_sim: Type of simulation. Options are: "tmy" (annual simulation), "mc" (montecarlo), "historical" (historical data files), "constant_day" (environmental variables kept constant)
+
     """
+
     type_sim: str = "tmy"
     dataset: str = "meteonorm"
     location: str = "Sydney"
@@ -313,6 +320,16 @@ class Weather():
 #------------------------------------
 @dataclass
 class TimeParams():
+    """Time parameters for thermal simulations.
+
+    Parameters:
+        START (Variable): initial time of the simulation (in 'hr') (first hour of the year for annual simulation)
+        STOP (Variable): final time of the year (in 'hr').
+        STEP (Variable): timestep for the simulation (in 'min')
+        YEAR (Variable): Year of the simulation (useful only for annual simulations)
+
+    """
+
     START = Variable(0, "hr")
     STOP = Variable(8760, "hr")
     STEP = Variable(3, "min")
@@ -320,12 +337,22 @@ class TimeParams():
 
     @property
     def DAYS(self) -> Variable:
+        """Days of simulation
+
+        Returns:
+            Variable: Based on START and STOP
+        """
         START = self.START.get_value("hr")
         STOP = self.STOP.get_value("hr")
         return Variable( int((STOP-START)/24), "d")
     
     @property
     def PERIODS(self) -> Variable:
+        """Periods of simulation
+
+        Returns:
+            Variable: Based on START, STOP and STEP
+        """
         START = self.START.get_value("hr")
         STOP = self.STOP.get_value("hr")
         STEP_h = self.STEP.get_value("hr")
@@ -333,6 +360,11 @@ class TimeParams():
 
     @property
     def idx(self) -> pd.DatetimeIndex:
+        """It is the dataframe's index of the simulation
+
+        Returns:
+            pd.DatetimeIndex: index used for all the timeseries and simulation results
+        """
         START = self.START.get_value("hr")
         STEP = self.STEP.get_value("min")
         YEAR = self.YEAR.get_value("-")

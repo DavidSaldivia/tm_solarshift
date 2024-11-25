@@ -223,8 +223,10 @@ class HWD():
         This function generates a HWDP using the six standard profiles defined in this project.
         Each day has the same 'shape' of water consumption on each day.
         The flow magnitude could be changed only by the daily water consumption,
-        which is defined by cls().daily_distribution
+        which is defined by cls().daily_distribution.
 
+        Parameters:
+            
         """
 
         #Checks and conversions
@@ -290,6 +292,10 @@ class HWD():
         """
         This function generates HWD profiles different for each day, based on daily
         consumption variability (defined by interday_dist), and event characteristics
+
+        Parameters:
+
+
         """
         rng = np.random.default_rng(self.seed_id)
         ts_index = pd.to_datetime(timeseries.index)

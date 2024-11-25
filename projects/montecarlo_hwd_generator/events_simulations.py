@@ -41,7 +41,7 @@ def loading_timeseries(
     
     import tm_solarshift.timeseries.weather as weather
     import tm_solarshift.timeseries.circuits as circuits
-    import tm_solarshift.timeseries.control as control
+    import tm_solarshift.timeseries._control as control
     import tm_solarshift.timeseries.market as market
     
     location = simulation.household.location

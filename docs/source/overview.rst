@@ -1,7 +1,7 @@
 Getting Started
 ===============
 
-This section presents the installation process, how to run the default simulation
+This section presents the installation process, how to run the default simulation, and the main simulation settings.
 
 .. _installation:
 
@@ -26,14 +26,15 @@ After installing, you need to create/edit a ``.dirs`` file indicating the locati
         "trnsys_temp": "C:/SolarShift_TempDir"
     }
 
-Additionally, in order to run thermal simulations, you also need a valid `TRNSYS <https://trnsys.de/web/en/trnsys18/>`_ . you can test it with ``pytest``.
+Additionally, in order to run thermal simulations, you also need a valid `TRNSYS <https://trnsys.de/web/en/trnsys18/>`_ .
+Once the installation finishes, test it with ``pytest``.
 
 .. _simplestusage:
 
 Simplest Usage
 ---------------
 
-The simplest way to run a simulation is to create a ``tm_solarshift.general.Simulation`` object and use its ``Simulation.run_simulation()`` method. The following code would 
+The simplest way to run a simulation is to create a ``tm_solarshift.general.Simulation`` object and use its ``Simulation.run_simulation()`` method. The following code would run the default case.
 
 .. code-block:: python
 
@@ -43,6 +44,7 @@ The simplest way to run a simulation is to create a ``tm_solarshift.general.Simu
 
     #Run a thermal simulation with the default case
     sim.run_simulation()
+    # Retrieve the data from sim.out dictionary
     df_tm = sim.out["df_tm"]
     overall_tm = sim.out["overall_tm"]
 
@@ -50,7 +52,7 @@ The simplest way to run a simulation is to create a ``tm_solarshift.general.Simu
 Setting the Simulation
 -----------------------
 
-It is the most important object in the package. Here you edit the parameters and settings for your thermal simulations. It contains 4 type of objects:
+The core of the package is the ``Simulation()`` class. Here you edit the parameters and settings for your thermal simulations. It contains 4 type of objects:
 
 i. Parameters: ``time_params``, ``location`` and ``household``.
 ii. Timeseries Generators: ``weather`` and ``HWDInfo``.
@@ -79,6 +81,7 @@ You can edit all of these objects, according to your needs. The default values a
     overall_tm = sim.out["overall_tm"]
 
 Note how the ``run_simulation()`` has ``verbose=True``, to show more details about the process.
+
 You can also edit the household parameters.
 
 .. code-block:: python
@@ -90,7 +93,7 @@ You can also edit the household parameters.
     sim.household.control_random_on = True  # add randomization to CL schedules?
     
 
-It is also possible to change the technology.
+It is also possible to change the technology. In addition, each technology class has a classmethod ``from_model_file()`` to set the heater parameters from an internal catalog. See the data folder.
 
 .. code-block:: python
     
