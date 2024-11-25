@@ -193,8 +193,7 @@ def analysis(
 ) -> tuple[dict,np.ndarray]:
 
     #retrieving data
-    # old_heater = row["old_heater"]
-    old_heater = None
+    old_heater = sim.household.old_heater
 
     sim.run_simulation(verbose=verbose)
     energy_HWD_annual = sim.out["overall_tm"]["E_HWD_acum"]

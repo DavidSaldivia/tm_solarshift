@@ -6,6 +6,7 @@ import typing
 from typing import Optional
 from scipy.interpolate import interp1d
 from scipy.stats import truncnorm
+from dataclasses import dataclass
 
 from tm_solarshift.constants import ( DIRECTORY, SIMULATIONS_IO )
 from tm_solarshift.utils.units import ( Variable, conversion_factor as CF 
@@ -20,29 +21,42 @@ DAILY_DISTRIBUTIONS = [
     "norm", "unif", "truncnorm", "sample", None
 ]
 
-#------------------------------------
+@dataclass
 class HWD():
-    def __init__(
-            self,
-            id: int = -1
-        ):
-        if id == -1:
-            id = np.random.SeedSequence().entropy
-        self.seed_id: int = id
-        self.method: str = "standard"
-        self.profile_HWD: int = 1
-        self.daily_distribution: Optional[str] = None
 
-        self.daily_avg = Variable(None,None)
-        self.daily_std = Variable(None,None)
-        self.daily_min = Variable(None,None)
-        self.daily_max = Variable(None,None)
+    _id: int = -1
+    method: str = "standard"
+    profile_HWD: int = 1
+    daily_distribution: str | None = None
+    daily_avg = Variable(None,None)
+    daily_std = Variable(None,None)
+    daily_min = Variable(None,None)
+    daily_max = Variable(None,None)
+    
+
+    def __post_init__(self):
+        if self._id == -1:
+            self._id = np.random.SeedSequence().entropy
+        self.seed_id: int = self._id
+
+    # def __init__(self,_id: int = -1):
+    #     if _id == -1:
+    #         _id = np.random.SeedSequence().entropy
+    #     self.seed_id: int = _id
+    #     self.method: str = "standard"
+    #     self.profile_HWD: int = 1
+    #     self.daily_distribution: Optional[str] = None
+
+    #     self.daily_avg = Variable(None,None)
+    #     self.daily_std = Variable(None,None)
+    #     self.daily_min = Variable(None,None)
+    #     self.daily_max = Variable(None,None)
 
     #-------------------------
     #Alternative initialiser
     @classmethod
-    def standard_case(cls, id: int = np.random.SeedSequence().entropy):
-        case = cls(id=id)
+    def standard_case(cls, _id: int = np.random.SeedSequence().entropy):
+        case = cls(_id=_id)
         case.method = "standard"
         case.profile_HWD = 1
         case.daily_distribution = "truncnorm"       #Options: (None, "unif", "truncnorm", "sample")
@@ -209,8 +223,10 @@ class HWD():
         This function generates a HWDP using the six standard profiles defined in this project.
         Each day has the same 'shape' of water consumption on each day.
         The flow magnitude could be changed only by the daily water consumption,
-        which is defined by cls().daily_distribution
+        which is defined by cls().daily_distribution.
 
+        Parameters:
+            
         """
 
         #Checks and conversions
@@ -276,6 +292,10 @@ class HWD():
         """
         This function generates HWD profiles different for each day, based on daily
         consumption variability (defined by interday_dist), and event characteristics
+
+        Parameters:
+
+
         """
         rng = np.random.default_rng(self.seed_id)
         ts_index = pd.to_datetime(timeseries.index)
