@@ -2,6 +2,7 @@ import os
 
 import json
 
+# this comment was added just to test commit is working
 
 class DIRECTORY():    
     #DIRS
