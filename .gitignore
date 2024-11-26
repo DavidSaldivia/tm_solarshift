@@ -1,5 +1,7 @@
 #own folders
 projects/
+dev/
+old/
 .dirs
 
 # Byte-compiled / optimized / DLL files
