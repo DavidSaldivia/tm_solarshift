@@ -8,16 +8,17 @@ Usually this class is used in two steps: setting attributes and running the simu
 
 .. autoclass:: tm_solarshift.general.Simulation
 
-Once the settings are defined, you need to run the simulation using the ``Simulation.run_simulation()``. This method is design for the specific DEWH application. 
+Once the settings are defined, you can to run the simulation using the :py:meth:`~tm_solarshift.general.Simulation.run_simulation()`. This method is design for the specific DEWH application. 
 
 .. automethod:: tm_solarshift.general.Simulation.run_simulation
 
 
+.. _time-params:
 
 The TimeParams() object
 -------------------------
 
-This defines the temporal settings. The attributes
+This defines the temporal settings. The attributes are:
 
 .. autoclass:: tm_solarshift.general.TimeParams(type)
 
@@ -27,6 +28,9 @@ This defines the temporal settings. The attributes
 
     .. autoproperty:: tm_solarshift.general.TimeParams.DAYS
 
+
+.. _household-object:
+
 The Household() object
 -------------------------
 
@@ -34,4 +38,4 @@ The ``Household()`` object contain useful information about the household as att
 
 .. autoclass:: tm_solarshift.general.Household
 
-    .. autoclass:: tm_solarshift.general.Household.DNSP
+    .. autoproperty:: tm_solarshift.general.Household.DNSP

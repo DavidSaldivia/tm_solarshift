@@ -1,3 +1,5 @@
+.. _heater:
+
 Heater Technologies
 =====================
 
@@ -30,20 +32,24 @@ Heat pumps
 ^^^^^^^^^^^^^^^^
 
 .. autoclass:: tm_solarshift.models.dewh.HeatPump(type)
+    :members:
 
 
 Solar Thermal collectors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: tm_solarshift.models.solar_thermal.SolarThermalElecAuxiliary(type)
+    :members:
 
 
 Gas heater with storage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: tm_solarshift.models.gas_heater.GasHeaterStorage(type)
+    :members:
 
 Instantaneous gas heater
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: tm_solarshift.models.gas_heater.GasHeaterInstantaneous(type)
+    :members:
