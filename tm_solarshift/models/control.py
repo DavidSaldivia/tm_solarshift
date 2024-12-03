@@ -5,11 +5,7 @@ import numpy as np
 import pandas as pd
 from typing import Protocol, TypedDict
 
-from tm_solarshift.constants import (
-    DEFINITIONS,
-    DIRECTORY,
-    SIMULATIONS_IO
-)
+from tm_solarshift.constants import DIRECTORY
 
 DIR_CONTROL = DIRECTORY.DIR_DATA["control"]
 CL_TYPES = ["GS", "CL1", "CL2", "CL3"]

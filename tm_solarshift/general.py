@@ -117,7 +117,7 @@ class Simulation():
         self,
         verbose: bool = False,
     ) -> None:
-        """Run a simulation using the self containing data.
+        """Run a simulation using the self-contained data.
         
         It update the results into the self.out dictionary (A Output class). The simulation returns *df_pv* (pv simulation results), *df_tm* (DEWH simulation results), *overall_tm* (overall results of thermal parameters), and *overall_econ* (overall results of economic parameters).
 
@@ -217,14 +217,17 @@ class Simulation():
 class Household():
     """ Household
 
-    dataclass with information of the household, such as location, tariff_type, size (occupancy) and type of control.
+    Dataclass with information of the household, such as location, tariff_type, size (occupancy) and type of control.
 
     Parameters:
 
-        tariff_type (str): Tariff type defined by 
+        tariff_type (str): Tariff type. Options: *'flat'*, *'tou'*, and *'CL'*.
         location: City where the simulation is performed.
         control_type: Type of control, the options are: *'CL1'*, *'CL2'*, *'CL1'*, *'GS'*, *'timer'*, and *'diverter'*. If timer or diverter are selected, then the Controller specs need to be defined.
         control_random_on: If `True` then a randomization delay is applied to the starting times. Usually used for controlled loads (CL)
+        size: Household occupancy.
+        old_heater: Type of system previously installed (only useful in financial analysis)
+        new_system: Whether the household has a new system (only useful in financial analysis)
 
     """
     tariff_type: str = "flat"
@@ -233,7 +236,7 @@ class Household():
     control_random_on: bool = True
     size: int = 4
     old_heater: str | None = None
-    new_system: str | None = None
+    new_system: bool | None = None
 
     @property
     def DNSP(self) -> str:
@@ -250,11 +253,18 @@ class Household():
 @dataclass
 class Weather():
     """
-    Weather generator. It generates weather data for thermal and PV simulations using one of four options depending on the type of simulation. Depending on this options it requires one or more params.
+    Weather generator. It generates weather data for thermal and PV simulations using one of four options depending on the type of simulation. Depending on this options it requires one or more Parameters.
     Check the module timeseries.weather for details.
 
     Parameters: 
         type_sim: Type of simulation. Options are: "tmy" (annual simulation), "mc" (montecarlo), "historical" (historical data files), "constant_day" (environmental variables kept constant)
+        dataset: Source of weather data. Options: "meteonorm", "merra2".
+        location: City where the simulation is performed.
+        subset: For mc simulations, the subset to generate data. Options: "annual", "season", "month", "date". Depending on the choice, the "value" parameter is used.
+        random: Whether generates data randomly or periodically. If True, picks randomly days from subset. If False, it repeats subset until the required number of days are met.
+        value: The value used on subset. If "season", options: "summer", "autumn", "winter", spring". If "month", the month as integer. If "date", the specific date.
+        file_path: A string with the weather file location (If "historical" is chosen)
+        list_dates: Used only for "historical" simulations. A set of dates to load.
 
     """
 
@@ -351,7 +361,7 @@ class TimeParams():
         """Periods of simulation
 
         Returns:
-            Variable: Based on START, STOP and STEP
+            Variable: Based on START, STOP and STEP, it returns the number of periods.
         """
         START = self.START.get_value("hr")
         STOP = self.STOP.get_value("hr")
