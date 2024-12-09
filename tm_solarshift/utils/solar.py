@@ -31,6 +31,19 @@ def get_solar_position(
         longitude: float,
         tz: str = DEFAULT_TZ,
 ) -> pd.DataFrame:
+    """Function to get the solar position.
+
+    It is a pvlib's get_solarposition method.
+
+    Args:
+        idx (pd.DatetimeIndex): Timeseries index to retrieve the solar position.
+        latitude (float): Latitude of the location.
+        longitude (float): Longitude of the location.
+        tz (str, optional): Timezone. Defaults to DEFAULT_TZ.
+
+    Returns:
+        pd.DataFrame: _description_
+    """
     
     # idx_2 = idx.tz_localize(tz)
     loc = location.Location(latitude, longitude, tz)
@@ -46,6 +59,19 @@ def get_plane_angles(
         orient: float,
         tz: str = DEFAULT_TZ,
 ) -> pd.DataFrame:
+    """Get plane angles.
+
+    Args:
+        data (pd.DatetimeIndex | pd.DataFrame): A dataframe with the solar position or a timeseries index. In any case, the solar angles are calculated and then the angle of incidence and it's cosine are calculated.
+        latitude (float): Latitude of the location.
+        longitude (float): Longitude of the location.
+        tilt (float): Inclination angle.
+        orient (float): Orientation. It is the surface azimuth.
+        tz (str, optional): Timezone. Defaults to DEFAULT_TZ.
+
+    Returns:
+        pd.DataFrame: Dataframe with the angles.
+    """
     
     if data.__class__ == pd.DatetimeIndex:
         solpos = get_solar_position(data, latitude, longitude, tz)
@@ -67,6 +93,19 @@ def get_plane_irradiance(
         orient: float,
         tz: str = DEFAULT_TZ,
 ) -> pd.DataFrame:
+    """Get the plane irradiance for a given timeseries.
+
+    Args:
+        ts (pd.DataFrame): The timeseries with the index to use.
+        latitude (float): Latitud of the location
+        longitude (float): Longitude of the location
+        tilt (float): Inclination angle.
+        orient (float): Orientation angle. It is the surface azimuth.
+        tz (str, optional): Timezone. Defaults to DEFAULT_TZ.
+
+    Returns:
+        pd.DataFrame: A dataframe with the plane irradiance and other quantities.
+    """
 
     solpos = get_solar_position(ts.index, latitude, longitude, tz)
     plane_irrad = irradiance.get_total_irradiance(

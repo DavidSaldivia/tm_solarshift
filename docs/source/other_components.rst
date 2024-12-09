@@ -13,6 +13,8 @@ Controllers
 ---------------
 The different control strategies are represented by different classes. Three different controllers are implemented so far: :py:class:`~tm_solarshift.models.control.CLController`, :py:class:`~tm_solarshift.models.control.Timer`, and :py:class:`~tm_solarshift.models.control.Diverter`.
 
+Every controller has a ``create_signal`` method that receives a DatetimeIndex and return the controller signal.
+
 .. autoclass:: tm_solarshift.models.control.CLController()
     :members:
 

@@ -20,7 +20,7 @@ The TimeParams() object
 
 This defines the temporal settings. The attributes are:
 
-.. autoclass:: tm_solarshift.general.TimeParams(type)
+.. autoclass:: tm_solarshift.general.TimeParams()
 
     .. autoproperty:: tm_solarshift.general.TimeParams.idx
 

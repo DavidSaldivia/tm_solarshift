@@ -31,6 +31,17 @@ class Controller(Protocol):
 
 
 class CLController():
+    """Controlled Load Timer
+
+    Parameters:
+        CL_type (str, optional): Type of controlled load. Values: "GS", "CL1", "CL2", "CL3". Defaults to "CL1".
+        random_delay (bool, optional): Whether include the randomization delay. Defaults to False.
+        random_seed (int, optional): Random seed for RNG. See numpy.random for more details. Defaults to -1.
+
+    Raises:
+        ValueError: _description_
+    """
+
     def __init__(
             self,
             CL_type: str = "CL1",
@@ -64,6 +75,20 @@ class CLController():
 
 @dataclass
 class Timer():
+    """Timer with specific starting and stopping times.
+
+    Parameters:
+        timer_type (str, optional): Type of timer. "timer" allows any starting and stopping times. "timer_SS" and "timer_OP" are specific for solar soak and off-peak periods. Defaults to "timer".
+        time_start (float, optional): Starting time, in 24hrs format. Defaults to 0.0.
+        time_stop (float, optional): Stopping time. Defaults to 4.0.
+        random_delay (bool, optional): Whether to add random delay or not. Defaults to False.
+        random_start (float, optional): Random delay in minutes. Defaults to 0.0.
+        random_stop (float, optional): Random delay in minutes. Defaults to 0.0.
+        random_seed (int, optional): Random seed for the random number generator. Defaults to -1.
+
+    Raises:
+        ValueError: Raise an error if the type of timer is not among the valid options.
+    """
     def __init__(
             self,
             timer_type: str = "timer",
@@ -106,6 +131,16 @@ class Timer():
 
 @dataclass
 class Diverter():
+    """Diverter with an additional timer for non-solar period.
+    It requires also the heater nominal power.
+    It includes an additional timer for an additional night heating.
+
+    Parameters:
+        type: Type of controller. Default to diverter.
+        time_start: Starting time of complementary heating period.
+        time_stop: Stoping time of complementary heating period.
+        heater_nom_power: Heater nominal power in kW.
+    """
     type: str = "diverter"
     time_start: float = 0.
     time_stop: float = 4.

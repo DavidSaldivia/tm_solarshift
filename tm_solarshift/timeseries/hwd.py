@@ -23,6 +23,18 @@ DAILY_DISTRIBUTIONS = [
 
 @dataclass
 class HWD():
+    """Hot Water Draw Generator
+
+    Parameters:
+        _id: ID, also used as random number generator's seed. Default to -1.
+        method: Method used to generate the timeseries. Options: "standard" and "default".
+        profile_HWD: One of the six HWDP.
+        daily_distribution: Type of daily distribution. Options: "norm", "unif", "truncnorm", "sample". If None, all days have the same daily consumption. If "sample", a path to the sample file is needed.
+        daily_avg (Variable): Daily average in "kg/day".
+        daily_std (Variable): Daily standard deviation in "kg/day". Used in "unif", "norm" and "truncnorm"
+        daily_min (Variable): Daily minimum in "kg/day". Used in "unif" and "truncnorm"
+        daily_max (Variable): Daily maximum in "kg/day". Used in "unif" and "truncnorm"
+    """
 
     _id: int = -1
     method: str = "standard"
