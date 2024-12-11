@@ -32,6 +32,10 @@ class Simulation():
         household (Household): Object with information regarding the household.
         weather (Weather): TimeSeries Generator for weather data.
         HWDInfo (HWD): TimeSeries Generator of hot water draw, based on the specified settings.
+        DEWH (DEWH): The heater model.
+        pv_system (PVSystem): The PV System model.
+        controller (Controller): The type of controller.
+        out (Output): A dictionary with the outputs from the simulation.
 
     """
 
@@ -347,10 +351,10 @@ class TimeParams():
 
     @property
     def DAYS(self) -> Variable:
-        """Days of simulation
+        """Based on START and STOP, returns the days of simulation.
 
         Returns:
-            Variable: Based on START and STOP
+            Variable: Days of simulation
         """
         START = self.START.get_value("hr")
         STOP = self.STOP.get_value("hr")
@@ -358,10 +362,11 @@ class TimeParams():
     
     @property
     def PERIODS(self) -> Variable:
-        """Periods of simulation
+        """
+        Based on START, STOP and STEP, it returns the number of periods.
 
         Returns:
-            Variable: Based on START, STOP and STEP, it returns the number of periods.
+            Variable: Periods of simulation.
         """
         START = self.START.get_value("hr")
         STOP = self.STOP.get_value("hr")
@@ -385,6 +390,14 @@ class TimeParams():
 
 
 class Output(TypedDict, total=False):
+    """Dictionary containing the results from the simulations
+
+    Parameters:
+        df_pv (pd.DataFrame): PV Simulation
+        df_tm (pd.DataFrame): Thermal model Simulation
+        overall_tm (dict[str,float]): Thermal postprocessing results
+        overall_econ (dict[str,float]): Economic postprocessing results
+    """
     df_pv: pd.DataFrame
     df_tm: pd.DataFrame
     overall_tm: dict[str,float]

@@ -27,6 +27,14 @@ class Controller(Protocol):
             self,
             ts_index: pd.DatetimeIndex | None,
         ) -> pd.DataFrame:
+        """Method to create the timeseries for the control signal.
+
+        Args:
+            ts_index (pd.DatetimeIndex | None): Timeseries index.
+
+        Returns:
+            pd.DataFrame: Dataframe with control signal
+        """
         ...
 
 
@@ -37,9 +45,6 @@ class CLController():
         CL_type (str, optional): Type of controlled load. Values: "GS", "CL1", "CL2", "CL3". Defaults to "CL1".
         random_delay (bool, optional): Whether include the randomization delay. Defaults to False.
         random_seed (int, optional): Random seed for RNG. See numpy.random for more details. Defaults to -1.
-
-    Raises:
-        ValueError: _description_
     """
 
     def __init__(

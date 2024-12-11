@@ -31,6 +31,14 @@ DEFAULT_HEATER_DATA = {
 
 #------------------------------
 class TrnsysDEWH():
+    """Class that set the simulation, creates the trnsys files, run the simulation and return the results dataframe.
+    Depending on the technology it uses one of the available .dck templates.
+
+    Parameters:
+        DEWH (HWTank): Heater technology. It must be a heater class with tank.
+        ts (pd.DataFrame): Timeseries dataframe.
+
+    """
 
     FILES_OUTPUT = {
     "detailed" : "TRNSYS_out_detailed.dat",
@@ -99,6 +107,8 @@ class TrnsysDEWH():
 
 
     def create_simulation_files(self) -> None:
+        """This function creates the simulation files with the timeseries required by TRNSYS.
+        """
         ts = self.ts
         DEWH = self.DEWH
         tempDir = self.tempDir
@@ -137,6 +147,11 @@ class TrnsysDEWH():
 
     #------------------------------
     def postprocessing(self) -> pd.DataFrame:
+        """It reads the raw results from the simulations and creates a dataframe
+
+        Returns:
+            pd.DataFrame: Dataframe with the thermal simulation results (df_tm)
+        """
 
         tempDir = self.tempDir
         idx = self.ts.index
@@ -216,6 +231,14 @@ class TrnsysDEWH():
             self,
             verbose: bool = False,
             ) -> pd.DataFrame:
+        """It creates a temporary directory where the .dck file is created together with the timeseries files. Then it runs the simulation using subprocess.run. After the simulation, the temporary directory is deleted
+
+        Args:
+            verbose (bool, optional): Whether print details about the simulation. Defaults to False.
+
+        Returns:
+            pd.DataFrame: Simulation results (df_tm)
+        """
 
         stime = time.time()
         if verbose:

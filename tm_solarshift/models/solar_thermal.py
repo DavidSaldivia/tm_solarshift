@@ -76,6 +76,16 @@ class SolarThermalElecAuxiliary(HWTank):
 
 
     def run_thermal_model(self, ts: pd.DataFrame, verbose: bool) -> pd.DataFrame:
+        """Run simulation using a combination of Python and TRNSYS with the TRNSYS_STC_v1.dck template.
+        The python part calculates the irradiance in the collector plane. Then it uses TRNSYS to solve the storage tank, and python again for additional calculations, such as collector efficiency.
+
+        Args:
+            ts (pd.DataFrame): Timeseries dataframe
+            verbose (bool, optional): Whether print details about the simulation. Defaults to False.
+
+        Returns:
+            pd.DataFrame: Dataframe with thermal simulation (df_tm).
+        """
 
         tz = DEFAULT_TZ
         ts_tm = ts.copy()

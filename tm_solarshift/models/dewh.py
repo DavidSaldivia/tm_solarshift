@@ -21,6 +21,17 @@ class HWTank():
     """The base class for all heaters with tank.
 
     Parameters:
+        nom_power (Variable):   Nominal power (electric)
+        nom_power_th (Variable):    Nominal power (thermal). For resistive heater it is the same than nom_power.
+        eta (Variable):     Efficiency. It is the ratio between nom_power and nom_power_th. For resistive is 1, for heat pumps it is the COP.
+        vol (Variable): Tank volume. Default to Variable(0.315, "m3")
+        height (Variable): tank height. Default to Variable(1.45, "m")
+        height_inlet (Variable): water inlet height. Default to Variable(0.113, "m")
+        height_outlet (Variable): water outlet height. Default to Variable(1.317, "m")
+        height_heater (Variable): height of the heater (or auxiliary heater). Default to Variable(0.103, "m")
+        height_thermostat (Variable): height of the thermostat. Default to Variable(0.103, "m")
+        U (Variable): Thermal losses coefficient. Default to Variable(0.9, "W/m2-K")
+        fluid (Water): Fluid properties.
 
     """
 
@@ -84,9 +95,6 @@ class HWTank():
 
 class ResistiveSingle(HWTank):
     """The model for a hot water tank with a single immersive resistive heater.
-
-    Args:
-        HWTank (HWTank): Hot water tank
     """
     def __init__(self):
         super().__init__()
@@ -108,6 +116,15 @@ class ResistiveSingle(HWTank):
         file_path: str = FILES_MODEL_SPECS["resistive"],
         model:str = "",
     ):
+        """Initializer using a model from catalog
+
+        Args:
+            file_path (str, optional): Defaults to FILES_MODEL_SPECS["resistive"].
+            model (str, optional): Defaults to "".
+
+        Returns:
+            Self:
+        """
         df = pd.read_csv(file_path, index_col=0)
         specs = pd.Series(df.loc[model])
         units = pd.Series(df.loc["units"])
@@ -127,6 +144,15 @@ class ResistiveSingle(HWTank):
             ts: pd.DataFrame,
             verbose: bool = False,
     ) -> pd.DataFrame:
+        """Run simulation using TRNSYS and the TRNSYS_RS_v1.dck template
+
+        Args:
+            ts (pd.DataFrame): Timeseries dataframe
+            verbose (bool, optional): Whether print details about the simulation. Defaults to False.
+
+        Returns:
+            pd.DataFrame: DataFrame with thermal simulation results (df_tm)
+        """
         trnsys_dewh = TrnsysDEWH(DEWH=self, ts=ts)
         df_tm = trnsys_dewh.run_simulation(verbose=verbose)
         return df_tm
@@ -154,6 +180,12 @@ class HeatPump(HWTank):
         file_path: str = FILES_MODEL_SPECS["heat_pump"],
         model: str = "",
         ):
+        """Initialiser using model from catalog.
+
+        Args:
+            file_path (str, optional): Defaults to FILES_MODEL_SPECS["heat_pump"].
+            model (str, optional): Defaults to "".
+        """
         df = pd.read_csv(file_path, index_col=0)
         specs = pd.Series(df.loc[model])
         units = pd.Series(df.loc["units"])
@@ -173,6 +205,15 @@ class HeatPump(HWTank):
             ts: pd.DataFrame,
             verbose: bool = False,
     ) -> pd.DataFrame:
+        """Run simulation using TRNSYS and the TRNSYS_HPF_v1.dck template
+
+        Args:
+            ts (pd.DataFrame): Timeseries dataframe
+            verbose (bool, optional): Whether print details about the simulation. Defaults to False.
+
+        Returns:
+            pd.DataFrame: Dataframe with thermal simulation (df_tm)
+        """
         from tm_solarshift.models.trnsys import TrnsysDEWH
         trnsys_dewh = TrnsysDEWH(DEWH=self, ts=ts)
         df_tm = trnsys_dewh.run_simulation(verbose=verbose)

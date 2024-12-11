@@ -5,7 +5,7 @@ A couple of modules are used to help with some calculations and functionality.
 
 Units
 -------
-It contains two classes to represent physical quantities with units (:py:class:`~tm_solarshift.utils.units.Variable` and :py:class:`~tm_solarshift.utils.units.VariableList`), as well as a function to convert between units (:py:func:`~tm_solarshift.utils.units.conversion_factor`)
+It contains two classes to represent physical quantities with units (:py:class:`~tm_solarshift.utils.units.Variable` and :py:class:`~tm_solarshift.utils.units.VariableList`), as well as a function to convert between units (:py:func:`~tm_solarshift.utils.units.conversion_factor`). Additionally, includes a :py:class:`~tm_solarshift.utils.units.Water` class with water properties.
 
 .. autoclass:: tm_solarshift.utils.units.Variable
     :members:
@@ -14,6 +14,11 @@ It contains two classes to represent physical quantities with units (:py:class:`
     :members:
 
 .. autofunction:: tm_solarshift.utils.units.conversion_factor
+
+.. autoclass:: tm_solarshift.utils.units.Water
+    :members:
+
+
 
 Solar
 ------

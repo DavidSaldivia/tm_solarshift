@@ -4,14 +4,15 @@ The Simulation Settings
 The Simulation() object
 -------------------------
 
-Usually this class is used in two steps: setting attributes and running the simulation. The full list of attributes are:
+Usually this class is used in two steps: setting attributes and running the simulation. Once the settings are defined, you can to run the simulation using the :py:meth:`~tm_solarshift.general.Simulation.run_simulation()`. This method is design for the specific DEWH application. 
 
 .. autoclass:: tm_solarshift.general.Simulation
 
-Once the settings are defined, you can to run the simulation using the :py:meth:`~tm_solarshift.general.Simulation.run_simulation()`. This method is design for the specific DEWH application. 
-
 .. automethod:: tm_solarshift.general.Simulation.run_simulation
 
+The results are stored in the attribute ``out``, which is an :py:class:`~tm_solarshift.general.Output` dictionary.
+
+.. autoclass:: tm_solarshift.general.Output
 
 .. _time-params:
 
@@ -21,13 +22,7 @@ The TimeParams() object
 This defines the temporal settings. The attributes are:
 
 .. autoclass:: tm_solarshift.general.TimeParams()
-
-    .. autoproperty:: tm_solarshift.general.TimeParams.idx
-
-    .. autoproperty:: tm_solarshift.general.TimeParams.PERIODS
-
-    .. autoproperty:: tm_solarshift.general.TimeParams.DAYS
-
+    :members:
 
 .. _household-object:
 
