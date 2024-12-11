@@ -21,4 +21,5 @@ Go to the :doc:`overview` to see how to install it and the simplest usage.
    tsg
    heaters
    other_components
-
+   parametric
+   utils

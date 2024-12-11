@@ -22,12 +22,11 @@ def settings(
         params_in : dict[str, VariableList] = {},
         ) -> tuple[pd.DataFrame, dict]:
     """ 
-    This function creates a parametric run. A pandas dataframe with all the runs required.
+    This function creates a parametric run. A pandas dataframe with all the runs required. In practice, it is a cross product between the variables values.
     The order of running for params_in is "first=outer".
 
     Args:
-        params_in (dict[str, VariableList], optional): dictionary with (parameter : values). parameters are str (label), values are List (possible values)
-        params_out (list[str], optional): List of expected output values. Defaults to PARAMS_OUT.
+        params_in (dict[str, VariableList], optional): dictionary with (parameter : values) parameters.
 
     Returns:
         pd.DataFrame: set with simulation runs to be performed in the parametric analysis
@@ -59,13 +58,12 @@ def analysis(
     params_out: list = PARAMS_OUT,
     sim_base = general.Simulation(),
     save_results_detailed: bool = False,
-    gen_plots_detailed: bool = False,
-    save_plots_detailed: bool = False,
     dir_output: str | None = None,
     path_results: str | None = None,
     verbose: bool = True,
     ) -> pd.DataFrame:
-    """parametric_analysis performs a set of simulations changing a set of parameters (params_in).
+    """Run the parametric analysis
+    Parametric.analysis performs a set of simulations changing a set of parameters (params_in).
     The combination of all possible values is performed.
 
     Args:
@@ -74,13 +72,9 @@ def analysis(
         params_out (List): list of labels of expected output. Defaults to PARAMS_OUT.
         sim_base (_type_, optional): Simulation instance used as base case. Defaults to general.Simulation().
         save_results_detailed (bool, optional): Defaults to False.
-        fldr_results_detailed (bool, optional): Defaults to None.
-        gen_plots_detailed (bool, optional): Defaults to False.
-        save_plots_detailed (bool, optional): Defaults to False.
+        dir_output (bool, optional): Defaults to None.
         save_results_general (bool, optional): Defaults to False.
-        file_results_general (str, optional): Defaults to None.
-        fldr_results_general (str, optional): Defaults to None.
-        append_results_general (bool, optional): Defaults to False.
+        path_results (str, optional): Defaults to None.
         verbose (bool, optional): Defaults to True.
 
     Returns:
@@ -146,13 +140,13 @@ def updating_parameters(
         row_in: pd.Series,
         units_in: dict = {},
 ) -> None:
-    """updating parameters for those of the specific run.
-    This function update the GS object. It takes the string and converts it into GS attributes.
+    """Updating parameters for those of the specific run.
+    This function update the simulation object. It takes the string and converts it into GS attributes.
 
     Args:
-        GS (general.Simulation): GS object
-        row (pd.Series): values of the specific run (it contains all input and output of the parametric study)
-        params_in (dict): labels of the parameters (input)
+        simulation (general.Simulation): Simulation instance.
+        row_in (pd.Series): values of the specific run (it contains all input and output of the parametric study)
+        units_in (dict): labels of the parameters (input)
     """
 
     for (key, value) in row_in.items():

@@ -112,9 +112,20 @@ for type_unit in CONVERSIONS.keys():
 
 #-------------------------
 def conversion_factor(unit1: str|None, unit2: str|None) -> float:
-    """ Function to obtain conversion factor between units.
+    """Function to obtain conversion factor between units.
+
     The units must be in the UNIT_CONV dictionary.
     If they are units from different phyisical quantities an error is raised.
+
+    Args:
+        unit1 (str | None): Original unit.
+        unit2 (str | None): Unit to convert to.
+
+    Raises:
+        ValueError: Raise error if both units does not represent the same physical quantity.
+
+    Returns:
+        float: The conversion factor.
     """
     if UNIT_TYPES[unit1] == UNIT_TYPES[unit2]:
         type_unit = UNIT_TYPES[unit1]
@@ -131,6 +142,11 @@ class Variable():
     If you have a Variable instance, always obtain the value with the get_value method.
     In this way you make sure you are getting the value with the expected unit.
     get_value internally converts unit if it is possible.
+
+    Parameters:
+        value: Magnitude of the variable.
+        unit: Unit of the variable.
+        type: Type of variable (scalar or vector)
     """
     def __init__(
             self,
@@ -146,6 +162,17 @@ class Variable():
         return self.__dict__ == other.__dict__
 
     def get_value(self, unit: Optional[str] = None) -> float:
+        """Retrieve the magnitud of the Variable
+
+        Args:
+            unit (str, optional): The units for the magnitud. If None is given, the value with the default units are returned. Defaults to None.
+
+        Raises:
+            ValueError: If the value is None or the unit doesn't match with the Variable's unit.
+
+        Returns:
+            float: The value in the required units.
+        """
 
         if self.value is None:
             raise ValueError("Variables does not have any value assigned.")
@@ -162,8 +189,13 @@ class Variable():
 
 #-------------------------
 class VariableList():
-    """
-    Similar to Variable() but for lists.
+    """Similar to :py:class:`Variable` but for lists.
+
+    Parameters:
+        values: Magnitude of the variable. In this case it must be a list or a iterable object.
+        unit: Unit of the variable.
+        type: Type of variable (scalar or vector)
+
     """
     def __init__(self, values: list, unit: Optional[str] = None, type="scalar"):
         self.values = values
@@ -183,6 +215,13 @@ class VariableList():
     
 #-------------------------
 class Water():
+    """Object with water properties.
+
+    Parameters:
+        rho (Variable): Density. Default to Variable(1000., "kg/m3").
+        cp (Variable): Specific heat.Default to Variable(4180., "J/kg-K").
+        k (Variable): Thermal conductivity. Default to Variable(0.6, "W/m-K").
+    """
     def __init__(self):
         self.rho = Variable(1000., "kg/m3")  # density (water)
         self.cp = Variable(4180., "J/kg-K")  # specific heat (water)

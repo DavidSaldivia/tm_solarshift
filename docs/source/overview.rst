@@ -15,7 +15,7 @@ To use tm_solarshift just clone the repository and create a virtual environment.
    $ poetry install
 
 
-After installing, you need to create/edit a ``.dirs`` file indicating the locations of your folders. With this structure:
+After installing, you need to create/edit a ``.dirs`` in your main directory file indicating the locations of your data and trnsys folders. With this structure:
 
 .. code-block::
 
@@ -26,15 +26,16 @@ After installing, you need to create/edit a ``.dirs`` file indicating the locati
         "trnsys_temp": "C:/SolarShift_TempDir"
     }
 
-Additionally, in order to run thermal simulations, you also need a valid `TRNSYS <https://trnsys.de/web/en/trnsys18/>`_ .
-Once the installation finishes, test it with ``pytest``.
+Additionally, in order to run thermal simulations, you also need a valid `TRNSYS <https://trnsys.de/web/en/trnsys18/>`_.
+
+Once you finishes these steps, test the installation using `pytest <https://docs.pytest.org/>`_.
 
 .. _simplestusage:
 
 Simplest Usage
 ---------------
 
-The simplest way to run a simulation is to create a ``tm_solarshift.general.Simulation`` object and use its ``Simulation.run_simulation()`` method. The following code would run the default case.
+The simplest way to run a simulation is to create a :py:class:`~tm_solarshift.general.Simulation` object and use its :py:meth:`~tm_solarshift.general.Simulation.run_simulation()` method. The following code would run the default case.
 
 .. code-block:: python
 
@@ -52,10 +53,10 @@ The simplest way to run a simulation is to create a ``tm_solarshift.general.Simu
 Setting the Simulation
 -----------------------
 
-The core of the package is the ``Simulation()`` class. Here you edit the parameters and settings for your thermal simulations. It contains 4 type of objects:
+The core of the package is the :py:class:`~tm_solarshift.general.Simulation` class. Here you edit the parameters and settings for your thermal simulations. It contains 4 type of objects:
 
 i. Parameters: ``time_params``, ``location`` and ``household``.
-ii. Timeseries Generators: ``weather`` and ``HWDInfo``.
+ii. Timeseries Generators, such as ``weather`` and ``HWDInfo``.
 iii. Devices, what is actually simulated, such as, ``DEWH``, ``pv_system`` and ``controller``.
 iv. Output: which is dictionary containing the different outputs (usually, dataframes and dicts).
 
@@ -80,9 +81,9 @@ You can edit all of these objects, according to your needs. The default values a
     df_tm = sim.out["df_tm"]
     overall_tm = sim.out["overall_tm"]
 
-Note how the ``run_simulation()`` has ``verbose=True``, to show more details about the process.
+Note how the :py:meth:`~tm_solarshift.general.Simulation.run_simulation()` method has ``verbose=True``, to show more details about the process.
 
-You can also edit the household parameters.
+You can also edit the household parameters. See more details in 
 
 .. code-block:: python
 

@@ -41,6 +41,21 @@ COLS_IRRADIANCE_PLANE = [
 #-------------------------
 #PV System and auxiliary devices
 class PVSystem():
+    """PV System using ADR method
+
+    Parameters:
+        name (str): Name of the numerical model.
+        cost (Variable): Cost of the Sistem.
+        nom_power (Variable): Nominal power of the system. Default to Variable(5000, "W")
+        adr_params (dict[str,float]): ADR model parameters.
+        G_STC (Variable): Nominal standard irradiance. Default to Variable(1000, 'W/m2').
+        lat (Variable): Latitude of the location.
+        lon (Variable): Longitud of the location.
+        tilt (Variable): Inclination angle.
+        orient (Variable): Orientation angle.
+        tz (Variable): Timezone.
+        
+    """
     def __init__(self):
 
         #description
@@ -82,6 +97,16 @@ class PVSystem():
             unit: str = "kW",
             columns: list = SIMULATIONS_IO.OUTPUT_SIM_PV
     ) -> pd.DataFrame:
+        """Simulate the PV generation given weather timeseries
+
+        Args:
+            ts_wea (pd.DataFrame): Weather timeseries. It requires "temp_amb", "WS" and "GHI".
+            unit (str, optional): Unit to return the power generation. Defaults to "kW".
+            columns (list, optional): Columns to return from the simulation. Defaults to SIMULATIONS_IO.OUTPUT_SIM_PV.
+
+        Returns:
+            pd.DataFrame: Dataframe with the resulted simulation.
+        """
         
         latitude = self.lat.get_value("deg")
         longitude = self.lon.get_value("deg")

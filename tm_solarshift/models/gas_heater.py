@@ -50,6 +50,11 @@ class GasHeaterInstantaneous():
 
     @property
     def eta(self) -> Variable:
+        """Heater thermal efficiency
+
+        Returns:
+            Variable: Thermal efficiency (adimensional)
+        """
         nom_power = self.nom_power.get_value("MJ/hr")
         deltaT_rise = self.deltaT_rise.get_value("dgrC")
         flow_w = self.flow_water.get_value("m3/s")
@@ -64,6 +69,15 @@ class GasHeaterInstantaneous():
         file_path: str = FILES_MODEL_SPECS["gas_instant"],
         model:str = "",
         ):
+        """Initialiser method, using models from catalog.
+
+        Args:
+            file_path (str, optional): Path to file with specifications. Defaults to FILES_MODEL_SPECS["gas_instant"].
+            model (str, optional): The heater model. Defaults to "".
+
+        Returns:
+            _type_: _description_
+        """
         df = pd.read_csv(file_path, index_col=0)
         specs = pd.Series(df.loc[model])
         units = pd.Series(df.loc["units"])
@@ -80,8 +94,15 @@ class GasHeaterInstantaneous():
     def run_thermal_model(
         self,
         ts: pd.DataFrame,
-        verbose: bool = False,
-    ) -> tuple[pd.DataFrame, dict[str, float]]:
+    ) -> pd.DataFrame:
+        """Run the thermal model (Python-based) with fix efficiency.
+
+        Args:
+            ts (pd.DataFrame): Timeseries. Only the index is used here.
+
+        Returns:
+            tuple (pd.DataFrame): Dataframe with the results.
+        """
         
         ts_index = pd.to_datetime(ts.index)
         DAYS = len(np.unique(ts_index.date))
@@ -122,6 +143,16 @@ class GasHeaterInstantaneous():
     
 
     def postproc(self, df_tm: pd.DataFrame) -> dict[str,float]:
+        """Postprocessing for gas heater instantaneous
+
+        Args:
+            df_tm (pd.DataFrame): Results from thermal model
+
+        Raises:
+
+        Returns:
+            dict[str,float]: Thermal postprocessing results
+        """
         kgCO2_TO_kgCH4 = 44. / 16.
         nom_power = self.nom_power.get_value("MJ/hr")
         deltaT_rise = self.deltaT_rise.get_value("dgrC")
@@ -201,7 +232,12 @@ class GasHeaterStorage(HWTank):
         self.heat_value = Variable(47.,"MJ/kg_gas")
 
     @property
-    def eta(self) -> Variable:        
+    def eta(self) -> Variable:
+        """Thermal efficiency
+
+        Returns:
+            Variable: Thermal efficiency
+        """
         nom_power = self.nom_power.get_value("MJ/hr")
         deltaT_rise = self.deltaT_rise.get_value("dgrC")
         flow_w = self.flow_water.get_value("m3/s")
@@ -218,6 +254,15 @@ class GasHeaterStorage(HWTank):
         file_path: str = FILES_MODEL_SPECS["gas_storage"],
         model:str = "",
         ):
+        """Initialiser method, using models from catalog.
+
+        Args:
+            file_path (str, optional): Path to the file with specifications. Defaults to FILES_MODEL_SPECS["gas_storage"].
+            model (str, optional): Defaults to "".
+
+        Returns:
+            Self: Heater instance.
+        """
         df = pd.read_csv(file_path, index_col=0)
         specs = pd.Series(df.loc[model])
         units = pd.Series(df.loc["units"])
@@ -238,34 +283,16 @@ class GasHeaterStorage(HWTank):
             ts: pd.DataFrame,
             verbose: bool = False,
     ) -> pd.DataFrame:
+        """Run simulation using TRNSYS and the layout TRNSYS_RS_v1.dck template
+
+        Args:
+            ts (pd.DataFrame): Timeseries dataframe
+            verbose (bool, optional): Whether print details about the simulation. Defaults to False.
+
+        Returns:
+            pd.DataFrame: Dataframe with thermal simulation (df_tm)
+        """
         from tm_solarshift.models import (trnsys, postprocessing)
         trnsys_dewh = trnsys.TrnsysDEWH(DEWH=self, ts=ts)
         df_tm = trnsys_dewh.run_simulation(verbose=verbose)
         return df_tm
-
-
-# #--------------------------------
-# def storage_fixed_eta(
-#         sim: Simulation,
-#         ts: pd.DataFrame,
-#         verbose: bool = False,
-# ) -> tuple[pd.DataFrame,dict[str, float]]:
-
-#     from tm_solarshift.models import (trnsys, postprocessing)
-#     DEWH: GasHeaterStorage = sim.DEWH
-#     kgCO2_TO_kgCH4 = (44./16.)          #Assuming pure methane for gas
-#     heat_value = DEWH.heat_value.get_value("MJ/kg_gas")
-#     eta = sim.DEWH.eta.get_value("-")
-
-#     trnsys_dewh = trnsys.TrnsysDEWH(DEWH=DEWH, ts=ts)
-#     df_tm = trnsys_dewh.run_simulation(verbose=verbose)
-#     out_overall = postprocessing.thermal_analysis(sim, ts, df_tm)
-#     sp_emissions = (kgCO2_TO_kgCH4 / (heat_value * CF("MJ", "kWh")) / eta ) #[kg_CO2/kWh_thermal]
-
-#     emissions_total = out_overall["heater_heat_acum"] * sp_emissions * CF("kg", "ton")    #[tonCO2_annual]
-#     emissions_marginal = emissions_total
-    
-#     out_overall["emissions_total"] = emissions_total
-#     out_overall["emissions_marginal"] = emissions_marginal
-#     out_overall["solar_ratio"] = 0.0
-#     return (df_tm, out_overall)
