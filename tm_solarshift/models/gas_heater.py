@@ -94,6 +94,7 @@ class GasHeaterInstantaneous():
     def run_thermal_model(
         self,
         ts: pd.DataFrame,
+        verbose: bool = False,
     ) -> pd.DataFrame:
         """Run the thermal model (Python-based) with fix efficiency.
 
